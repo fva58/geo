@@ -1,0 +1,14 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "geo"
+version = "0.0.0"
+readme = "README.rst"
+license = "MIT"
+license-files = ["LICEN[CS]E*"]
+authors = [
+  { name="Вячеслав Фёдоров", email="fvamail@gmail.com" },
+]
+description = "A geometry package"

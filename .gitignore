@@ -1,0 +1,8 @@
+tmp.*
+\.coverage
+*~
+__pycache__/
+.aider*
+coverage.json
+geo.egg-info/
+dist/
