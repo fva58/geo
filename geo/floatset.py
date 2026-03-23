@@ -4,7 +4,9 @@ This module provides FloatInterval and FloatSet classes for working with
 sets of real numbers represented as intervals.
 """
 
-from typing import Tuple, List, Optional, Union
+# pylint: disable=multiple-statements
+
+from typing import Tuple, Any, Optional, Union, Sequence
 import math
 
 
@@ -21,13 +23,18 @@ class FloatInterval:
 
     """
 
-    def __init__(self, left: float, right: float) -> None:
+    def __init__(self, left: Union[float,'FloatInterval'],
+                 right: Optional[float] = None ) -> None:
         """Initialize a FloatInterval.
 
         Args:
-            left: Left bound of the interval
+            left: Left bound of the interval or FloatInterval
             right: Right bound of the interval
         """
+        if right is None :
+            if isinstance ( left , FloatInterval ) :
+                left , right = left.to_tuple ()
+            else : right = left
         self.left = left
         self.right = right
 
@@ -39,6 +46,7 @@ class FloatInterval:
         """Return human-readable string representation."""
         if self.is_empty():
             return "∅"
+        if self.left == self.right : return str ( self.left )
         return f"[{self.left}, {self.right}]"
 
     def __eq__(self, other: object) -> bool:
@@ -95,10 +103,10 @@ class FloatInterval:
         """Return length of the interval.
 
         Returns:
-            Length of the interval (0 for empty interval).
+            Length of the interval (-inf for empty interval).
         """
         if self.is_empty():
-            return 0.0
+            return -math.inf
         return self.right - self.left
 
     def intersection(self, other: 'FloatInterval') -> 'FloatInterval':
@@ -144,15 +152,13 @@ class FloatInterval:
         if (self.right <= math.nextafter(other.left, -math.inf) or
             other.right <= math.nextafter(self.left, -math.inf)):
             # Disjoint intervals
-            if self.left < other.left:
-                return (self, other)
-            else:
-                return (other, self)
-        else:
-            # Overlapping or touching intervals
-            left = min(self.left, other.left)
-            right = max(self.right, other.right)
-            return (FloatInterval(left, right),)
+            if self.left < other.left: return (self, other)
+            return (other, self)
+
+        # Overlapping or touching intervals
+        left = min(self.left, other.left)
+        right = max(self.right, other.right)
+        return (FloatInterval(left, right),)
 
     def difference(self, other: 'FloatInterval') -> Tuple['FloatInterval', ...]:
         """Compute difference (self - other).
@@ -198,7 +204,8 @@ class FloatInterval:
         if inter.is_empty():
             return union_intervals
 
-        # For overlapping intervals, symmetric difference is union minus intersection
+        # For overlapping intervals, symmetric difference is union
+        # minus intersection
         result = []
         for interval in union_intervals:
             diff = interval.difference(inter)
@@ -238,6 +245,11 @@ class FloatInterval:
         """Convert interval to tuple."""
         return (self.left, self.right)
 
+EMPTY_FLOAT_INTERVAL = FloatInterval ( math.inf , -math.inf )
+assert EMPTY_FLOAT_INTERVAL.is_empty ()
+ALL_FLOATS_INTERVAL = FloatInterval ( -math.inf , math.inf )
+assert not ALL_FLOATS_INTERVAL.is_empty ()
+
 
 class FloatSet:
     """Set of real numbers represented as disjoint intervals.
@@ -245,14 +257,15 @@ class FloatSet:
     A FloatSet is represented as a tuple of sorted, non-overlapping intervals.
     """
 
-    def __init__(self, intervals: Union[Tuple['FloatInterval', ...],
-                                        List['FloatInterval']] = ()) -> None:
+    def __init__(self, *args : Any ) -> None:
         """Initialize a FloatSet.
 
         Args:
-            intervals: Collection of intervals (will be normalized)
+            args: sequence of float , FloatInterval or Sequence (may
+                  be recursive) of ones
+
         """
-        self._intervals = self._normalize(intervals)
+        self._intervals = self._normalize( self._translate(args) )
 
     def __repr__(self) -> str:
         """Return string representation of the set."""
@@ -295,9 +308,16 @@ class FloatSet:
         return iter(self._intervals)
 
     @staticmethod
-    def _normalize(intervals: Union[Tuple['FloatInterval', ...],
-                                    List['FloatInterval']]
-                   ) -> Tuple['FloatInterval', ...]:
+    def _translate ( args ) :
+        for a in args :
+            if isinstance ( a , FloatInterval ) : yield a
+            elif isinstance ( a , float ) : yield FloatInterval(a)
+            elif isinstance ( a , int ) : yield FloatInterval(a)
+            else : yield from FloatSet._translate ( a )
+
+    @staticmethod
+    def _normalize ( intervals: Sequence[FloatInterval]
+                    ) -> Tuple[FloatInterval, ...] :
         """Normalize intervals: sort and merge overlapping intervals.
 
         Args:
@@ -320,7 +340,7 @@ class FloatSet:
 
         for interval in non_empty[1:]:
             # Check if intervals overlap or touch
-            if (current.right > math.nextafter(interval.left, -math.inf)):
+            if current.right > math.nextafter(interval.left, -math.inf) :
                 # Merge intervals
                 current = FloatInterval(
                     current.left,
@@ -334,6 +354,7 @@ class FloatSet:
         result.append(current)
         return tuple(result)
 
+    # pylint: disable=protected-access
     def union(self, other: 'FloatSet') -> 'FloatSet':
         """Compute union of two sets.
 
