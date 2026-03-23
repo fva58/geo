@@ -1,0 +1,472 @@
+"""Floating-point sets and intervals.
+
+This module provides FloatInterval and FloatSet classes for working with
+sets of real numbers represented as intervals.
+"""
+
+from typing import Tuple, List, Optional, Union
+import math
+
+
+class FloatInterval:
+    """Interval of real numbers.
+
+    An interval is represented as a tuple of two numbers (left and
+    right bounds).  An empty interval has left bound greater than
+    right bound.
+
+    Attributes:
+        left: Left bound of the interval
+        right: Right bound of the interval
+
+    """
+
+    def __init__(self, left: float, right: float) -> None:
+        """Initialize a FloatInterval.
+
+        Args:
+            left: Left bound of the interval
+            right: Right bound of the interval
+        """
+        self.left = left
+        self.right = right
+
+    def __repr__(self) -> str:
+        """Return string representation of the interval."""
+        return f"FloatInterval({self.left}, {self.right})"
+
+    def __str__(self) -> str:
+        """Return human-readable string representation."""
+        if self.is_empty():
+            return "∅"
+        return f"[{self.left}, {self.right}]"
+
+    def __eq__(self, other: object) -> bool:
+        """Check if two intervals are equal."""
+        if not isinstance(other, FloatInterval):
+            return NotImplemented
+        if self.is_empty() and other.is_empty():
+            return True
+        return self.left == other.left and self.right == other.right
+
+    def __hash__(self) -> int:
+        """Return hash of the interval."""
+        if self.is_empty():
+            return hash((float('inf'), float('-inf')))
+        return hash((self.left, self.right))
+
+    def is_empty(self) -> bool:
+        """Check if the interval is empty.
+
+        Returns:
+            True if left > right, False otherwise.
+        """
+        return self.left > self.right
+
+    def contains(self, x: float) -> bool:
+        """Check if the interval contains a point.
+
+        Args:
+            x: Point to check
+
+        Returns:
+            True if x is in the interval, False otherwise.
+        """
+        if self.is_empty():
+            return False
+        return self.left <= x <= self.right
+
+    def is_subset(self, other: 'FloatInterval') -> bool:
+        """Check if this interval is subset of another interval.
+
+        Args:
+            other: Another interval
+
+        Returns:
+            True if self ⊆ other, False otherwise.
+        """
+        if self.is_empty():
+            return True
+        if other.is_empty():
+            return False
+        return other.left <= self.left and self.right <= other.right
+
+    def length(self) -> float:
+        """Return length of the interval.
+
+        Returns:
+            Length of the interval (0 for empty interval).
+        """
+        if self.is_empty():
+            return 0.0
+        return self.right - self.left
+
+    def intersection(self, other: 'FloatInterval') -> 'FloatInterval':
+        """Compute intersection of two intervals.
+
+        Args:
+            other: Another interval
+
+        Returns:
+            Intersection interval (may be empty).
+        """
+        if self.is_empty() or other.is_empty():
+            return FloatInterval(1.0, 0.0)  # Empty interval
+
+        left = max(self.left, other.left)
+        right = min(self.right, other.right)
+
+        if left > right:
+            return FloatInterval(1.0, 0.0)  # Empty interval
+        return FloatInterval(left, right)
+
+    def union(self, other: 'FloatInterval') -> Tuple['FloatInterval', ...]:
+        """Compute union of two intervals.
+
+        Args:
+            other: Another interval
+
+        Returns: Tuple of intervals representing the union (0, 1 or 2
+            intervals ordered).
+
+        """
+        if self.is_empty():
+            if other.is_empty():
+                return ()
+            return (other,)
+        if other.is_empty():
+            return (self,)
+
+        # Check if intervals overlap or touch
+        # Use nextafter to handle floating point precision
+        # Intervals are disjoint if right of one is less than left of the other
+        # Using <= with nextafter to handle exact comparisons
+        if (self.right <= math.nextafter(other.left, -math.inf) or
+            other.right <= math.nextafter(self.left, -math.inf)):
+            # Disjoint intervals
+            if self.left < other.left:
+                return (self, other)
+            else:
+                return (other, self)
+        else:
+            # Overlapping or touching intervals
+            left = min(self.left, other.left)
+            right = max(self.right, other.right)
+            return (FloatInterval(left, right),)
+
+    def difference(self, other: 'FloatInterval') -> Tuple['FloatInterval', ...]:
+        """Compute difference (self - other).
+
+        Args:
+            other: Interval to subtract
+
+        Returns: Tuple of intervals representing the difference (0, 1,
+            or 2 intervals ordered).
+
+        """
+        if self.is_empty() or other.is_empty():
+            return (self,) if not self.is_empty() else ()
+
+        inter = self.intersection(other)
+        if inter.is_empty():
+            return (self,)
+
+        result = []
+        # Left part - include if there's a gap
+        if self.left <= math.nextafter(inter.left, -math.inf):
+            result.append(FloatInterval(self.left, inter.left))
+
+        # Right part - include if there's a gap
+        if inter.right <= math.nextafter(self.right, -math.inf):
+            result.append(FloatInterval(inter.right, self.right))
+
+        return tuple(result)
+
+    def symmetric_difference(self, other: 'FloatInterval'
+                             ) -> Tuple['FloatInterval', ...]:
+        """Compute symmetric difference (self Δ other).
+
+        Args:
+            other: Another interval
+
+        Returns:
+            Tuple of intervals representing the symmetric difference.
+        """
+        union_intervals = self.union(other)
+        inter = self.intersection(other)
+
+        if inter.is_empty():
+            return union_intervals
+
+        # For overlapping intervals, symmetric difference is union minus intersection
+        result = []
+        for interval in union_intervals:
+            diff = interval.difference(inter)
+            result.extend(diff)
+        return tuple(result)
+
+    def __and__(self, other: 'FloatInterval') -> 'FloatInterval':
+        """Operator for intersection: self & other."""
+        return self.intersection(other)
+
+    def __or__(self, other: 'FloatInterval') -> Tuple['FloatInterval', ...]:
+        """Operator for union: self | other."""
+        return self.union(other)
+
+    def __sub__(self, other: 'FloatInterval') -> Tuple['FloatInterval', ...]:
+        """Operator for difference: self - other."""
+        return self.difference(other)
+
+    def __xor__(self, other: 'FloatInterval') -> Tuple['FloatInterval', ...]:
+        """Operator for symmetric difference: self ^ other."""
+        return self.symmetric_difference(other)
+
+    def __contains__(self, x: float) -> bool:
+        """Check if point is in interval: x in interval."""
+        return self.contains(x)
+
+    def __bool__(self) -> bool:
+        """Boolean conversion: True if interval is not empty."""
+        return not self.is_empty()
+
+    @classmethod
+    def from_tuple(cls, t: Tuple[float, float]) -> 'FloatInterval':
+        """Create interval from tuple."""
+        return cls(t[0], t[1])
+
+    def to_tuple(self) -> Tuple[float, float]:
+        """Convert interval to tuple."""
+        return (self.left, self.right)
+
+
+class FloatSet:
+    """Set of real numbers represented as disjoint intervals.
+
+    A FloatSet is represented as a tuple of sorted, non-overlapping intervals.
+    """
+
+    def __init__(self, intervals: Union[Tuple['FloatInterval', ...],
+                                        List['FloatInterval']] = ()) -> None:
+        """Initialize a FloatSet.
+
+        Args:
+            intervals: Collection of intervals (will be normalized)
+        """
+        self._intervals = self._normalize(intervals)
+
+    def __repr__(self) -> str:
+        """Return string representation of the set."""
+        intervals_repr = ", ".join(repr(iv) for iv in self._intervals)
+        return f"FloatSet(({intervals_repr}))"
+
+    def __str__(self) -> str:
+        """Return human-readable string representation."""
+        if not self._intervals:
+            return "∅"
+        return " ∪ ".join(str(iv) for iv in self._intervals)
+
+    def __eq__(self, other: object) -> bool:
+        """Check if two sets are equal."""
+        if not isinstance(other, FloatSet):
+            return NotImplemented
+        return self._intervals == other._intervals
+
+    def __hash__(self) -> int:
+        """Return hash of the set."""
+        return hash(self._intervals)
+
+    def __contains__(self, x: float) -> bool:
+        """Check if point is in set: x in set."""
+        for interval in self._intervals:
+            if interval.contains(x):
+                return True
+        return False
+
+    def __bool__(self) -> bool:
+        """Boolean conversion: True if set is not empty."""
+        return bool(self._intervals)
+
+    def __len__(self) -> int:
+        """Return number of intervals in the set."""
+        return len(self._intervals)
+
+    def __iter__(self):
+        """Iterate over intervals in the set."""
+        return iter(self._intervals)
+
+    @staticmethod
+    def _normalize(intervals: Union[Tuple['FloatInterval', ...],
+                                    List['FloatInterval']]
+                   ) -> Tuple['FloatInterval', ...]:
+        """Normalize intervals: sort and merge overlapping intervals.
+
+        Args:
+            intervals: Collection of intervals
+
+        Returns:
+            Tuple of sorted, non-overlapping intervals.
+        """
+        # Filter out empty intervals
+        non_empty = [iv for iv in intervals if not iv.is_empty()]
+        if not non_empty:
+            return ()
+
+        # Sort by left bound
+        non_empty.sort(key=lambda iv: iv.left)
+
+        # Merge overlapping intervals
+        result = []
+        current = non_empty[0]
+
+        for interval in non_empty[1:]:
+            # Check if intervals overlap or touch
+            if (current.right > math.nextafter(interval.left, -math.inf)):
+                # Merge intervals
+                current = FloatInterval(
+                    current.left,
+                    max(current.right, interval.right)
+                )
+            else:
+                # No overlap, add current to result
+                result.append(current)
+                current = interval
+
+        result.append(current)
+        return tuple(result)
+
+    def union(self, other: 'FloatSet') -> 'FloatSet':
+        """Compute union of two sets.
+
+        Args:
+            other: Another set
+
+        Returns:
+            Union of the sets.
+        """
+        all_intervals = list(self._intervals) + list(other._intervals)
+        return FloatSet(all_intervals)
+
+    def intersection(self, other: 'FloatSet') -> 'FloatSet':
+        """Compute intersection of two sets.
+
+        Args:
+            other: Another set
+
+        Returns:
+            Intersection of the sets.
+        """
+        result_intervals = []
+        for iv1 in self._intervals:
+            for iv2 in other._intervals:
+                inter = iv1.intersection(iv2)
+                if not inter.is_empty():
+                    result_intervals.append(inter)
+
+        return FloatSet(result_intervals)
+
+    def difference(self, other: 'FloatSet') -> 'FloatSet':
+        """Compute difference (self - other).
+
+        Args:
+            other: Set to subtract
+
+        Returns:
+            Difference of the sets.
+        """
+        if not self._intervals:
+            return self
+        if not other._intervals:
+            return self
+
+        result_intervals = []
+
+        for iv1 in self._intervals:
+            # Start with the current interval
+            current_parts = [iv1]
+
+            # Subtract each interval from other set
+            for iv2 in other._intervals:
+                new_parts = []
+                for part in current_parts:
+                    diff = part.difference(iv2)
+                    new_parts.extend(diff)
+                current_parts = new_parts
+                if not current_parts:
+                    break
+
+            result_intervals.extend(current_parts)
+
+        return FloatSet(result_intervals)
+
+    def symmetric_difference(self, other: 'FloatSet') -> 'FloatSet':
+        """Compute symmetric difference (self Δ other).
+
+        Args:
+            other: Another set
+
+        Returns:
+            Symmetric difference of the sets.
+        """
+        union_set = self.union(other)
+        inter_set = self.intersection(other)
+        return union_set.difference(inter_set)
+
+    def __or__(self, other: 'FloatSet') -> 'FloatSet':
+        """Operator for union: self | other."""
+        return self.union(other)
+
+    def __and__(self, other: 'FloatSet') -> 'FloatSet':
+        """Operator for intersection: self & other."""
+        return self.intersection(other)
+
+    def __sub__(self, other: 'FloatSet') -> 'FloatSet':
+        """Operator for difference: self - other."""
+        return self.difference(other)
+
+    def __xor__(self, other: 'FloatSet') -> 'FloatSet':
+        """Operator for symmetric difference: self ^ other."""
+        return self.symmetric_difference(other)
+
+    def is_empty(self) -> bool:
+        """Check if the set is empty.
+
+        Returns:
+            True if set has no intervals, False otherwise.
+        """
+        return not self._intervals
+
+    def contains_interval(self, interval: FloatInterval) -> bool:
+        """Check if the set contains an entire interval.
+
+        Args:
+            interval: Interval to check
+
+        Returns:
+            True if interval is subset of the set, False otherwise.
+        """
+        if interval.is_empty():
+            return True
+
+        for iv in self._intervals:
+            if iv.left <= interval.left and iv.right >= interval.right:
+                return True
+        return False
+
+    @classmethod
+    def from_single_interval(cls, left: float, right: float) -> 'FloatSet':
+        """Create set from single interval."""
+        return cls((FloatInterval(left, right),))
+
+    @classmethod
+    def from_intervals(cls, *intervals: FloatInterval) -> 'FloatSet':
+        """Create set from multiple intervals."""
+        return cls(intervals)
+
+    def to_tuple(self) -> Tuple[Tuple[float, float], ...]:
+        """Convert set to tuple of interval tuples."""
+        return tuple(iv.to_tuple() for iv in self._intervals)
+
+    @property
+    def intervals(self) -> Tuple[FloatInterval, ...]:
+        """Get intervals of the set."""
+        return self._intervals
