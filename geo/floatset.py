@@ -453,7 +453,7 @@ class FloatSet ( tuple ) : # Tuple[Tuple[float,float],...]
             return True
 
         for iv in self:
-            if iv.left <= interval.left and iv.right >= interval.right:
+            if iv[0] <= interval.left and iv[1] >= interval.right:
                 return True
         return False
 
