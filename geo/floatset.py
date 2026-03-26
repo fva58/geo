@@ -10,7 +10,7 @@ from typing import Tuple, Any, Optional, Union, Sequence
 import math
 
 
-class FloatInterval:
+class FloatInterval ( tuple ) :
     """Interval of real numbers.
 
     An interval is represented as a tuple of two numbers (left and
@@ -22,9 +22,9 @@ class FloatInterval:
         right: Right bound of the interval
 
     """
+    __slots__ = ()
 
-    def __init__(self, left: Union[float,'FloatInterval'],
-                 right: Optional[float] = None ) -> None:
+    def __new__ ( cls , left , right = None ) :
         """Initialize a FloatInterval.
 
         Args:
@@ -32,11 +32,15 @@ class FloatInterval:
             right: Right bound of the interval
         """
         if right is None :
-            if isinstance ( left , FloatInterval ) :
-                left , right = left.to_tuple ()
-            else : right = left
-        self.left = left
-        self.right = right
+            if isinstance ( left , FloatInterval ) : return left
+            right = left
+        return super().__new__ ( cls , (float(left),float(right)) )
+
+    @property
+    def left ( self ) -> float : return self[0]
+
+    @property
+    def right ( self ) -> float : return self[1]
 
     def __repr__(self) -> str:
         """Return string representation of the interval."""
@@ -251,21 +255,21 @@ ALL_FLOATS_INTERVAL = FloatInterval ( -math.inf , math.inf )
 assert not ALL_FLOATS_INTERVAL.is_empty ()
 
 
-class FloatSet:
+class FloatSet ( tuple ) : # Tuple[Tuple[float,float],...]
     """Set of real numbers represented as disjoint intervals.
 
     A FloatSet is represented as a tuple of sorted, non-overlapping intervals.
     """
+    __slots__ = ()
 
-    def __init__(self, *args : Any ) -> None:
-        """Initialize a FloatSet.
+    def __new__ ( cls , *args : Any ) :
+        if len(args) == 1 and isinstance(args[0],cls) : return args[0]
+        return super().__new__ ( cls , cls._normalize(cls._translate(args)) )
 
-        Args:
-            args: sequence of float , FloatInterval or Sequence (may
-                  be recursive) of ones
-
-        """
-        self._intervals = self._normalize( self._translate(args) )
+    @property
+    def intervals(self) -> Tuple[Tuple[float,float], ...] :
+        """Get intervals of the set."""
+        return self
 
     def __repr__(self) -> str:
         """Return string representation of the set."""
@@ -486,8 +490,3 @@ class FloatSet:
     def to_tuple(self) -> Tuple[Tuple[float, float], ...]:
         """Convert set to tuple of interval tuples."""
         return tuple(iv.to_tuple() for iv in self._intervals)
-
-    @property
-    def intervals(self) -> Tuple[FloatInterval, ...]:
-        """Get intervals of the set."""
-        return self._intervals
