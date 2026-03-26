@@ -247,7 +247,7 @@ class FloatInterval ( tuple ) :
 
     def to_tuple(self) -> Tuple[float, float]:
         """Convert interval to tuple."""
-        return (self.left, self.right)
+        return tuple ( self )
 
 EMPTY_FLOAT_INTERVAL = FloatInterval ( math.inf , -math.inf )
 assert EMPTY_FLOAT_INTERVAL.is_empty ()
@@ -273,55 +273,33 @@ class FloatSet ( tuple ) : # Tuple[Tuple[float,float],...]
 
     def __repr__(self) -> str:
         """Return string representation of the set."""
-        intervals_repr = ", ".join(repr(iv) for iv in self._intervals)
+        intervals_repr = ", ".join(repr(iv) for iv in self)
         return f"FloatSet(({intervals_repr}))"
 
     def __str__(self) -> str:
         """Return human-readable string representation."""
-        if not self._intervals:
+        if not self:
             return "∅"
-        return " ∪ ".join(str(iv) for iv in self._intervals)
-
-    def __eq__(self, other: object) -> bool:
-        """Check if two sets are equal."""
-        if not isinstance(other, FloatSet):
-            return NotImplemented
-        return self._intervals == other._intervals
-
-    def __hash__(self) -> int:
-        """Return hash of the set."""
-        return hash(self._intervals)
+        return " ∪ ".join(str(iv) for iv in self)
 
     def __contains__(self, x: float) -> bool:
         """Check if point is in set: x in set."""
-        for interval in self._intervals:
-            if interval.contains(x):
+        for interval in self:
+            if FloatInterval.from_tuple(interval).contains(x) :
                 return True
         return False
-
-    def __bool__(self) -> bool:
-        """Boolean conversion: True if set is not empty."""
-        return bool(self._intervals)
-
-    def __len__(self) -> int:
-        """Return number of intervals in the set."""
-        return len(self._intervals)
-
-    def __iter__(self):
-        """Iterate over intervals in the set."""
-        return iter(self._intervals)
 
     @staticmethod
     def _translate ( args ) :
         for a in args :
-            if isinstance ( a , FloatInterval ) : yield a
-            elif isinstance ( a , float ) : yield FloatInterval(a)
-            elif isinstance ( a , int ) : yield FloatInterval(a)
+            if isinstance ( a , FloatInterval ) : yield tuple(a)
+            elif isinstance ( a , float ) : yield (a,a)
+            elif isinstance ( a , int ) : yield (float(a),float(a))
             else : yield from FloatSet._translate ( a )
 
     @staticmethod
-    def _normalize ( intervals: Sequence[FloatInterval]
-                    ) -> Tuple[FloatInterval, ...] :
+    def _normalize ( intervals: Sequence[Tuple[float,float]]
+                    ) -> Tuple[Tuple[float,float], ...] :
         """Normalize intervals: sort and merge overlapping intervals.
 
         Args:
@@ -331,12 +309,13 @@ class FloatSet ( tuple ) : # Tuple[Tuple[float,float],...]
             Tuple of sorted, non-overlapping intervals.
         """
         # Filter out empty intervals
-        non_empty = [iv for iv in intervals if not iv.is_empty()]
+        non_empty = [ iv for iv in intervals
+                      if not FloatInterval.from_tuple(iv).is_empty() ]
         if not non_empty:
             return ()
 
         # Sort by left bound
-        non_empty.sort(key=lambda iv: iv.left)
+        non_empty.sort()
 
         # Merge overlapping intervals
         result = []
@@ -344,12 +323,9 @@ class FloatSet ( tuple ) : # Tuple[Tuple[float,float],...]
 
         for interval in non_empty[1:]:
             # Check if intervals overlap or touch
-            if current.right > math.nextafter(interval.left, -math.inf) :
+            if current[1] > math.nextafter ( interval[0] , -math.inf ) :
                 # Merge intervals
-                current = FloatInterval(
-                    current.left,
-                    max(current.right, interval.right)
-                )
+                current = ( current[0] , max(current[1],interval[1]) )
             else:
                 # No overlap, add current to result
                 result.append(current)
@@ -368,8 +344,8 @@ class FloatSet ( tuple ) : # Tuple[Tuple[float,float],...]
         Returns:
             Union of the sets.
         """
-        all_intervals = list(self._intervals) + list(other._intervals)
-        return FloatSet(all_intervals)
+        all_intervals = list(self) + list(other)
+        return FloatSet([ FloatInterval.from_tuple(i) for i in all_intervals ])
 
     def intersection(self, other: 'FloatSet') -> 'FloatSet':
         """Compute intersection of two sets.
@@ -381,8 +357,10 @@ class FloatSet ( tuple ) : # Tuple[Tuple[float,float],...]
             Intersection of the sets.
         """
         result_intervals = []
-        for iv1 in self._intervals:
-            for iv2 in other._intervals:
+        for iv1 in self:
+            iv1 = FloatInterval.from_tuple ( iv1 )
+            for iv2 in other:
+                iv2 = FloatInterval.from_tuple ( iv2 )
                 inter = iv1.intersection(iv2)
                 if not inter.is_empty():
                     result_intervals.append(inter)
@@ -398,19 +376,21 @@ class FloatSet ( tuple ) : # Tuple[Tuple[float,float],...]
         Returns:
             Difference of the sets.
         """
-        if not self._intervals:
+        if not self:
             return self
-        if not other._intervals:
+        if not other:
             return self
 
         result_intervals = []
 
-        for iv1 in self._intervals:
+        for iv1 in self:
             # Start with the current interval
+            iv1 = FloatInterval.from_tuple ( iv1 )
             current_parts = [iv1]
 
             # Subtract each interval from other set
-            for iv2 in other._intervals:
+            for iv2 in other:
+                iv2 = FloatInterval.from_tuple ( iv2 )
                 new_parts = []
                 for part in current_parts:
                     diff = part.difference(iv2)
@@ -458,7 +438,7 @@ class FloatSet ( tuple ) : # Tuple[Tuple[float,float],...]
         Returns:
             True if set has no intervals, False otherwise.
         """
-        return not self._intervals
+        return not self
 
     def contains_interval(self, interval: FloatInterval) -> bool:
         """Check if the set contains an entire interval.
@@ -472,7 +452,7 @@ class FloatSet ( tuple ) : # Tuple[Tuple[float,float],...]
         if interval.is_empty():
             return True
 
-        for iv in self._intervals:
+        for iv in self:
             if iv.left <= interval.left and iv.right >= interval.right:
                 return True
         return False
@@ -489,4 +469,4 @@ class FloatSet ( tuple ) : # Tuple[Tuple[float,float],...]
 
     def to_tuple(self) -> Tuple[Tuple[float, float], ...]:
         """Convert set to tuple of interval tuples."""
-        return tuple(iv.to_tuple() for iv in self._intervals)
+        return tuple(self)

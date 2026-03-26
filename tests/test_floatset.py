@@ -226,8 +226,8 @@ class TestFloatSet(unittest.TestCase):
         ]
         fset = FloatSet(intervals)
         self.assertEqual(len(fset), 1)
-        self.assertEqual(fset.intervals[0].left, 0.0)
-        self.assertEqual(fset.intervals[0].right, 4.0)
+        self.assertEqual(fset.intervals[0][0], 0.0)
+        self.assertEqual(fset.intervals[0][1], 4.0)
 
         # Disjoint intervals should stay separate
         intervals = [
@@ -257,8 +257,8 @@ class TestFloatSet(unittest.TestCase):
 
         union = set1.union(set2)
         self.assertEqual(len(union), 1)  # Should merge to single interval
-        self.assertEqual(union.intervals[0].left, 0.0)
-        self.assertEqual(union.intervals[0].right, 6.0)
+        self.assertEqual(union.intervals[0][0], 0.0)
+        self.assertEqual(union.intervals[0][1], 6.0)
 
         # With empty set
         empty = FloatSet()
@@ -272,10 +272,10 @@ class TestFloatSet(unittest.TestCase):
 
         inter = set1.intersection(set2)
         self.assertEqual(len(inter), 2)
-        self.assertEqual(inter.intervals[0].left, 2.0)
-        self.assertEqual(inter.intervals[0].right, 3.0)
-        self.assertEqual(inter.intervals[1].left, 5.0)
-        self.assertEqual(inter.intervals[1].right, 6.0)
+        self.assertEqual(inter.intervals[0][0], 2.0)
+        self.assertEqual(inter.intervals[0][1], 3.0)
+        self.assertEqual(inter.intervals[1][0], 5.0)
+        self.assertEqual(inter.intervals[1][1], 6.0)
 
         # With empty set
         empty = FloatSet()
@@ -290,12 +290,12 @@ class TestFloatSet(unittest.TestCase):
         diff = set1.difference(set2)
         self.assertEqual(len(diff), 3)
         intervals = list(diff.intervals)
-        self.assertEqual(intervals[0].left, 0.0)
-        self.assertEqual(intervals[0].right, 1.0)
-        self.assertEqual(intervals[1].left, 2.0)
-        self.assertEqual(intervals[1].right, 3.0)
-        self.assertEqual(intervals[2].left, 4.0)
-        self.assertEqual(intervals[2].right, 5.0)
+        self.assertEqual(intervals[0][0], 0.0)
+        self.assertEqual(intervals[0][1], 1.0)
+        self.assertEqual(intervals[1][0], 2.0)
+        self.assertEqual(intervals[1][1], 3.0)
+        self.assertEqual(intervals[2][0], 4.0)
+        self.assertEqual(intervals[2][1], 5.0)
 
     def test_symmetric_difference(self):
         """Test symmetric difference."""
@@ -314,20 +314,20 @@ class TestFloatSet(unittest.TestCase):
         # Union
         union = set1 | set2
         self.assertEqual(len(union), 1)
-        self.assertEqual(union.intervals[0].left, 0.0)
-        self.assertEqual(union.intervals[0].right, 3.0)
+        self.assertEqual(union.intervals[0][0], 0.0)
+        self.assertEqual(union.intervals[0][1], 3.0)
 
         # Intersection
         inter = set1 & set2
         self.assertEqual(len(inter), 1)
-        self.assertEqual(inter.intervals[0].left, 1.0)
-        self.assertEqual(inter.intervals[0].right, 2.0)
+        self.assertEqual(inter.intervals[0][0], 1.0)
+        self.assertEqual(inter.intervals[0][1], 2.0)
 
         # Difference
         diff = set1 - set2
         self.assertEqual(len(diff), 1)
-        self.assertEqual(diff.intervals[0].left, 0.0)
-        self.assertEqual(diff.intervals[0].right, 1.0)
+        self.assertEqual(diff.intervals[0][0], 0.0)
+        self.assertEqual(diff.intervals[0][1], 1.0)
 
         # Symmetric difference
         sym_diff = set1 ^ set2
@@ -338,8 +338,8 @@ class TestFloatSet(unittest.TestCase):
         # From single interval
         fset1 = FloatSet.from_single_interval(0.0, 1.0)
         self.assertEqual(len(fset1), 1)
-        self.assertEqual(fset1.intervals[0].left, 0.0)
-        self.assertEqual(fset1.intervals[0].right, 1.0)
+        self.assertEqual(fset1.intervals[0][0], 0.0)
+        self.assertEqual(fset1.intervals[0][1], 1.0)
 
         # From multiple intervals
         intervals = [FloatInterval(0.0, 1.0), FloatInterval(2.0, 3.0)]
@@ -364,14 +364,14 @@ class TestEdgeCases(unittest.TestCase):
         # With math.nextafter, intervals that exactly touch should merge
         union = a.union(b)
         self.assertEqual(len(union), 1)
-        self.assertEqual(union[0].left, 0.0)
-        self.assertEqual(union[0].right, 2.0)
+        self.assertEqual(union[0][0], 0.0)
+        self.assertEqual(union[0][1], 2.0)
 
         # Intersection of touching intervals should be a single point
         inter = a.intersection(b)
         self.assertFalse(inter.is_empty())
-        self.assertEqual(inter.left, 1.0)
-        self.assertEqual(inter.right, 1.0)
+        self.assertEqual(inter[0], 1.0)
+        self.assertEqual(inter[1], 1.0)
         self.assertEqual(inter.length(), 0.0)
 
     def test_single_point_intervals(self):
