@@ -129,6 +129,14 @@ FloatCirklePoint, FloatCircleInterval, FloatCircleSet.
 #+RESULTS: coverage-html
 : 0
 
+#+NAME: docs-html
+#+BEGIN_SRC shell :results value
+  make -C doc html
+#+END_SRC
+
+#+RESULTS: docs-html
+: 0
+
 #+NAME: coverage-json
 #+BEGIN_SRC shell  :results value
   coverage json
