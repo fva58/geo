@@ -21,6 +21,7 @@ from .manifold import LocalPointT, Manifold, ManifoldChart
 
 
 PointT = TypeVar("PointT")
+TargetT = TypeVar("TargetT")
 
 
 def _point_cone(dim: int) -> EuclideanCone:
@@ -469,6 +470,41 @@ def _projected_local_model(
     return LocalConeModel(target_model.chart, cone)
 
 
+def _centered_chart_at(
+    chart: ManifoldChart[PointT],
+    point: PointT,
+) -> ManifoldChart[PointT]:
+    """Return a chart recentered so that ``point`` maps to the origin."""
+    origin = FloatPoint(chart(point))
+    return ManifoldChart(
+        lambda candidate: FloatPoint(chart(candidate)) - FloatVector(origin),
+        lambda coordinates: chart.inverse(
+            FloatPoint(coordinates) + FloatVector(origin)
+        ),
+        dim=chart.dim,
+        domain_contains=chart.domain_contains,
+        image=EuclideanNeighborhood.whole(chart.dim),
+        name=f"{chart.name}-centered" if chart.name else "",
+    )
+
+
+def _contains_linear_image(
+    matrix: np.ndarray,
+    source_cone: Cone,
+    target_coordinates: FloatPoint,
+) -> bool:
+    """Check whether a vector belongs to the image of a source cone."""
+    target_array = _point_array(target_coordinates)
+    source_array, residuals, _, _ = np.linalg.lstsq(
+        matrix,
+        target_array,
+        rcond=None,
+    )
+    if not np.allclose(matrix @ source_array, target_array, atol=1e-7, rtol=1e-7):
+        return False
+    return source_cone.contains(FloatPoint(source_array))
+
+
 class EuclideanCone:
     """Concrete cone in Euclidean coordinates.
 
@@ -751,6 +787,26 @@ class ChartedGeometricObject(Generic[PointT]):
             )
         return model
 
+    def image_under_smooth_map(
+        self,
+        forward: Callable[[PointT], TargetT],
+        preimage_on_image: Callable[[TargetT], PointT],
+        target_manifold: Manifold[TargetT],
+        target_chart: Callable[[TargetT], ManifoldChart[TargetT]],
+        contains_image_point: Callable[[TargetT], bool] | None = None,
+        name: str = "",
+    ) -> "SmoothImageObject[PointT, TargetT]":
+        """Return the image object under a smooth map with local inverse."""
+        return SmoothImageObject(
+            self,
+            forward,
+            preimage_on_image,
+            target_manifold,
+            target_chart,
+            contains_image_point=contains_image_point,
+            name=name,
+        )
+
     def project_along_direction_onto(
         self,
         source_hyperplane,
@@ -844,6 +900,79 @@ class ChartedGeometricObject(Generic[PointT]):
             local_model=local_model,
             name=chosen_name,
         )
+
+
+class SmoothImageObject(ChartedGeometricObject[TargetT], Generic[PointT, TargetT]):
+    """Image of a geometric object under a smooth map with local inverse."""
+
+    def __init__(
+        self,
+        source_object: ChartedGeometricObject[PointT],
+        forward: Callable[[PointT], TargetT],
+        preimage_on_image: Callable[[TargetT], PointT],
+        target_manifold: Manifold[TargetT],
+        target_chart: Callable[[TargetT], ManifoldChart[TargetT]],
+        contains_image_point: Callable[[TargetT], bool] | None = None,
+        name: str = "",
+    ) -> None:
+        """Initialize an image object under a smooth map."""
+        self.source_object = source_object
+        self.forward = forward
+        self.preimage_on_image = preimage_on_image
+        self.target_chart = target_chart
+
+        if contains_image_point is None:
+            def image_contains(point: TargetT) -> bool:
+                try:
+                    return self.forward(self.preimage_on_image(point)) == point
+                except (TypeError, ValueError):
+                    return False
+        else:
+            image_contains = contains_image_point
+
+        super().__init__(
+            target_manifold,
+            contains=lambda point: (
+                point in target_manifold and
+                image_contains(point) and
+                self.preimage_on_image(point) in self.source_object
+            ),
+            local_model=self._local_model,
+            name=name,
+        )
+
+    def _local_model(self, point: TargetT) -> LocalConeModel[TargetT]:
+        """Transport the source local model through the smooth map."""
+        source_point = self.preimage_on_image(point)
+        source_model = self.source_object.local_model_at(source_point)
+        centered_source_chart = _centered_chart_at(source_model.chart, source_point)
+        base_target_chart = self.target_chart(point)
+        centered_target_chart = _centered_chart_at(base_target_chart, point)
+
+        def local_forward(source_coordinates: FloatPoint) -> FloatPoint:
+            source_local_point = centered_source_chart.inverse(source_coordinates)
+            return centered_target_chart(self.forward(source_local_point))
+
+        jacobian = _numeric_jacobian(
+            local_forward,
+            FloatPoint.origin(centered_source_chart.dim),
+        )
+        if np.linalg.matrix_rank(jacobian) < centered_source_chart.dim:
+            raise ValueError(
+                "Smooth image local model requires an immersive map at the point"
+            )
+        cone = EuclideanCone(
+            centered_target_chart.dim,
+            contains=lambda coordinates: _contains_linear_image(
+                jacobian,
+                source_model.cone,
+                FloatPoint(coordinates),
+            ),
+            apex=FloatPoint.origin(centered_target_chart.dim),
+            neighborhood=EuclideanNeighborhood.whole(centered_target_chart.dim),
+            name="smooth-image",
+        )
+        return LocalConeModel(centered_target_chart, cone)
 
 
 class RealPointObject(ChartedGeometricObject[float]):
@@ -1567,6 +1696,7 @@ __all__ = [
     "SphericalCone",
     "LocalConeModel",
     "ChartedGeometricObject",
+    "SmoothImageObject",
     "RealPointObject",
     "CirclePointObject",
     "EuclideanPointObject",

@@ -4,11 +4,13 @@ import math
 import unittest
 
 from geo import (
+    EuclideanNeighborhood,
     EuclideanPlaneSpace,
     FloatCirclePoint,
     FloatPoint,
     FloatVector,
     Hyperplane,
+    ManifoldChart,
     RealLineSpace,
     RiemannianGeometricObject,
     RiemannianSpace,
@@ -220,6 +222,55 @@ class TestRiemannianObjects(unittest.TestCase):
         self.assertNotIn(FloatPoint(0.0, 1.0), projected)
 
         boundary = projected.local_model_at(FloatPoint(0.0, 0.0))
+        self.assertIn(FloatPoint(1.0, 0.0), boundary.cone)
+        self.assertNotIn(FloatPoint(-1.0, 0.0), boundary.cone)
+        self.assertNotIn(FloatPoint(0.0, 1.0), boundary.cone)
+
+    def test_smooth_image_object(self):
+        """A smooth image should define a new geometric object."""
+        source_space = RealLineSpace()
+        target_space = EuclideanPlaneSpace()
+        source = source_space.subset((0.0, 2.0), name="segment")
+
+        def target_chart(point: FloatPoint) -> ManifoldChart[FloatPoint]:
+            center = FloatPoint(point)
+            return ManifoldChart(
+                lambda candidate: FloatPoint(candidate) - center,
+                lambda coordinates: center + FloatVector(coordinates),
+                dim=2,
+                domain_contains=target_space.contains,
+                image=EuclideanNeighborhood.whole(2),
+                name="plane-chart",
+            )
+
+        image = source.image_under_smooth_map(
+            lambda point: FloatPoint(point, point * point),
+            lambda point: float(FloatPoint(point)[0]),
+            target_space,
+            target_chart,
+            contains_image_point=lambda point: (
+                0.0 <= FloatPoint(point)[0] <= 2.0 and
+                math.isclose(
+                    FloatPoint(point)[1],
+                    FloatPoint(point)[0] * FloatPoint(point)[0],
+                    rel_tol=1e-9,
+                    abs_tol=1e-9,
+                )
+            ),
+            name="parabola-segment",
+        )
+
+        self.assertIsInstance(image, RiemannianGeometricObject)
+        self.assertIn(FloatPoint(1.0, 1.0), image)
+        self.assertNotIn(FloatPoint(1.0, 0.0), image)
+        self.assertNotIn(FloatPoint(3.0, 9.0), image)
+
+        interior = image.local_model_at(FloatPoint(1.0, 1.0))
+        self.assertIn(FloatPoint(1.0, 2.0), interior.cone)
+        self.assertIn(FloatPoint(-1.0, -2.0), interior.cone)
+        self.assertNotIn(FloatPoint(0.0, 1.0), interior.cone)
+
+        boundary = image.local_model_at(FloatPoint(0.0, 0.0))
         self.assertIn(FloatPoint(1.0, 0.0), boundary.cone)
         self.assertNotIn(FloatPoint(-1.0, 0.0), boundary.cone)
         self.assertNotIn(FloatPoint(0.0, 1.0), boundary.cone)

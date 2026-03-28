@@ -27,6 +27,7 @@ from .manifold import Manifold
 
 
 PointT = TypeVar("PointT")
+TargetT = TypeVar("TargetT")
 MetricTensor = tuple[tuple[float, ...], ...]
 
 
@@ -387,6 +388,31 @@ class RiemannianGeometricObject(ChartedGeometricObject[PointT]):
         return RiemannianGeometricObject.from_charted(
             self.space,
             projected,
+            name=chosen_name,
+        )
+
+    def image_under_smooth_map(
+        self,
+        forward: Callable[[PointT], TargetT],
+        preimage_on_image: Callable[[TargetT], PointT],
+        target_space: RiemannianSpace[TargetT],
+        target_chart,
+        contains_image_point: Callable[[TargetT], bool] | None = None,
+        name: str = "",
+    ) -> "RiemannianGeometricObject[TargetT]":
+        """Return the image object under a smooth map into a Riemannian space."""
+        image_object = super().image_under_smooth_map(
+            forward,
+            preimage_on_image,
+            target_space,
+            target_chart,
+            contains_image_point=contains_image_point,
+            name=name,
+        )
+        chosen_name = name or getattr(image_object, "name", "")
+        return RiemannianGeometricObject.from_charted(
+            target_space,
+            image_object,
             name=chosen_name,
         )
 

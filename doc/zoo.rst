@@ -87,6 +87,45 @@ point or along a fixed direction::
     >>> FloatPoint(-1.0, 0.0) in projected
     False
 
+Smooth images
+-------------
+
+A geometric object can also be defined as the image of another object under a
+smooth map with a local inverse on the image::
+
+    >>> import math
+    >>> from geo import EuclideanNeighborhood, EuclideanPlaneSpace, FloatPoint
+    >>> from geo import FloatVector, ManifoldChart, RealLineSpace
+    >>> source_space = RealLineSpace()
+    >>> target_space = EuclideanPlaneSpace()
+    >>> source = source_space.subset((0.0, 2.0))
+    >>> def target_chart(point):
+    ...     center = FloatPoint(point)
+    ...     return ManifoldChart(
+    ...         lambda candidate: FloatPoint(candidate) - center,
+    ...         lambda coordinates: center + FloatVector(coordinates),
+    ...         dim=2,
+    ...         domain_contains=target_space.contains,
+    ...         image=EuclideanNeighborhood.whole(2),
+    ...     )
+    >>> parabola = source.image_under_smooth_map(
+    ...     lambda point: FloatPoint(point, point * point),
+    ...     lambda point: float(FloatPoint(point)[0]),
+    ...     target_space,
+    ...     target_chart,
+    ...     contains_image_point=lambda point: (
+    ...         0.0 <= FloatPoint(point)[0] <= 2.0 and
+    ...         math.isclose(
+    ...             FloatPoint(point)[1],
+    ...             FloatPoint(point)[0] * FloatPoint(point)[0],
+    ...         )
+    ...     ),
+    ... )
+    >>> FloatPoint(1.0, 1.0) in parabola
+    True
+    >>> FloatPoint(1.0, 0.0) in parabola
+    False
+
 Riemannian spaces with ready-made objects
 -----------------------------------------
 
