@@ -14,3 +14,7 @@ Recommended setup:
 pip install -e ".[examples]"
 jupyter lab
 ```
+
+The notebooks also prepend the repository root to `sys.path`
+automatically, so they can be started directly from `examples/`
+during local development.

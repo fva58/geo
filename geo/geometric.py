@@ -747,6 +747,210 @@ class LocalConeModel(Generic[PointT]):
             )
 
 
+@dataclass(frozen=True)
+class ObjectMesh:
+    """Finite mesh approximation of a geometric object."""
+
+    vertices: tuple[FloatPoint, ...]
+    cells: tuple[tuple[int, ...], ...]
+
+    def __post_init__(self) -> None:
+        """Require consistent vertex dimensions and cell indices."""
+        if not self.vertices:
+            if self.cells:
+                raise ValueError("Mesh cells require at least one vertex")
+            return
+
+        dim = self.vertices[0].dim
+        for vertex in self.vertices:
+            if vertex.dim != dim:
+                raise ValueError("Mesh vertices must have a common dimension")
+
+        vertex_count = len(self.vertices)
+        for cell in self.cells:
+            if not cell:
+                raise ValueError("Mesh cells must not be empty")
+            for index in cell:
+                if index < 0 or index >= vertex_count:
+                    raise ValueError("Mesh cell index out of range")
+
+    @property
+    def dim(self) -> int:
+        """Return the ambient dimension of the mesh vertices."""
+        if not self.vertices:
+            raise ValueError("Empty meshes do not have an ambient dimension")
+        return self.vertices[0].dim
+
+
+def _require_positive_resolution(resolution: int) -> int:
+    """Validate a mesh resolution parameter."""
+    resolution = int(resolution)
+    if resolution <= 0:
+        raise ValueError("Mesh resolution must be positive")
+    return resolution
+
+
+def _affine_mesh_vertices(
+    center: FloatPoint,
+    matrix: np.ndarray,
+    local_vertices: Sequence[Sequence[float]],
+) -> tuple[FloatPoint, ...]:
+    """Return affine-image vertices from local coordinates."""
+    center_array = _point_array(center)
+    return tuple(
+        FloatPoint(center_array + matrix @ np.asarray(vertex, dtype=float))
+        for vertex in local_vertices
+    )
+
+
+def _ellipsoid_surface_mesh(
+    center: FloatPoint,
+    matrix: np.ndarray,
+    resolution: int,
+) -> ObjectMesh:
+    """Return a mesh approximation of an ellipsoid surface."""
+    resolution = _require_positive_resolution(resolution)
+    dim = center.dim
+
+    if dim == 2:
+        angular_steps = max(resolution, 8)
+        angles = np.linspace(0.0, 2.0 * math.pi, angular_steps, endpoint=False)
+        local_vertices = tuple(
+            (math.cos(angle), math.sin(angle))
+            for angle in angles
+        )
+        vertices = _affine_mesh_vertices(center, matrix, local_vertices)
+        cells = tuple(
+            (index, (index + 1) % angular_steps)
+            for index in range(angular_steps)
+        )
+        return ObjectMesh(vertices, cells)
+
+    if dim == 3:
+        longitude_steps = max(resolution, 8)
+        latitude_steps = max(resolution // 2, 4)
+        local_vertices: list[tuple[float, float, float]] = [
+            (0.0, 0.0, 1.0)
+        ]
+        cells: list[tuple[int, int, int]] = []
+
+        for latitude_index in range(1, latitude_steps):
+            polar = math.pi * latitude_index / latitude_steps
+            sin_polar = math.sin(polar)
+            cos_polar = math.cos(polar)
+            for longitude_index in range(longitude_steps):
+                azimuth = (
+                    2.0 * math.pi * longitude_index / longitude_steps
+                )
+                local_vertices.append(
+                    (
+                        sin_polar * math.cos(azimuth),
+                        sin_polar * math.sin(azimuth),
+                        cos_polar,
+                    )
+                )
+
+        south_pole_index = len(local_vertices)
+        local_vertices.append((0.0, 0.0, -1.0))
+
+        first_ring_offset = 1
+        for longitude_index in range(longitude_steps):
+            next_index = (longitude_index + 1) % longitude_steps
+            cells.append(
+                (
+                    0,
+                    first_ring_offset + next_index,
+                    first_ring_offset + longitude_index,
+                )
+            )
+
+        for latitude_index in range(latitude_steps - 2):
+            ring_offset = 1 + latitude_index * longitude_steps
+            next_ring_offset = ring_offset + longitude_steps
+            for longitude_index in range(longitude_steps):
+                next_index = (longitude_index + 1) % longitude_steps
+                current = ring_offset + longitude_index
+                current_next = ring_offset + next_index
+                lower = next_ring_offset + longitude_index
+                lower_next = next_ring_offset + next_index
+                cells.append((current, current_next, lower))
+                cells.append((current_next, lower_next, lower))
+
+        last_ring_offset = 1 + (latitude_steps - 2) * longitude_steps
+        for longitude_index in range(longitude_steps):
+            next_index = (longitude_index + 1) % longitude_steps
+            cells.append(
+                (
+                    last_ring_offset + longitude_index,
+                    last_ring_offset + next_index,
+                    south_pole_index,
+                )
+            )
+
+        vertices = _affine_mesh_vertices(center, matrix, local_vertices)
+        return ObjectMesh(vertices, tuple(cells))
+
+    raise NotImplementedError(
+        "Ellipsoid meshes are implemented only in dimensions 2 and 3"
+    )
+
+
+def _parallelepiped_surface_mesh(
+    center: FloatPoint,
+    matrix: np.ndarray,
+) -> ObjectMesh:
+    """Return a mesh approximation of a parallelepiped surface."""
+    dim = center.dim
+
+    if dim == 2:
+        local_vertices = (
+            (-1.0, -1.0),
+            (1.0, -1.0),
+            (1.0, 1.0),
+            (-1.0, 1.0),
+        )
+        vertices = _affine_mesh_vertices(center, matrix, local_vertices)
+        cells = (
+            (0, 1),
+            (1, 2),
+            (2, 3),
+            (3, 0),
+        )
+        return ObjectMesh(vertices, cells)
+
+    if dim == 3:
+        local_vertices = (
+            (-1.0, -1.0, -1.0),
+            (1.0, -1.0, -1.0),
+            (1.0, 1.0, -1.0),
+            (-1.0, 1.0, -1.0),
+            (-1.0, -1.0, 1.0),
+            (1.0, -1.0, 1.0),
+            (1.0, 1.0, 1.0),
+            (-1.0, 1.0, 1.0),
+        )
+        vertices = _affine_mesh_vertices(center, matrix, local_vertices)
+        cells = (
+            (0, 1, 2),
+            (0, 2, 3),
+            (4, 6, 5),
+            (4, 7, 6),
+            (0, 5, 1),
+            (0, 4, 5),
+            (1, 6, 2),
+            (1, 5, 6),
+            (2, 7, 3),
+            (2, 6, 7),
+            (3, 4, 0),
+            (3, 7, 4),
+        )
+        return ObjectMesh(vertices, cells)
+
+    raise NotImplementedError(
+        "Parallelepiped meshes are implemented only in dimensions 2 and 3"
+    )
+
+
 class ChartedGeometricObject(Generic[PointT]):
     """Geometric object with local cone models on an ambient manifold."""
 
@@ -786,6 +990,12 @@ class ChartedGeometricObject(Generic[PointT]):
                 "Local model chart dimension does not match manifold dimension"
             )
         return model
+
+    def mesh(self, resolution: int = 64) -> ObjectMesh:
+        """Return a finite mesh approximation when one is available."""
+        raise NotImplementedError(
+            f"Mesh generation is not implemented for {type(self).__name__}"
+        )
 
     def image_under_smooth_map(
         self,
@@ -1234,6 +1444,11 @@ class Sphere(ChartedGeometricObject[FloatPoint]):
         cone = _hyperplane_cone(normal, name="sphere-tangent")
         return LocalConeModel(_euclidean_chart(FloatPoint(point)), cone)
 
+    def mesh(self, resolution: int = 64) -> ObjectMesh:
+        """Return a mesh approximation of the sphere surface."""
+        matrix = self.radius * np.eye(self.center.dim, dtype=float)
+        return _ellipsoid_surface_mesh(self.center, matrix, resolution)
+
 
 class Ball(ChartedGeometricObject[FloatPoint]):
     """Closed Euclidean ball ``{x : ||x - c|| <= r}``."""
@@ -1278,6 +1493,10 @@ class Ball(ChartedGeometricObject[FloatPoint]):
                 name="ball-boundary",
             )
         return LocalConeModel(_euclidean_chart(point), cone)
+
+    def mesh(self, resolution: int = 64) -> ObjectMesh:
+        """Return a mesh approximation of the ball boundary."""
+        return Sphere(self.center, self.radius, name=self.name).mesh(resolution)
 
 
 class EllipsoidSurface(ChartedGeometricObject[FloatPoint]):
@@ -1325,6 +1544,10 @@ class EllipsoidSurface(ChartedGeometricObject[FloatPoint]):
         cone = _hyperplane_cone(normal, name="ellipsoid-tangent")
         return LocalConeModel(_euclidean_chart(FloatPoint(point)), cone)
 
+    def mesh(self, resolution: int = 64) -> ObjectMesh:
+        """Return a mesh approximation of the ellipsoid surface."""
+        return _ellipsoid_surface_mesh(self.center, self.matrix, resolution)
+
 
 class Ellipsoid(ChartedGeometricObject[FloatPoint]):
     """Affine image of the closed unit ball."""
@@ -1364,6 +1587,10 @@ class Ellipsoid(ChartedGeometricObject[FloatPoint]):
                 name="ellipsoid-boundary",
             )
         return LocalConeModel(_euclidean_chart(point), cone)
+
+    def mesh(self, resolution: int = 64) -> ObjectMesh:
+        """Return a mesh approximation of the ellipsoid boundary."""
+        return self.surface.mesh(resolution)
 
 
 class ParallelepipedSurface(ChartedGeometricObject[FloatPoint]):
@@ -1435,6 +1662,11 @@ class ParallelepipedSurface(ChartedGeometricObject[FloatPoint]):
         cone = self._surface_cone(local)
         return LocalConeModel(_euclidean_chart(point), cone)
 
+    def mesh(self, resolution: int = 64) -> ObjectMesh:
+        """Return a mesh approximation of the parallelepiped surface."""
+        del resolution
+        return _parallelepiped_surface_mesh(self.center, self.matrix)
+
 
 class Parallelepiped(ChartedGeometricObject[FloatPoint]):
     """Affine image of the closed unit cube."""
@@ -1497,6 +1729,10 @@ class Parallelepiped(ChartedGeometricObject[FloatPoint]):
         else:
             cone = self._solid_cone(local)
         return LocalConeModel(_euclidean_chart(point), cone)
+
+    def mesh(self, resolution: int = 64) -> ObjectMesh:
+        """Return a mesh approximation of the parallelepiped boundary."""
+        return self.surface.mesh(resolution)
 
 
 class CubeSurface(ParallelepipedSurface):
@@ -1695,6 +1931,7 @@ __all__ = [
     "RadialCone",
     "SphericalCone",
     "LocalConeModel",
+    "ObjectMesh",
     "ChartedGeometricObject",
     "SmoothImageObject",
     "RealPointObject",

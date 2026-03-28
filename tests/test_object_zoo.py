@@ -19,6 +19,7 @@ from geo import (
     HalfSpace,
     HalfPlane,
     Hyperplane,
+    ObjectMesh,
     Parallelepiped,
     ParallelepipedSurface,
     PlanarAngle,
@@ -232,6 +233,35 @@ class TestHigherDimensionalEuclideanObjects(unittest.TestCase):
         self.assertIn(FloatPoint(-1.0, 0.0), body_model.cone)
         self.assertNotIn(FloatPoint(1.0, 0.0), body_model.cone)
 
+    def test_ellipsoid_surface_mesh_in_plane(self):
+        """Planar ellipsoid meshes should provide a closed boundary polyline."""
+        surface = EllipsoidSurface(
+            FloatPoint(0.0, 0.0),
+            ((2.0, 0.0), (0.0, 3.0)),
+        )
+
+        mesh = surface.mesh(resolution=24)
+
+        self.assertIsInstance(mesh, ObjectMesh)
+        self.assertEqual(mesh.dim, 2)
+        self.assertEqual(len(mesh.vertices), 24)
+        self.assertEqual(len(mesh.cells), 24)
+        self.assertTrue(all(len(cell) == 2 for cell in mesh.cells))
+        self.assertTrue(all(vertex in surface for vertex in mesh.vertices))
+
+    def test_sphere_mesh_in_three_dimensions(self):
+        """Three-dimensional spheres should provide a triangle mesh."""
+        sphere = Sphere(FloatPoint(0.0, 0.0, 0.0), 1.0)
+
+        mesh = sphere.mesh(resolution=12)
+
+        self.assertIsInstance(mesh, ObjectMesh)
+        self.assertEqual(mesh.dim, 3)
+        self.assertTrue(mesh.vertices)
+        self.assertTrue(mesh.cells)
+        self.assertTrue(all(len(cell) == 3 for cell in mesh.cells))
+        self.assertTrue(all(vertex in sphere for vertex in mesh.vertices))
+
     def test_cube_and_cube_surface(self):
         """Cubes should distinguish body and surface."""
         surface = CubeSurface(FloatPoint(0.0, 0.0, 0.0), 1.0)
@@ -273,6 +303,21 @@ class TestHigherDimensionalEuclideanObjects(unittest.TestCase):
         body_model = body.local_model_at(FloatPoint(2.0, 0.0))
         self.assertIn(FloatPoint(-1.0, 0.0), body_model.cone)
         self.assertNotIn(FloatPoint(1.0, 0.0), body_model.cone)
+
+    def test_parallelepiped_surface_mesh(self):
+        """Parallelepiped surfaces should expose a boundary mesh."""
+        surface = ParallelepipedSurface(
+            FloatPoint(0.0, 0.0),
+            ((2.0, 0.0), (1.0, 1.0)),
+        )
+
+        mesh = surface.mesh()
+
+        self.assertIsInstance(mesh, ObjectMesh)
+        self.assertEqual(mesh.dim, 2)
+        self.assertEqual(len(mesh.vertices), 4)
+        self.assertEqual(len(mesh.cells), 4)
+        self.assertTrue(all(vertex in surface for vertex in mesh.vertices))
 
 
 if __name__ == "__main__":
