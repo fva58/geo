@@ -64,6 +64,7 @@ Main pages:
 - `doc/overview.rst`
 - `doc/intervals.rst`
 - `doc/circle.rst`
+- `doc/zoo.rst`
 - `doc/geometry.rst`
 - `doc/api.rst`
 

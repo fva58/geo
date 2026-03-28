@@ -11,5 +11,6 @@ layer of differential-geometric abstractions.
    overview
    intervals
    circle
+   zoo
    geometry
    api

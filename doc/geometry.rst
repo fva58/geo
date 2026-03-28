@@ -74,18 +74,3 @@ Cone in ``R^2`` induced by an arc on the unit circle::
     False
     >>> FloatPoint(0.0, 0.0) in cone
     True
-
-Riemannian spaces with ready-made objects::
-
-    >>> import math
-    >>> from geo import EuclideanPlaneSpace, FloatPoint, UnitCircleSpace
-    >>> plane = EuclideanPlaneSpace()
-    >>> angle = plane.angle(FloatPoint(0.0, 0.0), 0.0, math.pi / 2.0)
-    >>> FloatPoint(2.0, 3.0) in angle
-    True
-    >>> FloatPoint(-2.0, 3.0) in angle
-    False
-    >>> circle = UnitCircleSpace()
-    >>> arc = circle.arc(0.0, math.pi / 2.0)
-    >>> arc.local_model_at(0.0).cone.contains(FloatPoint(1.0))
-    True
