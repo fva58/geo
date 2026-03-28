@@ -43,6 +43,13 @@ Local differential-geometric layer:
   coordinates;
 - ``ChartedGeometricObject``: geometric object described by local cone models.
 
+Riemannian layer:
+
+- ``RiemannianSpace`` and ``ChartedRiemannianSpace``: manifolds with metric;
+- ``RiemannianGeometricObject``: geometric object in a Riemannian space;
+- ``RealLineSpace``, ``UnitCircleSpace``, ``EuclideanPlaneSpace``: standard
+  spaces with ready-made objects.
+
 For arcs crossing zero, the internal representation is split into two linear
 intervals: one before zero and one after zero.
 

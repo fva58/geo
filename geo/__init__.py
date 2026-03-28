@@ -47,6 +47,15 @@ from .geometric import (
     CircleSetObject,
 )
 from .manifold import Atlas, ChartTransition, Manifold, ManifoldChart
+from .riemannian import (
+    ChartedRiemannianSpace,
+    EuclideanPlaneSpace,
+    EuclideanRiemannianSpace,
+    RealLineSpace,
+    RiemannianGeometricObject,
+    RiemannianSpace,
+    UnitCircleSpace,
+)
 from .real import (
     ALL_REALS_INTERVAL,
     EMPTY_REAL_INTERVAL,
@@ -84,6 +93,13 @@ __all__ = [
     "WholePlane",
     "HalfPlane",
     "PlanarAngle",
+    "RiemannianSpace",
+    "ChartedRiemannianSpace",
+    "RiemannianGeometricObject",
+    "RealLineSpace",
+    "UnitCircleSpace",
+    "EuclideanRiemannianSpace",
+    "EuclideanPlaneSpace",
     "Manifold",
     "ManifoldChart",
     "FloatVector",

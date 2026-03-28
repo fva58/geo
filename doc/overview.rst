@@ -44,6 +44,14 @@ Euclidean and local differential-geometric layer
   coordinates;
 - ``ChartedGeometricObject``: geometric object described by local cone models.
 
+Riemannian layer
+~~~~~~~~~~~~~~~~
+
+- ``RiemannianSpace`` and ``ChartedRiemannianSpace``: manifolds with metric;
+- ``RiemannianGeometricObject``: geometric object in a Riemannian space;
+- ``RealLineSpace``, ``UnitCircleSpace``, ``EuclideanPlaneSpace``: standard
+  spaces with ready-made objects.
+
 Status
 ------
 
