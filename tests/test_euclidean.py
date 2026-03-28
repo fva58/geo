@@ -3,6 +3,8 @@
 import math
 import unittest
 
+import numpy as np
+
 from geo import (
     AffineDiffeomorphism,
     Chart,
@@ -20,6 +22,7 @@ class TestFloatVector(unittest.TestCase):
         """Vectors should accept variadic and sequence construction."""
         self.assertEqual(FloatVector(1, 2, 3).to_tuple(), (1.0, 2.0, 3.0))
         self.assertEqual(FloatVector([1, 2]).dim, 2)
+        self.assertEqual(FloatVector(np.array([1, 2])).to_tuple(), (1.0, 2.0))
         self.assertEqual(FloatVector.zero(3).to_tuple(), (0.0, 0.0, 0.0))
 
     def test_arithmetic(self):
@@ -50,6 +53,7 @@ class TestFloatPoint(unittest.TestCase):
     def test_construction_and_origin(self):
         """Points should support sequence construction and origins."""
         self.assertEqual(FloatPoint(1, 2).to_tuple(), (1.0, 2.0))
+        self.assertEqual(FloatPoint(np.array([1, 2])).to_tuple(), (1.0, 2.0))
         self.assertEqual(FloatPoint.origin(2).to_tuple(), (0.0, 0.0))
 
     def test_point_vector_arithmetic(self):
@@ -113,7 +117,10 @@ class TestEuclideanChart(unittest.TestCase):
         )
         inverse_chart = chart.inverse_chart()
         point = FloatPoint(2.0, 3.0)
-        self.assertEqual(inverse_chart(chart(point)).to_tuple(), point.to_tuple())
+        self.assertEqual(
+            inverse_chart(chart(point)).to_tuple(),
+            point.to_tuple(),
+        )
 
         identity = chart.compose(inverse_chart)
         self.assertEqual(identity(point).to_tuple(), point.to_tuple())
@@ -173,7 +180,10 @@ class TestAffineDiffeomorphism(unittest.TestCase):
 
     def test_linear_change_of_coordinates(self):
         """An invertible linear map should be reversible."""
-        mapping = AffineDiffeomorphism(((2.0, 0.0), (0.0, 3.0)), (0.0, 0.0))
+        mapping = AffineDiffeomorphism(
+            np.array(((2.0, 0.0), (0.0, 3.0))),
+            np.array((0.0, 0.0)),
+        )
         point = FloatPoint(1.5, -2.0)
         image = mapping(point)
         self.assertEqual(image.to_tuple(), (3.0, -6.0))

@@ -6,7 +6,17 @@ import math
 from collections.abc import Sequence
 from typing import Callable, Tuple
 
+import numpy as np
+
 from .floatset import FloatInterval, FloatSet
+
+
+def _coerce_coordinate_array(value: object) -> np.ndarray:
+    """Normalize a coordinate container into a 1-D float array."""
+    array = np.asarray(value, dtype=float)
+    if array.ndim != 1:
+        raise TypeError("Coordinates must form a one-dimensional sequence")
+    return array
 
 
 def _coerce_coordinates(args: tuple[object, ...]) -> Tuple[float, ...]:
@@ -14,11 +24,16 @@ def _coerce_coordinates(args: tuple[object, ...]) -> Tuple[float, ...]:
     if len(args) == 1 and isinstance(args[0], Sequence) and not isinstance(
         args[0], (str, bytes)
     ):
-        return tuple(float(value) for value in args[0])
-    return tuple(float(value) for value in args)
+        return tuple(_coerce_coordinate_array(args[0]).tolist())
+    if len(args) == 1 and hasattr(args[0], "__array__"):
+        return tuple(_coerce_coordinate_array(args[0]).tolist())
+    return tuple(_coerce_coordinate_array(args).tolist())
 
 
-def _check_same_dimension(left: tuple[float, ...], right: tuple[float, ...]) -> None:
+def _check_same_dimension(
+    left: tuple[float, ...],
+    right: tuple[float, ...],
+) -> None:
     """Require equal dimensions for coordinate-wise operations."""
     if len(left) != len(right):
         raise ValueError(
@@ -26,17 +41,21 @@ def _check_same_dimension(left: tuple[float, ...], right: tuple[float, ...]) -> 
         )
 
 
-def _coerce_matrix(rows: Sequence[Sequence[object]]) -> Tuple[Tuple[float, ...], ...]:
+def _coerce_matrix(
+    rows: Sequence[Sequence[object]],
+) -> Tuple[Tuple[float, ...], ...]:
     """Normalize a matrix into a tuple of float rows."""
-    matrix = tuple(tuple(float(value) for value in row) for row in rows)
-    if not matrix:
+    try:
+        array = np.asarray(rows, dtype=float)
+    except ValueError as exc:
+        raise ValueError("Matrix rows must have equal length") from exc
+    if array.ndim != 2:
+        raise ValueError("Matrix must be two-dimensional")
+    if array.shape[0] == 0:
         raise ValueError("Matrix must not be empty")
-    row_length = len(matrix[0])
-    if row_length == 0:
+    if array.shape[1] == 0:
         raise ValueError("Matrix rows must not be empty")
-    if any(len(row) != row_length for row in matrix):
-        raise ValueError("Matrix rows must have equal length")
-    return matrix
+    return tuple(tuple(float(value) for value in row) for row in array)
 
 
 def _matvec(matrix: Tuple[Tuple[float, ...], ...],
@@ -46,59 +65,27 @@ def _matvec(matrix: Tuple[Tuple[float, ...], ...],
         raise ValueError(
             f"Matrix/vector mismatch: {len(matrix[0])} != {len(vector)}"
         )
-    return tuple(sum(a * b for a, b in zip(row, vector)) for row in matrix)
+    result = np.matmul(
+        np.asarray(matrix, dtype=float),
+        np.asarray(vector, dtype=float),
+    )
+    return tuple(float(value) for value in result)
 
 
 def _invert_square_matrix(
     matrix: Tuple[Tuple[float, ...], ...]
 ) -> Tuple[Tuple[float, ...], ...]:
-    """Invert a square matrix by Gaussian elimination."""
-    size = len(matrix)
-    if any(len(row) != size for row in matrix):
+    """Invert a square matrix with NumPy."""
+    array = np.asarray(matrix, dtype=float)
+    if array.shape[0] != array.shape[1]:
         raise ValueError("Matrix must be square")
-
-    augmented = [
-        [float(value) for value in row] +
-        [1.0 if i == j else 0.0 for j in range(size)]
-        for i, row in enumerate(matrix)
-    ]
-
-    for pivot_index in range(size):
-        pivot_row = max(
-            range(pivot_index, size),
-            key=lambda row_index: abs(augmented[row_index][pivot_index]),
-        )
-        pivot_value = augmented[pivot_row][pivot_index]
-        if math.isclose(pivot_value, 0.0, abs_tol=1e-15):
-            raise ValueError("Matrix must be invertible")
-
-        if pivot_row != pivot_index:
-            augmented[pivot_index], augmented[pivot_row] = (
-                augmented[pivot_row],
-                augmented[pivot_index],
-            )
-
-        pivot_value = augmented[pivot_index][pivot_index]
-        augmented[pivot_index] = [
-            value / pivot_value for value in augmented[pivot_index]
-        ]
-
-        for row_index in range(size):
-            if row_index == pivot_index:
-                continue
-            factor = augmented[row_index][pivot_index]
-            if factor == 0.0:
-                continue
-            augmented[row_index] = [
-                current - factor * pivot
-                for current, pivot in zip(
-                    augmented[row_index],
-                    augmented[pivot_index],
-                )
-            ]
-
+    determinant = float(np.linalg.det(array))
+    if math.isclose(determinant, 0.0, abs_tol=1e-15):
+        raise ValueError("Matrix must be invertible")
+    inverse = np.linalg.inv(array)
     return tuple(
-        tuple(row[size:]) for row in augmented
+        tuple(float(value) for value in row)
+        for row in inverse
     )
 
 
@@ -123,20 +110,22 @@ class FloatVector(tuple):
     def __add__(self, other: "FloatVector") -> "FloatVector":
         """Add another vector."""
         _check_same_dimension(self, other)
-        return FloatVector(tuple(a + b for a, b in zip(self, other)))
+        result = np.asarray(self, dtype=float) + np.asarray(other, dtype=float)
+        return FloatVector(result)
 
     def __sub__(self, other: "FloatVector") -> "FloatVector":
         """Subtract another vector."""
         _check_same_dimension(self, other)
-        return FloatVector(tuple(a - b for a, b in zip(self, other)))
+        result = np.asarray(self, dtype=float) - np.asarray(other, dtype=float)
+        return FloatVector(result)
 
     def __neg__(self) -> "FloatVector":
         """Return the additive inverse."""
-        return FloatVector(tuple(-value for value in self))
+        return FloatVector(-np.asarray(self, dtype=float))
 
     def __mul__(self, scalar: float) -> "FloatVector":
         """Multiply by a scalar."""
-        return FloatVector(tuple(value * float(scalar) for value in self))
+        return FloatVector(np.asarray(self, dtype=float) * float(scalar))
 
     def __rmul__(self, scalar: float) -> "FloatVector":
         """Multiply by a scalar from the left."""
@@ -144,16 +133,17 @@ class FloatVector(tuple):
 
     def __truediv__(self, scalar: float) -> "FloatVector":
         """Divide by a scalar."""
-        return FloatVector(tuple(value / float(scalar) for value in self))
+        return FloatVector(np.asarray(self, dtype=float) / float(scalar))
 
     def dot(self, other: "FloatVector") -> float:
         """Return the Euclidean dot product."""
         _check_same_dimension(self, other)
-        return sum(a * b for a, b in zip(self, other))
+        return float(np.dot(np.asarray(self, dtype=float),
+                            np.asarray(other, dtype=float)))
 
     def norm(self) -> float:
         """Return the Euclidean norm."""
-        return math.sqrt(self.dot(self))
+        return float(np.linalg.norm(np.asarray(self, dtype=float)))
 
     def to_tuple(self) -> Tuple[float, ...]:
         """Return coordinates as a plain tuple."""
@@ -186,7 +176,8 @@ class FloatPoint(tuple):
     def __add__(self, vector: FloatVector) -> "FloatPoint":
         """Translate the point by a vector."""
         _check_same_dimension(self, vector)
-        return FloatPoint(tuple(a + b for a, b in zip(self, vector)))
+        result = np.asarray(self, dtype=float) + np.asarray(vector, dtype=float)
+        return FloatPoint(result)
 
     def __sub__(self, other: object) -> object:
         """Subtract a point or vector.
@@ -196,10 +187,18 @@ class FloatPoint(tuple):
         """
         if isinstance(other, FloatPoint):
             _check_same_dimension(self, other)
-            return FloatVector(tuple(a - b for a, b in zip(self, other)))
+            result = (
+                np.asarray(self, dtype=float) -
+                np.asarray(other, dtype=float)
+            )
+            return FloatVector(result)
         if isinstance(other, FloatVector):
             _check_same_dimension(self, other)
-            return FloatPoint(tuple(a - b for a, b in zip(self, other)))
+            result = (
+                np.asarray(self, dtype=float) -
+                np.asarray(other, dtype=float)
+            )
+            return FloatPoint(result)
         return NotImplemented
 
     def distance_to(self, other: "FloatPoint") -> float:

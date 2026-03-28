@@ -13,6 +13,9 @@ authors = [
 ]
 description = "Geometry primitives based on immutable float interval sets"
 requires-python = ">=3.11"
+dependencies = [
+  "numpy>=2,<3",
+]
 keywords = [
   "geometry",
   "intervals",
