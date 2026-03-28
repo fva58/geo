@@ -190,6 +190,44 @@ class TestHigherDimensionalEuclideanObjects(unittest.TestCase):
         self.assertIn(FloatPoint(0.0, 0.0, 1.0), boundary_model.cone)
         self.assertNotIn(FloatPoint(0.0, 0.0, -1.0), boundary_model.cone)
 
+    def test_half_space_generic_mesh_requires_bounds(self):
+        """Unbounded generic meshes should require explicit finite bounds."""
+        half_space = HalfSpace((0.0, 0.0, 1.0), offset=0.0)
+
+        with self.assertRaises(ValueError):
+            half_space.mesh()
+
+        mesh = half_space.mesh(
+            resolution=12,
+            bounds=((-1.0, 1.0), (-1.0, 1.0), (-1.0, 1.0)),
+        )
+
+        self.assertIsInstance(mesh, ObjectMesh)
+        self.assertEqual(mesh.dim, 3)
+        self.assertTrue(mesh.vertices)
+        self.assertTrue(mesh.cells)
+        self.assertTrue(all(len(cell) == 8 for cell in mesh.cells))
+
+    def test_planar_angle_generic_mesh(self):
+        """Generic planar meshes should approximate bounded angle slices."""
+        angle = PlanarAngle(FloatPoint(0.0, 0.0), 0.0, math.pi / 2.0)
+
+        mesh = angle.mesh(
+            resolution=24,
+            bounds=((-0.5, 2.0), (-0.5, 2.0)),
+        )
+
+        self.assertIsInstance(mesh, ObjectMesh)
+        self.assertEqual(mesh.dim, 2)
+        self.assertTrue(mesh.vertices)
+        self.assertTrue(mesh.cells)
+        self.assertTrue(all(len(cell) == 4 for cell in mesh.cells))
+
+        projected = mesh.projected((0, 1))
+        self.assertEqual(projected.dim, 2)
+        self.assertEqual(projected.cells, mesh.cells)
+        self.assertTrue(projected.edge_indices())
+
     def test_sphere_and_ball(self):
         """Spheres and balls should separate surface from interior."""
         sphere = Sphere(FloatPoint(0.0, 0.0, 0.0), 1.0)
@@ -318,6 +356,21 @@ class TestHigherDimensionalEuclideanObjects(unittest.TestCase):
         self.assertEqual(len(mesh.vertices), 4)
         self.assertEqual(len(mesh.cells), 4)
         self.assertTrue(all(vertex in surface for vertex in mesh.vertices))
+
+    def test_cube_mesh_projection_to_plane(self):
+        """Meshes should project to lower-dimensional coordinate views."""
+        cube = Cube(FloatPoint(0.0, 0.0, 0.0), 1.0)
+
+        mesh = cube.mesh(
+            resolution=12,
+            bounds=((-1.0, 1.0), (-1.0, 1.0), (-1.0, 1.0)),
+        )
+        projected = mesh.projected((0, 1))
+
+        self.assertEqual(mesh.dim, 3)
+        self.assertEqual(projected.dim, 2)
+        self.assertEqual(projected.cells, mesh.cells)
+        self.assertTrue(projected.edge_indices())
 
 
 if __name__ == "__main__":

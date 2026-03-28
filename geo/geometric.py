@@ -876,6 +876,64 @@ class ObjectMesh:
             raise ValueError("Empty meshes do not have an ambient dimension")
         return self.vertices[0].dim
 
+    def edge_indices(self) -> tuple[tuple[int, int], ...]:
+        """Return unique mesh edges derived from cell connectivity."""
+        if not self.cells:
+            return ()
+
+        edges: set[tuple[int, int]] = set()
+        for cell in self.cells:
+            if len(cell) == 1:
+                continue
+            if len(cell) == 2:
+                start, end = cell
+                edges.add(tuple(sorted((start, end))))
+                continue
+            if len(cell) == 3:
+                for start, end in (
+                    (cell[0], cell[1]),
+                    (cell[1], cell[2]),
+                    (cell[2], cell[0]),
+                ):
+                    edges.add(tuple(sorted((start, end))))
+                continue
+
+            local_vertex_count = len(cell)
+            if local_vertex_count & (local_vertex_count - 1) == 0:
+                cube_dim = int(round(math.log2(local_vertex_count)))
+                if 2 ** cube_dim == local_vertex_count:
+                    for local_index in range(local_vertex_count):
+                        for bit in range(cube_dim):
+                            neighbor = local_index ^ (1 << bit)
+                            if local_index < neighbor:
+                                start = cell[local_index]
+                                end = cell[neighbor]
+                                edges.add(tuple(sorted((start, end))))
+                    continue
+
+            for index, start in enumerate(cell):
+                end = cell[(index + 1) % len(cell)]
+                edges.add(tuple(sorted((start, end))))
+
+        return tuple(sorted(edges))
+
+    def projected(self, axes: Sequence[int]) -> "ObjectMesh":
+        """Return the mesh projected to the selected coordinate axes."""
+        axes = tuple(int(axis) for axis in axes)
+        if not axes:
+            raise ValueError("Need at least one projection axis")
+        if len(set(axes)) != len(axes):
+            raise ValueError("Projection axes must be distinct")
+        dim = self.dim
+        if any(axis < 0 or axis >= dim for axis in axes):
+            raise ValueError("Projection axis out of range")
+
+        projected_vertices = tuple(
+            FloatPoint(tuple(vertex[axis] for axis in axes))
+            for vertex in self.vertices
+        )
+        return ObjectMesh(projected_vertices, self.cells)
+
 
 def _require_positive_resolution(resolution: int) -> int:
     """Validate a mesh resolution parameter."""
@@ -896,6 +954,154 @@ def _affine_mesh_vertices(
         FloatPoint(center_array + matrix @ np.asarray(vertex, dtype=float))
         for vertex in local_vertices
     )
+
+
+def _normalize_mesh_bounds(
+    bounds: Sequence[Sequence[float]] | None,
+    dim: int,
+) -> tuple[tuple[float, float], ...] | None:
+    """Normalize mesh bounds to a tuple of finite coordinate intervals."""
+    if bounds is None:
+        return None
+
+    normalized = []
+    for bound in bounds:
+        if len(bound) != 2:
+            raise ValueError("Each mesh bound must have two endpoints")
+        left = float(bound[0])
+        right = float(bound[1])
+        if not math.isfinite(left) or not math.isfinite(right):
+            raise ValueError("Mesh bounds must be finite")
+        if right <= left:
+            raise ValueError("Mesh bounds must satisfy left < right")
+        normalized.append((left, right))
+
+    if len(normalized) != dim:
+        raise ValueError(f"Mesh bounds dimension mismatch: {len(normalized)} != {dim}")
+    return tuple(normalized)
+
+
+def _default_mesh_bounds(
+    obj: "ChartedGeometricObject[FloatPoint]",
+) -> tuple[tuple[float, float], ...] | None:
+    """Return default finite bounds when the object exposes them."""
+    if isinstance(obj, WholeSpace):
+        return None
+
+    if isinstance(obj, Sphere):
+        return tuple(
+            (
+                center_coordinate - obj.radius,
+                center_coordinate + obj.radius,
+            )
+            for center_coordinate in obj.center
+        )
+
+    if isinstance(obj, Ball):
+        return tuple(
+            (
+                center_coordinate - obj.radius,
+                center_coordinate + obj.radius,
+            )
+            for center_coordinate in obj.center
+        )
+
+    if isinstance(obj, EllipsoidSurface):
+        row_norms = np.linalg.norm(obj.matrix, axis=1)
+        return tuple(
+            (
+                center_coordinate - float(extent),
+                center_coordinate + float(extent),
+            )
+            for center_coordinate, extent in zip(obj.center, row_norms)
+        )
+
+    if isinstance(obj, Ellipsoid):
+        return _default_mesh_bounds(obj.surface)
+
+    if isinstance(obj, ParallelepipedSurface):
+        row_extents = np.sum(np.abs(obj.matrix), axis=1)
+        return tuple(
+            (
+                center_coordinate - float(extent),
+                center_coordinate + float(extent),
+            )
+            for center_coordinate, extent in zip(obj.center, row_extents)
+        )
+
+    if isinstance(obj, Parallelepiped):
+        return _default_mesh_bounds(obj.surface)
+
+    return None
+
+
+def _cells_per_axis(resolution: int, dim: int) -> int:
+    """Return a practical axis resolution for a generic cubical mesh."""
+    resolution = _require_positive_resolution(resolution)
+    target_cell_budget = max(16, resolution * resolution)
+    cells = max(2, int(round(target_cell_budget ** (1.0 / dim))))
+    return cells
+
+
+def _grid_corner_offsets(dim: int) -> tuple[tuple[int, ...], ...]:
+    """Return binary corner offsets for a unit hypercube."""
+    return tuple(
+        tuple((mask >> axis) & 1 for axis in range(dim))
+        for mask in range(2 ** dim)
+    )
+
+
+def _generic_euclidean_mesh(
+    obj: "ChartedGeometricObject[FloatPoint]",
+    *,
+    resolution: int,
+    bounds: Sequence[Sequence[float]] | None,
+) -> ObjectMesh:
+    """Return a cubical mesh from cell-center membership sampling."""
+    manifold = getattr(obj.manifold, "manifold", obj.manifold)
+    if not isinstance(manifold, EuclideanSpace):
+        raise ValueError("Generic mesh generation requires a Euclidean ambient")
+
+    normalized_bounds = _normalize_mesh_bounds(bounds, manifold.dim)
+    if normalized_bounds is None:
+        normalized_bounds = _default_mesh_bounds(obj)
+    if normalized_bounds is None:
+        raise ValueError(
+            "Mesh generation requires explicit finite bounds for this object"
+        )
+
+    dim = manifold.dim
+    cells_per_axis = _cells_per_axis(resolution, dim)
+    lower = np.asarray([bound[0] for bound in normalized_bounds], dtype=float)
+    upper = np.asarray([bound[1] for bound in normalized_bounds], dtype=float)
+    step = (upper - lower) / cells_per_axis
+    corner_offsets = _grid_corner_offsets(dim)
+
+    vertex_indices: dict[tuple[int, ...], int] = {}
+    vertices: list[FloatPoint] = []
+    cells: list[tuple[int, ...]] = []
+
+    for cell_index in np.ndindex(*(cells_per_axis,) * dim):
+        center = lower + (np.asarray(cell_index, dtype=float) + 0.5) * step
+        if FloatPoint(center) not in obj:
+            continue
+
+        cell_vertices = []
+        for offset in corner_offsets:
+            vertex_key = tuple(
+                cell_index[axis] + offset[axis]
+                for axis in range(dim)
+            )
+            vertex_index = vertex_indices.get(vertex_key)
+            if vertex_index is None:
+                coordinates = lower + np.asarray(vertex_key, dtype=float) * step
+                vertex_index = len(vertices)
+                vertex_indices[vertex_key] = vertex_index
+                vertices.append(FloatPoint(coordinates))
+            cell_vertices.append(vertex_index)
+        cells.append(tuple(cell_vertices))
+
+    return ObjectMesh(tuple(vertices), tuple(cells))
 
 
 def _ellipsoid_surface_mesh(
@@ -1086,10 +1292,16 @@ class ChartedGeometricObject(Generic[PointT]):
             )
         return model
 
-    def mesh(self, resolution: int = 64) -> ObjectMesh:
-        """Return a finite mesh approximation when one is available."""
-        raise NotImplementedError(
-            f"Mesh generation is not implemented for {type(self).__name__}"
+    def mesh(
+        self,
+        resolution: int = 64,
+        bounds: Sequence[Sequence[float]] | None = None,
+    ) -> ObjectMesh:
+        """Return a finite Euclidean mesh approximation."""
+        return _generic_euclidean_mesh(
+            self,
+            resolution=resolution,
+            bounds=bounds,
         )
 
     def visible_from_direction(
@@ -1565,8 +1777,13 @@ class Sphere(ChartedGeometricObject[FloatPoint]):
         cone = _hyperplane_cone(normal, name="sphere-tangent")
         return LocalConeModel(_euclidean_chart(FloatPoint(point)), cone)
 
-    def mesh(self, resolution: int = 64) -> ObjectMesh:
+    def mesh(
+        self,
+        resolution: int = 64,
+        bounds: Sequence[Sequence[float]] | None = None,
+    ) -> ObjectMesh:
         """Return a mesh approximation of the sphere surface."""
+        del bounds
         matrix = self.radius * np.eye(self.center.dim, dtype=float)
         return _ellipsoid_surface_mesh(self.center, matrix, resolution)
 
@@ -1615,9 +1832,16 @@ class Ball(ChartedGeometricObject[FloatPoint]):
             )
         return LocalConeModel(_euclidean_chart(point), cone)
 
-    def mesh(self, resolution: int = 64) -> ObjectMesh:
+    def mesh(
+        self,
+        resolution: int = 64,
+        bounds: Sequence[Sequence[float]] | None = None,
+    ) -> ObjectMesh:
         """Return a mesh approximation of the ball boundary."""
-        return Sphere(self.center, self.radius, name=self.name).mesh(resolution)
+        return Sphere(self.center, self.radius, name=self.name).mesh(
+            resolution,
+            bounds=bounds,
+        )
 
 
 class EllipsoidSurface(ChartedGeometricObject[FloatPoint]):
@@ -1665,8 +1889,13 @@ class EllipsoidSurface(ChartedGeometricObject[FloatPoint]):
         cone = _hyperplane_cone(normal, name="ellipsoid-tangent")
         return LocalConeModel(_euclidean_chart(FloatPoint(point)), cone)
 
-    def mesh(self, resolution: int = 64) -> ObjectMesh:
+    def mesh(
+        self,
+        resolution: int = 64,
+        bounds: Sequence[Sequence[float]] | None = None,
+    ) -> ObjectMesh:
         """Return a mesh approximation of the ellipsoid surface."""
+        del bounds
         return _ellipsoid_surface_mesh(self.center, self.matrix, resolution)
 
 
@@ -1709,9 +1938,13 @@ class Ellipsoid(ChartedGeometricObject[FloatPoint]):
             )
         return LocalConeModel(_euclidean_chart(point), cone)
 
-    def mesh(self, resolution: int = 64) -> ObjectMesh:
+    def mesh(
+        self,
+        resolution: int = 64,
+        bounds: Sequence[Sequence[float]] | None = None,
+    ) -> ObjectMesh:
         """Return a mesh approximation of the ellipsoid boundary."""
-        return self.surface.mesh(resolution)
+        return self.surface.mesh(resolution, bounds=bounds)
 
 
 class ParallelepipedSurface(ChartedGeometricObject[FloatPoint]):
@@ -1783,9 +2016,13 @@ class ParallelepipedSurface(ChartedGeometricObject[FloatPoint]):
         cone = self._surface_cone(local)
         return LocalConeModel(_euclidean_chart(point), cone)
 
-    def mesh(self, resolution: int = 64) -> ObjectMesh:
+    def mesh(
+        self,
+        resolution: int = 64,
+        bounds: Sequence[Sequence[float]] | None = None,
+    ) -> ObjectMesh:
         """Return a mesh approximation of the parallelepiped surface."""
-        del resolution
+        del resolution, bounds
         return _parallelepiped_surface_mesh(self.center, self.matrix)
 
 
@@ -1851,9 +2088,13 @@ class Parallelepiped(ChartedGeometricObject[FloatPoint]):
             cone = self._solid_cone(local)
         return LocalConeModel(_euclidean_chart(point), cone)
 
-    def mesh(self, resolution: int = 64) -> ObjectMesh:
+    def mesh(
+        self,
+        resolution: int = 64,
+        bounds: Sequence[Sequence[float]] | None = None,
+    ) -> ObjectMesh:
         """Return a mesh approximation of the parallelepiped boundary."""
-        return self.surface.mesh(resolution)
+        return self.surface.mesh(resolution, bounds=bounds)
 
 
 class CubeSurface(ParallelepipedSurface):

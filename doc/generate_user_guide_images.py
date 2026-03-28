@@ -40,7 +40,7 @@ def membership_grid(
     obj,
     xlim: tuple[float, float],
     ylim: tuple[float, float],
-    size: int = 300,
+    size: int = 220,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Return a rasterized membership grid for a planar object."""
     xs = np.linspace(xlim[0], xlim[1], size)
@@ -58,33 +58,30 @@ def draw_mesh(
     ax,
     obj,
     *,
+    axes: tuple[int, int] = (0, 1),
+    bounds: tuple[tuple[float, float], ...] | None = None,
     color: str = "#1f1f1f",
     linewidth: float = 2.0,
-    resolution: int = 256,
+    resolution: int = 192,
 ) -> bool:
     """Draw a planar mesh representation when the object exposes one."""
     mesh_source = getattr(obj, "_charted_source_object", obj)
     try:
-        mesh = mesh_source.mesh(resolution=resolution)
+        mesh = mesh_source.mesh(resolution=resolution, bounds=bounds)
     except (AttributeError, NotImplementedError, ValueError):
         return False
+
+    if mesh.dim > 2:
+        mesh = mesh.projected(axes)
 
     if mesh.dim != 2 or not mesh.vertices:
         return False
 
     vertices = np.asarray([tuple(vertex) for vertex in mesh.vertices], dtype=float)
-    if not mesh.cells:
+    edges = mesh.edge_indices()
+    if not edges:
         ax.scatter(vertices[:, 0], vertices[:, 1], s=20.0, c=color)
         return True
-
-    edges: set[tuple[int, int]] = set()
-    for cell in mesh.cells:
-        if len(cell) == 2:
-            edges.add(tuple(cell))
-            continue
-        for index, start in enumerate(cell):
-            end = cell[(index + 1) % len(cell)]
-            edges.add(tuple(sorted((start, end))))
 
     for start, end in sorted(edges):
         ax.plot(
@@ -94,6 +91,60 @@ def draw_mesh(
             linewidth=linewidth,
         )
     return True
+
+
+def _ordered_polyline(mesh) -> list[int] | None:
+    """Return an ordered polyline for a mesh built from edges."""
+    if not mesh.cells or not all(len(cell) == 2 for cell in mesh.cells):
+        return None
+
+    adjacency = {index: set() for index in range(len(mesh.vertices))}
+    for start, end in mesh.cells:
+        adjacency[start].add(end)
+        adjacency[end].add(start)
+
+    degrees = {len(neighbors) for neighbors in adjacency.values()}
+    if degrees == {2}:
+        start = 0
+        order = [start]
+        previous = None
+        current = start
+        while True:
+            excluded = {previous} if previous is not None else set()
+            choices = sorted(adjacency[current] - excluded)
+            if not choices:
+                break
+            nxt = choices[0]
+            if nxt == start:
+                break
+            order.append(nxt)
+            previous, current = current, nxt
+            if len(order) > len(mesh.vertices):
+                return None
+        return order
+
+    endpoints = [
+        index for index, neighbors in adjacency.items()
+        if len(neighbors) == 1
+    ]
+    if len(endpoints) != 2:
+        return None
+
+    start = min(endpoints)
+    order = [start]
+    previous = None
+    current = start
+    while True:
+        excluded = {previous} if previous is not None else set()
+        choices = sorted(adjacency[current] - excluded)
+        if not choices:
+            break
+        nxt = choices[0]
+        order.append(nxt)
+        previous, current = current, nxt
+        if len(order) > len(mesh.vertices):
+            return None
+    return order
 
 
 def draw_object(
@@ -116,7 +167,28 @@ def draw_object(
             alpha=0.8,
             interpolation="nearest",
         )
-    draw_mesh(ax, obj)
+    mesh_source = getattr(obj, "_charted_source_object", obj)
+    try:
+        mesh = mesh_source.mesh(bounds=(xlim, ylim))
+    except (AttributeError, NotImplementedError, ValueError):
+        mesh = None
+
+    if mesh is not None and mesh.dim == 2:
+        polyline = _ordered_polyline(mesh)
+        if polyline is not None and not np.any(grid) and len(polyline) >= 3:
+            vertices = np.asarray(
+                [tuple(vertex) for vertex in mesh.vertices],
+                dtype=float,
+            )
+            polygon = vertices[polyline]
+            ax.fill(
+                polygon[:, 0],
+                polygon[:, 1],
+                color="#ff9896",
+                alpha=0.18,
+                zorder=1,
+            )
+    draw_mesh(ax, obj, bounds=(xlim, ylim))
     ax.set_title(title)
     ax.set_xlim(*xlim)
     ax.set_ylim(*ylim)
