@@ -167,6 +167,7 @@ new place instead of being rebuilt from scratch.
 Use this layer when you need:
 
 - parallel or central projection onto a target hyperplane;
+- visible caps and observer-facing subsets of convex Euclidean objects;
 - geometric objects defined as images of source objects;
 - workflows that mix explicit geometry with local differential structure.
 

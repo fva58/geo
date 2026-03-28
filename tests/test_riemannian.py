@@ -4,6 +4,8 @@ import math
 import unittest
 
 from geo import (
+    Ball,
+    EllipsoidSurface,
     EuclideanNeighborhood,
     EuclideanPlaneSpace,
     FloatCirclePoint,
@@ -274,6 +276,57 @@ class TestRiemannianObjects(unittest.TestCase):
         self.assertIn(FloatPoint(1.0, 0.0), boundary.cone)
         self.assertNotIn(FloatPoint(-1.0, 0.0), boundary.cone)
         self.assertNotIn(FloatPoint(0.0, 1.0), boundary.cone)
+
+    def test_visible_ball_from_direction(self):
+        """A ball should expose the visible boundary cap from a direction."""
+        space = EuclideanPlaneSpace()
+        ball = RiemannianGeometricObject.from_charted(
+            space,
+            Ball(FloatPoint(0.0, 0.0), 1.0),
+            name="disk",
+        )
+
+        visible = ball.visible_from_direction(FloatVector(0.0, 1.0))
+
+        self.assertIsInstance(visible, RiemannianGeometricObject)
+        self.assertIn(FloatPoint(0.0, 1.0), visible)
+        self.assertIn(FloatPoint(1.0, 0.0), visible)
+        self.assertNotIn(FloatPoint(0.0, -1.0), visible)
+        self.assertNotIn(FloatPoint(0.0, 0.0), visible)
+
+        silhouette = visible.local_model_at(FloatPoint(1.0, 0.0))
+        self.assertIn(FloatPoint(0.0, 1.0), silhouette.cone)
+        self.assertNotIn(FloatPoint(0.0, -1.0), silhouette.cone)
+
+    def test_visible_ellipsoid_surface_from_point(self):
+        """An ellipsoid surface should keep only the observer-facing part."""
+        space = EuclideanPlaneSpace()
+        surface = RiemannianGeometricObject.from_charted(
+            space,
+            EllipsoidSurface(
+                FloatPoint(0.0, 0.0),
+                ((2.0, 0.0), (0.0, 1.0)),
+            ),
+            name="ellipse",
+        )
+
+        visible = surface.visible_from_point(FloatPoint(0.0, 3.0))
+
+        self.assertIn(FloatPoint(0.0, 1.0), visible)
+        self.assertIn(FloatPoint(1.2, 0.8), visible)
+        self.assertNotIn(FloatPoint(0.0, -1.0), visible)
+
+    def test_visible_half_plane_from_point(self):
+        """A half-plane should expose its boundary only from the exterior."""
+        space = EuclideanPlaneSpace()
+        half_plane = space.half_plane((0.0, 1.0), offset=0.0, name="upper")
+
+        visible = half_plane.visible_from_point(FloatPoint(0.0, -1.0))
+        hidden = half_plane.visible_from_point(FloatPoint(0.0, 1.0))
+
+        self.assertIn(FloatPoint(2.0, 0.0), visible)
+        self.assertNotIn(FloatPoint(2.0, 1.0), visible)
+        self.assertNotIn(FloatPoint(2.0, 0.0), hidden)
 
 
 if __name__ == "__main__":

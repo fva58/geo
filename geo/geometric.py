@@ -505,6 +505,101 @@ def _contains_linear_image(
     return source_cone.contains(FloatPoint(source_array))
 
 
+def _centered_cone_model(
+    source_model: LocalConeModel[FloatPoint],
+    point: FloatPoint,
+) -> LocalConeModel[FloatPoint]:
+    """Return a local model recentered so that ``point`` maps to the origin."""
+    centered_chart = _centered_chart_at(source_model.chart, point)
+    chart_origin = FloatPoint(source_model.chart(point))
+    translation = FloatVector(chart_origin)
+    dim = centered_chart.dim
+    centered_cone = EuclideanCone(
+        dim,
+        contains=lambda coordinates: source_model.cone.contains(
+            FloatPoint(coordinates) + translation
+        ),
+        apex=FloatPoint.origin(dim),
+        neighborhood=EuclideanNeighborhood.whole(dim),
+        name=getattr(source_model.cone, "name", ""),
+    )
+    return LocalConeModel(centered_chart, centered_cone)
+
+
+def _scalar_subset_local_model(
+    source_object,
+    point: FloatPoint,
+    scalar: Callable[[FloatPoint], float],
+    name: str,
+) -> LocalConeModel[FloatPoint]:
+    """Return a local model for ``source_object ∩ {scalar >= 0}``."""
+    point = FloatPoint(point)
+    source_model = _centered_cone_model(source_object.local_model_at(point), point)
+    value = float(scalar(point))
+    if value > 1e-9:
+        return source_model
+
+    def local_scalar(coordinates: FloatPoint) -> FloatPoint:
+        local_point = source_model.chart.inverse(coordinates)
+        return FloatPoint(float(scalar(local_point)))
+
+    gradient = _numeric_jacobian(
+        local_scalar,
+        FloatPoint.origin(source_model.chart.dim),
+    )[0]
+    if np.linalg.norm(gradient) <= 1e-9:
+        return source_model
+
+    cone = EuclideanCone(
+        source_model.chart.dim,
+        contains=lambda coordinates: (
+            source_model.cone.contains(coordinates) and
+            float(gradient @ _point_array(FloatPoint(coordinates))) >= -1e-9
+        ),
+        apex=FloatPoint.origin(source_model.chart.dim),
+        neighborhood=EuclideanNeighborhood.whole(source_model.chart.dim),
+        name=name,
+    )
+    return LocalConeModel(source_model.chart, cone)
+
+
+def _scalar_threshold_subset(
+    source_object,
+    scalar: Callable[[FloatPoint], float],
+    name: str,
+) -> "ChartedGeometricObject[FloatPoint]":
+    """Return the subset of a Euclidean object cut by ``scalar >= 0``."""
+    return ChartedGeometricObject(
+        source_object.manifold,
+        contains=lambda point: (
+            point in source_object and float(scalar(FloatPoint(point))) >= -1e-9
+        ),
+        local_model=lambda point: _scalar_subset_local_model(
+            source_object,
+            FloatPoint(point),
+            scalar,
+            name,
+        ),
+        name=name,
+    )
+
+
+def _empty_euclidean_object(
+    manifold: EuclideanSpace,
+    name: str,
+) -> "ChartedGeometricObject[FloatPoint]":
+    """Return the empty object in a Euclidean ambient space."""
+    return ChartedGeometricObject(
+        manifold,
+        contains=lambda point: False,
+        local_model=lambda point: LocalConeModel(
+            _euclidean_chart(FloatPoint.origin(manifold.dim)),
+            _point_cone(manifold.dim),
+        ),
+        name=name,
+    )
+
+
 class EuclideanCone:
     """Concrete cone in Euclidean coordinates.
 
@@ -996,6 +1091,32 @@ class ChartedGeometricObject(Generic[PointT]):
         raise NotImplementedError(
             f"Mesh generation is not implemented for {type(self).__name__}"
         )
+
+    def visible_from_direction(
+        self,
+        direction: FloatVector,
+        name: str = "",
+    ) -> "ChartedGeometricObject[FloatPoint]":
+        """Return the part of a Euclidean object visible from a direction."""
+        ambient_manifold = getattr(self.manifold, "manifold", self.manifold)
+        if not isinstance(ambient_manifold, EuclideanSpace):
+            raise ValueError("Visibility is only implemented in Euclidean spaces")
+        direction = FloatVector(direction)
+        if direction.norm() == 0.0:
+            raise ValueError("Visibility direction must be non-zero")
+        return _visible_part_from_direction(self, direction, name=name)
+
+    def visible_from_point(
+        self,
+        point: FloatPoint,
+        name: str = "",
+    ) -> "ChartedGeometricObject[FloatPoint]":
+        """Return the part of a Euclidean object visible from a point."""
+        ambient_manifold = getattr(self.manifold, "manifold", self.manifold)
+        if not isinstance(ambient_manifold, EuclideanSpace):
+            raise ValueError("Visibility is only implemented in Euclidean spaces")
+        point = FloatPoint(point)
+        return _visible_part_from_point(self, point, name=name)
 
     def image_under_smooth_map(
         self,
@@ -1783,6 +1904,129 @@ class Cube(Parallelepiped):
             for i in range(dim)
         )
         super().__init__(center, spanning_vectors, name=name)
+
+
+def _visible_part_from_direction(
+    source_object: ChartedGeometricObject[FloatPoint],
+    direction: FloatVector,
+    name: str = "",
+) -> ChartedGeometricObject[FloatPoint]:
+    """Return the part of an object visible from a fixed direction."""
+    direction = FloatVector(direction)
+    chosen_name = name or "visible-from-direction"
+
+    if isinstance(source_object, Sphere):
+        return _scalar_threshold_subset(
+            source_object,
+            lambda point: source_object._radial_vector(point).dot(direction),
+            chosen_name,
+        )
+
+    if isinstance(source_object, Ball):
+        return Sphere(
+            source_object.center,
+            source_object.radius,
+            name=chosen_name,
+        ).visible_from_direction(
+            direction,
+            name=chosen_name,
+        )
+
+    if isinstance(source_object, EllipsoidSurface):
+        return _scalar_threshold_subset(
+            source_object,
+            lambda point: source_object._normal(point).dot(direction),
+            chosen_name,
+        )
+
+    if isinstance(source_object, Ellipsoid):
+        return source_object.surface.visible_from_direction(
+            direction,
+            name=chosen_name,
+        )
+
+    if isinstance(source_object, Hyperplane):
+        return source_object
+
+    if isinstance(source_object, HalfSpace):
+        if (-source_object.normal).dot(direction) <= 0.0 and not _isclose(
+            (-source_object.normal).dot(direction)
+        ):
+            return _empty_euclidean_object(source_object.manifold, chosen_name)
+        return Hyperplane(
+            source_object.normal,
+            offset=source_object.offset,
+            name=chosen_name,
+        )
+
+    raise NotImplementedError(
+        "Visibility is currently implemented for hyperplanes, half-spaces, "
+        "spheres, balls, ellipsoids, and ellipsoid surfaces"
+    )
+
+
+def _visible_part_from_point(
+    source_object: ChartedGeometricObject[FloatPoint],
+    observer: FloatPoint,
+    name: str = "",
+) -> ChartedGeometricObject[FloatPoint]:
+    """Return the part of an object visible from an observer point."""
+    observer = FloatPoint(observer)
+    chosen_name = name or "visible-from-point"
+
+    if isinstance(source_object, Sphere):
+        return _scalar_threshold_subset(
+            source_object,
+            lambda point: source_object._radial_vector(point).dot(
+                observer - FloatPoint(point)
+            ),
+            chosen_name,
+        )
+
+    if isinstance(source_object, Ball):
+        return Sphere(
+            source_object.center,
+            source_object.radius,
+            name=chosen_name,
+        ).visible_from_point(
+            observer,
+            name=chosen_name,
+        )
+
+    if isinstance(source_object, EllipsoidSurface):
+        return _scalar_threshold_subset(
+            source_object,
+            lambda point: source_object._normal(point).dot(
+                observer - FloatPoint(point)
+            ),
+            chosen_name,
+        )
+
+    if isinstance(source_object, Ellipsoid):
+        return source_object.surface.visible_from_point(
+            observer,
+            name=chosen_name,
+        )
+
+    if isinstance(source_object, Hyperplane):
+        return source_object
+
+    if isinstance(source_object, HalfSpace):
+        signed_distance = (
+            source_object.normal.dot(FloatVector(observer)) - source_object.offset
+        )
+        if signed_distance >= 0.0 and not _isclose(signed_distance):
+            return _empty_euclidean_object(source_object.manifold, chosen_name)
+        return Hyperplane(
+            source_object.normal,
+            offset=source_object.offset,
+            name=chosen_name,
+        )
+
+    raise NotImplementedError(
+        "Visibility is currently implemented for hyperplanes, half-spaces, "
+        "spheres, balls, ellipsoids, and ellipsoid surfaces"
+    )
 
 
 class WholePlane(WholeSpace):

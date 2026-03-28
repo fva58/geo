@@ -87,6 +87,33 @@ point or along a fixed direction::
     >>> FloatPoint(-1.0, 0.0) in projected
     False
 
+Visible parts
+-------------
+
+Convex Euclidean families also support visible parts, either from an observer
+point or from a fixed direction::
+
+    >>> from geo import Ball, EllipsoidSurface, FloatPoint, RiemannianGeometricObject
+    >>> plane = EuclideanPlaneSpace()
+    >>> disk = RiemannianGeometricObject.from_charted(
+    ...     plane,
+    ...     Ball((0.0, 0.0), 1.0),
+    ... )
+    >>> top_half = disk.visible_from_direction((0.0, 1.0))
+    >>> FloatPoint(0.0, 1.0) in top_half
+    True
+    >>> FloatPoint(0.0, -1.0) in top_half
+    False
+    >>> ellipse = RiemannianGeometricObject.from_charted(
+    ...     plane,
+    ...     EllipsoidSurface((0.0, 0.0), ((2.0, 0.0), (0.0, 1.0))),
+    ... )
+    >>> visible = ellipse.visible_from_point((0.0, 3.0))
+    >>> FloatPoint(0.0, 1.0) in visible
+    True
+    >>> FloatPoint(0.0, -1.0) in visible
+    False
+
 Smooth images
 -------------
 

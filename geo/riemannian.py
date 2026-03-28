@@ -174,12 +174,14 @@ class RiemannianGeometricObject(ChartedGeometricObject[PointT]):
     ) -> "RiemannianGeometricObject[PointT]":
         """Wrap an existing charted object in a Riemannian ambient space."""
         chosen_name = name or getattr(obj, "name", "")
-        return cls(
+        wrapped = cls(
             space,
             contains=obj.contains,
             local_model=obj.local_model_at,
             name=chosen_name,
         )
+        wrapped._charted_source_object = obj
+        return wrapped
 
     def _require_same_space(
         self,
@@ -388,6 +390,36 @@ class RiemannianGeometricObject(ChartedGeometricObject[PointT]):
         return RiemannianGeometricObject.from_charted(
             self.space,
             projected,
+            name=chosen_name,
+        )
+
+    def visible_from_direction(
+        self,
+        direction: FloatVector,
+        name: str = "",
+    ) -> "RiemannianGeometricObject[PointT]":
+        """Return the part of an Euclidean object visible from a direction."""
+        source_object = getattr(self, "_charted_source_object", self)
+        visible = source_object.visible_from_direction(direction, name=name)
+        chosen_name = name or getattr(visible, "name", "")
+        return RiemannianGeometricObject.from_charted(
+            self.space,
+            visible,
+            name=chosen_name,
+        )
+
+    def visible_from_point(
+        self,
+        point: FloatPoint,
+        name: str = "",
+    ) -> "RiemannianGeometricObject[PointT]":
+        """Return the part of an Euclidean object visible from a point."""
+        source_object = getattr(self, "_charted_source_object", self)
+        visible = source_object.visible_from_point(point, name=name)
+        chosen_name = name or getattr(visible, "name", "")
+        return RiemannianGeometricObject.from_charted(
+            self.space,
+            visible,
             name=chosen_name,
         )
 
