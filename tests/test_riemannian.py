@@ -99,6 +99,75 @@ class TestRiemannianObjects(unittest.TestCase):
         self.assertIn(FloatPoint(1.0, 1.0), apex_model.cone)
         self.assertNotIn(FloatPoint(-1.0, 1.0), apex_model.cone)
 
+    def test_real_line_set_operations(self):
+        """Set-theoretic operations should work on real-line objects."""
+        space = RealLineSpace()
+        left = space.subset((0.0, 2.0), name="left")
+        right = space.subset((1.0, 3.0), name="right")
+
+        union = left | right
+        intersection = left & right
+        difference = left - right
+        sym_diff = left ^ right
+
+        self.assertIn(0.5, union)
+        self.assertIn(2.5, union)
+        self.assertIn(1.5, intersection)
+        self.assertNotIn(0.5, intersection)
+        self.assertIn(0.5, difference)
+        self.assertNotIn(1.5, difference)
+        self.assertIn(0.5, sym_diff)
+        self.assertIn(2.5, sym_diff)
+        self.assertNotIn(1.5, sym_diff)
+
+        boundary = difference.local_model_at(0.0)
+        self.assertIn(FloatPoint(1.0), boundary.cone)
+        self.assertNotIn(FloatPoint(-1.0), boundary.cone)
+
+    def test_circle_set_operations(self):
+        """Set-theoretic operations should work on circle objects."""
+        space = UnitCircleSpace()
+        left = space.arc(0.0, math.pi / 2.0, name="left")
+        right = space.arc(math.pi / 4.0, math.pi, name="right")
+
+        union = left.union(right)
+        intersection = left.intersection(right)
+        difference = left.difference(right)
+
+        self.assertIn(FloatCirclePoint(math.pi / 8.0), union)
+        self.assertIn(FloatCirclePoint(3.0 * math.pi / 4.0), union)
+        self.assertIn(FloatCirclePoint(math.pi / 3.0), intersection)
+        self.assertNotIn(FloatCirclePoint(0.0), intersection)
+        self.assertIn(FloatCirclePoint(0.0), difference)
+        self.assertNotIn(FloatCirclePoint(math.pi / 3.0), difference)
+
+    def test_plane_set_operations(self):
+        """Set-theoretic operations should work on planar objects."""
+        space = EuclideanPlaneSpace()
+        upper = space.half_plane((0.0, 1.0), name="upper")
+        right = space.half_plane((1.0, 0.0), name="right")
+
+        quadrant = upper & right
+        union = upper | right
+
+        self.assertIn(FloatPoint(1.0, 1.0), quadrant)
+        self.assertNotIn(FloatPoint(-1.0, 1.0), quadrant)
+        self.assertIn(FloatPoint(-1.0, 1.0), union)
+        self.assertIn(FloatPoint(1.0, -1.0), union)
+        self.assertNotIn(FloatPoint(-1.0, -1.0), union)
+
+        apex_model = quadrant.local_model_at(FloatPoint(0.0, 0.0))
+        self.assertIn(FloatPoint(1.0, 1.0), apex_model.cone)
+        self.assertNotIn(FloatPoint(-1.0, 1.0), apex_model.cone)
+
+    def test_set_operations_require_same_space(self):
+        """Set-theoretic operations should reject mixed ambient spaces."""
+        real_line = RealLineSpace()
+        another_real_line = RealLineSpace()
+
+        with self.assertRaises(ValueError):
+            real_line.point(0.0).union(another_real_line.point(0.0))
+
 
 if __name__ == "__main__":
     unittest.main()

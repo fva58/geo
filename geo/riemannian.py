@@ -30,6 +30,13 @@ PointT = TypeVar("PointT")
 MetricTensor = tuple[tuple[float, ...], ...]
 
 
+def _whole_neighborhood(dim: int):
+    """Return the default unconstrained neighborhood for a cone."""
+    from .euclidean import EuclideanNeighborhood
+
+    return EuclideanNeighborhood.whole(dim)
+
+
 def _coerce_metric_tensor(
     matrix: MetricTensor,
     dim: int,
@@ -172,6 +179,174 @@ class RiemannianGeometricObject(ChartedGeometricObject[PointT]):
             local_model=obj.local_model_at,
             name=chosen_name,
         )
+
+    def _require_same_space(
+        self,
+        other: "RiemannianGeometricObject[PointT]",
+    ) -> None:
+        """Require two objects to live in the same ambient space instance."""
+        if self.space is not other.space:
+            raise ValueError(
+                "Set-theoretic operations require the same Riemannian space"
+            )
+
+    @staticmethod
+    def _combine_local_models(
+        left_model,
+        right_model,
+        operation: Callable[[bool, bool], bool],
+        name: str,
+    ):
+        """Combine two local cone models in a shared coordinate chart."""
+        from .geometric import EuclideanCone, LocalConeModel
+
+        if left_model.chart.dim != right_model.chart.dim:
+            raise ValueError("Local model dimensions do not match")
+        dim = left_model.chart.dim
+        cone = EuclideanCone(
+            dim,
+            contains=lambda point: operation(
+                left_model.cone.contains(point),
+                right_model.cone.contains(point),
+            ),
+            neighborhood=_whole_neighborhood(dim),
+            name=name,
+        )
+        return LocalConeModel(left_model.chart, cone)
+
+    def union(
+        self,
+        other: "RiemannianGeometricObject[PointT]",
+        name: str = "",
+    ) -> "RiemannianGeometricObject[PointT]":
+        """Return the set-theoretic union of two objects."""
+        self._require_same_space(other)
+
+        def local_model(point: PointT):
+            if point in self and point in other:
+                return self._combine_local_models(
+                    self.local_model_at(point),
+                    other.local_model_at(point),
+                    lambda left, right: left or right,
+                    "union",
+                )
+            if point in self:
+                return self.local_model_at(point)
+            return other.local_model_at(point)
+
+        chosen_name = name or f"({self.name})|({other.name})"
+        return RiemannianGeometricObject(
+            self.space,
+            contains=lambda point: point in self or point in other,
+            local_model=local_model,
+            name=chosen_name,
+        )
+
+    def intersection(
+        self,
+        other: "RiemannianGeometricObject[PointT]",
+        name: str = "",
+    ) -> "RiemannianGeometricObject[PointT]":
+        """Return the set-theoretic intersection of two objects."""
+        self._require_same_space(other)
+
+        def local_model(point: PointT):
+            return self._combine_local_models(
+                self.local_model_at(point),
+                other.local_model_at(point),
+                lambda left, right: left and right,
+                "intersection",
+            )
+
+        chosen_name = name or f"({self.name})&({other.name})"
+        return RiemannianGeometricObject(
+            self.space,
+            contains=lambda point: point in self and point in other,
+            local_model=local_model,
+            name=chosen_name,
+        )
+
+    def difference(
+        self,
+        other: "RiemannianGeometricObject[PointT]",
+        name: str = "",
+    ) -> "RiemannianGeometricObject[PointT]":
+        """Return the set-theoretic difference ``self \\ other``."""
+        self._require_same_space(other)
+
+        def local_model(point: PointT):
+            if point in other:
+                return self._combine_local_models(
+                    self.local_model_at(point),
+                    other.local_model_at(point),
+                    lambda left, right: left and not right,
+                    "difference",
+                )
+            return self.local_model_at(point)
+
+        chosen_name = name or f"({self.name})-({other.name})"
+        return RiemannianGeometricObject(
+            self.space,
+            contains=lambda point: point in self and point not in other,
+            local_model=local_model,
+            name=chosen_name,
+        )
+
+    def symmetric_difference(
+        self,
+        other: "RiemannianGeometricObject[PointT]",
+        name: str = "",
+    ) -> "RiemannianGeometricObject[PointT]":
+        """Return the symmetric difference of two objects."""
+        self._require_same_space(other)
+
+        def local_model(point: PointT):
+            if point in self and point not in other:
+                return self.local_model_at(point)
+            if point in other and point not in self:
+                return other.local_model_at(point)
+            return self._combine_local_models(
+                self.local_model_at(point),
+                other.local_model_at(point),
+                lambda left, right: left ^ right,
+                "symmetric-difference",
+            )
+
+        chosen_name = name or f"({self.name})^({other.name})"
+        return RiemannianGeometricObject(
+            self.space,
+            contains=lambda point: (point in self) ^ (point in other),
+            local_model=local_model,
+            name=chosen_name,
+        )
+
+    def __or__(
+        self,
+        other: "RiemannianGeometricObject[PointT]",
+    ) -> "RiemannianGeometricObject[PointT]":
+        """Return the union operator result."""
+        return self.union(other)
+
+    def __and__(
+        self,
+        other: "RiemannianGeometricObject[PointT]",
+    ) -> "RiemannianGeometricObject[PointT]":
+        """Return the intersection operator result."""
+        return self.intersection(other)
+
+    def __sub__(
+        self,
+        other: "RiemannianGeometricObject[PointT]",
+    ) -> "RiemannianGeometricObject[PointT]":
+        """Return the difference operator result."""
+        return self.difference(other)
+
+    def __xor__(
+        self,
+        other: "RiemannianGeometricObject[PointT]",
+    ) -> "RiemannianGeometricObject[PointT]":
+        """Return the symmetric-difference operator result."""
+        return self.symmetric_difference(other)
 
 
 class RealLineSpace(ChartedRiemannianSpace[float]):
