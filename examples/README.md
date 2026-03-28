@@ -7,6 +7,8 @@ the project:
 - `02_object_zoo_visualization.ipynb`: Euclidean object zoo with plots
 - `03_riemannian_objects_and_projections.ipynb`: Riemannian objects, set
   operations, projections, and smooth images
+- `04_set_operations_2d.ipynb`: 2D set-theoretic operations with plotted
+  unions, intersections, differences, and symmetric differences
 
 Recommended setup:
 
