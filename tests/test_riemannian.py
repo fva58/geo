@@ -8,6 +8,7 @@ from geo import (
     FloatCirclePoint,
     FloatPoint,
     FloatVector,
+    Hyperplane,
     RealLineSpace,
     RiemannianGeometricObject,
     RiemannianSpace,
@@ -167,6 +168,61 @@ class TestRiemannianObjects(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             real_line.point(0.0).union(another_real_line.point(0.0))
+
+    def test_parallel_projection_onto_hyperplane(self):
+        """Parallel projection should return a new geometric object."""
+        space = EuclideanPlaneSpace()
+        source_line = RiemannianGeometricObject.from_charted(
+            space,
+            Hyperplane((0.0, 1.0), offset=1.0),
+            name="source-line",
+        )
+        source_half_line = source_line & space.half_plane((1.0, 0.0), offset=0.0)
+        target_line = Hyperplane((0.0, 1.0), offset=0.0)
+
+        projected = source_half_line.project_along_direction_onto(
+            Hyperplane((0.0, 1.0), offset=1.0),
+            target_line,
+            (0.0, -1.0),
+            name="parallel-projected-half-line",
+        )
+
+        self.assertIsInstance(projected, RiemannianGeometricObject)
+        self.assertIn(FloatPoint(1.0, 0.0), projected)
+        self.assertNotIn(FloatPoint(-1.0, 0.0), projected)
+        self.assertNotIn(FloatPoint(1.0, 1.0), projected)
+
+        boundary = projected.local_model_at(FloatPoint(0.0, 0.0))
+        self.assertIn(FloatPoint(1.0, 0.0), boundary.cone)
+        self.assertNotIn(FloatPoint(-1.0, 0.0), boundary.cone)
+        self.assertNotIn(FloatPoint(0.0, 1.0), boundary.cone)
+
+    def test_central_projection_onto_hyperplane(self):
+        """Central projection should return a new geometric object."""
+        space = EuclideanPlaneSpace()
+        source_line = RiemannianGeometricObject.from_charted(
+            space,
+            Hyperplane((0.0, 1.0), offset=1.0),
+            name="source-line",
+        )
+        source_half_line = source_line & space.half_plane((1.0, 0.0), offset=0.0)
+        target_line = Hyperplane((0.0, 1.0), offset=0.0)
+
+        projected = source_half_line.project_from_point_onto(
+            Hyperplane((0.0, 1.0), offset=1.0),
+            target_line,
+            FloatPoint(0.0, 2.0),
+            name="central-projected-half-line",
+        )
+
+        self.assertIn(FloatPoint(2.0, 0.0), projected)
+        self.assertNotIn(FloatPoint(-1.0, 0.0), projected)
+        self.assertNotIn(FloatPoint(0.0, 1.0), projected)
+
+        boundary = projected.local_model_at(FloatPoint(0.0, 0.0))
+        self.assertIn(FloatPoint(1.0, 0.0), boundary.cone)
+        self.assertNotIn(FloatPoint(-1.0, 0.0), boundary.cone)
+        self.assertNotIn(FloatPoint(0.0, 1.0), boundary.cone)
 
 
 if __name__ == "__main__":

@@ -348,6 +348,48 @@ class RiemannianGeometricObject(ChartedGeometricObject[PointT]):
         """Return the symmetric-difference operator result."""
         return self.symmetric_difference(other)
 
+    def project_along_direction_onto(
+        self,
+        source_hyperplane,
+        target_hyperplane,
+        direction: FloatVector,
+        name: str = "",
+    ) -> "RiemannianGeometricObject[PointT]":
+        """Project an Euclidean object along a direction onto a hyperplane."""
+        projected = super().project_along_direction_onto(
+            source_hyperplane,
+            target_hyperplane,
+            direction,
+            name=name,
+        )
+        chosen_name = name or getattr(projected, "name", "")
+        return RiemannianGeometricObject.from_charted(
+            self.space,
+            projected,
+            name=chosen_name,
+        )
+
+    def project_from_point_onto(
+        self,
+        source_hyperplane,
+        target_hyperplane,
+        center: FloatPoint,
+        name: str = "",
+    ) -> "RiemannianGeometricObject[PointT]":
+        """Project an Euclidean object from a point onto a hyperplane."""
+        projected = super().project_from_point_onto(
+            source_hyperplane,
+            target_hyperplane,
+            center,
+            name=name,
+        )
+        chosen_name = name or getattr(projected, "name", "")
+        return RiemannianGeometricObject.from_charted(
+            self.space,
+            projected,
+            name=chosen_name,
+        )
+
 
 class RealLineSpace(ChartedRiemannianSpace[float]):
     """The real line with its standard Euclidean metric."""

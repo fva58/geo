@@ -63,6 +63,30 @@ There are also affine-image variants for smooth and polyhedral families:
 - ``Parallelepiped`` and ``ParallelepipedSurface``;
 - ``Cube`` and ``CubeSurface``.
 
+Projections
+-----------
+
+Euclidean objects also support projections onto hyperplanes, either from a
+point or along a fixed direction::
+
+    >>> from geo import EuclideanPlaneSpace, FloatPoint, Hyperplane, RiemannianGeometricObject
+    >>> plane = EuclideanPlaneSpace()
+    >>> source_line = RiemannianGeometricObject.from_charted(
+    ...     plane,
+    ...     Hyperplane((0.0, 1.0), offset=1.0),
+    ... )
+    >>> source_half_line = source_line & plane.half_plane((1.0, 0.0), offset=0.0)
+    >>> target_line = Hyperplane((0.0, 1.0), offset=0.0)
+    >>> projected = source_half_line.project_along_direction_onto(
+    ...     Hyperplane((0.0, 1.0), offset=1.0),
+    ...     target_line,
+    ...     (0.0, -1.0),
+    ... )
+    >>> FloatPoint(1.0, 0.0) in projected
+    True
+    >>> FloatPoint(-1.0, 0.0) in projected
+    False
+
 Riemannian spaces with ready-made objects
 -----------------------------------------
 

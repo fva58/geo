@@ -359,6 +359,116 @@ def _euclidean_chart(
     )
 
 
+def _numeric_jacobian(
+    mapping: Callable[[FloatPoint], FloatPoint],
+    point: FloatPoint,
+    step: float = 1e-6,
+) -> np.ndarray:
+    """Approximate the Jacobian matrix of a local Euclidean map."""
+    point = FloatPoint(point)
+    base = _point_array(point)
+    image_dim = FloatPoint(mapping(point)).dim
+    jacobian = np.zeros((image_dim, point.dim), dtype=float)
+    for index in range(point.dim):
+        delta = np.zeros(point.dim, dtype=float)
+        delta[index] = step
+        image_plus = _point_array(mapping(FloatPoint(base + delta)))
+        image_minus = _point_array(mapping(FloatPoint(base - delta)))
+        jacobian[:, index] = (image_plus - image_minus) / (2.0 * step)
+    return jacobian
+
+
+def _validate_projection_hyperplanes(
+    source_hyperplane,
+    target_hyperplane,
+) -> None:
+    """Require compatible ambient dimensions for projection data."""
+    if source_hyperplane.normal.dim != target_hyperplane.normal.dim:
+        raise ValueError("Projection hyperplanes must have equal dimension")
+
+
+def _parallel_projection_inverse(
+    source_hyperplane,
+    target_hyperplane,
+    direction: FloatVector,
+) -> Callable[[FloatPoint], FloatPoint]:
+    """Return the inverse map of a parallel projection between hyperplanes."""
+    direction = FloatVector(direction)
+    _validate_projection_hyperplanes(source_hyperplane, target_hyperplane)
+    if direction.dim != source_hyperplane.normal.dim:
+        raise ValueError("Projection direction dimension mismatch")
+    denominator = source_hyperplane.normal.dot(direction)
+    if _isclose(denominator):
+        raise ValueError(
+            "Projection direction must not be parallel to the source hyperplane"
+        )
+
+    def inverse_map(point: FloatPoint) -> FloatPoint:
+        point = FloatPoint(point)
+        scalar = (
+            source_hyperplane.offset -
+            source_hyperplane.normal.dot(FloatVector(point))
+        ) / denominator
+        return point + scalar * direction
+
+    return inverse_map
+
+
+def _central_projection_inverse(
+    source_hyperplane,
+    target_hyperplane,
+    center: FloatPoint,
+) -> Callable[[FloatPoint], FloatPoint]:
+    """Return the inverse map of a central projection between hyperplanes."""
+    center = FloatPoint(center)
+    _validate_projection_hyperplanes(source_hyperplane, target_hyperplane)
+    if center.dim != source_hyperplane.normal.dim:
+        raise ValueError("Projection center dimension mismatch")
+    source_offset = source_hyperplane.offset
+    source_center_value = source_hyperplane.normal.dot(FloatVector(center))
+    if _isclose(source_offset, source_center_value):
+        raise ValueError("Projection center must not lie in the source hyperplane")
+
+    def inverse_map(point: FloatPoint) -> FloatPoint:
+        point = FloatPoint(point)
+        direction = point - center
+        denominator = source_hyperplane.normal.dot(direction)
+        if _isclose(denominator):
+            raise ValueError("Projection ray is parallel to the source hyperplane")
+        scalar = (source_offset - source_center_value) / denominator
+        return center + scalar * direction
+
+    return inverse_map
+
+
+def _projected_local_model(
+    source_object,
+    source_point: FloatPoint,
+    target_hyperplane,
+    target_point: FloatPoint,
+    inverse_map: Callable[[FloatPoint], FloatPoint],
+    name: str,
+) -> LocalConeModel[FloatPoint]:
+    """Transport a local cone model through a Euclidean projection."""
+    source_model = source_object.local_model_at(source_point)
+    target_model = target_hyperplane.local_model_at(target_point)
+    jacobian = _numeric_jacobian(inverse_map, target_point)
+    dim = target_point.dim
+    cone = EuclideanCone(
+        dim,
+        contains=lambda coordinates: (
+            target_model.cone.contains(coordinates) and
+            source_model.cone.contains(
+                FloatPoint(jacobian @ _point_array(coordinates))
+            )
+        ),
+        apex=FloatPoint.origin(dim),
+        neighborhood=EuclideanNeighborhood.whole(dim),
+        name=name,
+    )
+    return LocalConeModel(target_model.chart, cone)
+
+
 class EuclideanCone:
     """Concrete cone in Euclidean coordinates.
 
@@ -640,6 +750,100 @@ class ChartedGeometricObject(Generic[PointT]):
                 "Local model chart dimension does not match manifold dimension"
             )
         return model
+
+    def project_along_direction_onto(
+        self,
+        source_hyperplane,
+        target_hyperplane,
+        direction: FloatVector,
+        name: str = "",
+    ) -> "ChartedGeometricObject[FloatPoint]":
+        """Project an Euclidean object along a direction onto a hyperplane."""
+        ambient_manifold = getattr(self.manifold, "manifold", self.manifold)
+        if not isinstance(ambient_manifold, EuclideanSpace):
+            raise ValueError("Projection is only implemented in Euclidean spaces")
+        inverse_map = _parallel_projection_inverse(
+            source_hyperplane,
+            target_hyperplane,
+            direction,
+        )
+        chosen_name = name or "parallel-projection"
+
+        def contains(point: FloatPoint) -> bool:
+            point = FloatPoint(point)
+            if point not in target_hyperplane:
+                return False
+            try:
+                source_point = inverse_map(point)
+            except ValueError:
+                return False
+            return source_point in self
+
+        def local_model(point: FloatPoint) -> LocalConeModel[FloatPoint]:
+            target_point = FloatPoint(point)
+            source_point = inverse_map(target_point)
+            return _projected_local_model(
+                self,
+                source_point,
+                target_hyperplane,
+                target_point,
+                inverse_map,
+                chosen_name,
+            )
+
+        return ChartedGeometricObject(
+            self.manifold,
+            contains=contains,
+            local_model=local_model,
+            name=chosen_name,
+        )
+
+    def project_from_point_onto(
+        self,
+        source_hyperplane,
+        target_hyperplane,
+        center: FloatPoint,
+        name: str = "",
+    ) -> "ChartedGeometricObject[FloatPoint]":
+        """Project an Euclidean object from a center point onto a hyperplane."""
+        ambient_manifold = getattr(self.manifold, "manifold", self.manifold)
+        if not isinstance(ambient_manifold, EuclideanSpace):
+            raise ValueError("Projection is only implemented in Euclidean spaces")
+        inverse_map = _central_projection_inverse(
+            source_hyperplane,
+            target_hyperplane,
+            center,
+        )
+        chosen_name = name or "central-projection"
+
+        def contains(point: FloatPoint) -> bool:
+            point = FloatPoint(point)
+            if point not in target_hyperplane:
+                return False
+            try:
+                source_point = inverse_map(point)
+            except ValueError:
+                return False
+            return source_point in self
+
+        def local_model(point: FloatPoint) -> LocalConeModel[FloatPoint]:
+            target_point = FloatPoint(point)
+            source_point = inverse_map(target_point)
+            return _projected_local_model(
+                self,
+                source_point,
+                target_hyperplane,
+                target_point,
+                inverse_map,
+                chosen_name,
+            )
+
+        return ChartedGeometricObject(
+            self.manifold,
+            contains=contains,
+            local_model=local_model,
+            name=chosen_name,
+        )
 
 
 class RealPointObject(ChartedGeometricObject[float]):
