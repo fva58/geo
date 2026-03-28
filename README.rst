@@ -68,11 +68,18 @@ Main pages:
 - `doc/geometry.rst`
 - `doc/api.rst`
 
+Examples
+--------
+
+Jupyter notebooks with demonstrations and visualizations live under
+`examples/`.
+
 Typical commands:
 
 .. code-block:: sh
 
    pip install -e ".[docs]"
+   pip install -e ".[examples]"
    make -C doc html
    make -C doc doctest
 

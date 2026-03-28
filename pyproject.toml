@@ -44,3 +44,7 @@ Repository = "https://github.com/fva/geo"
 docs = [
   "sphinx>=7,<9",
 ]
+examples = [
+  "jupyterlab>=4,<5",
+  "matplotlib>=3.8,<4",
+]
