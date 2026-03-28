@@ -3,6 +3,7 @@
 import unittest
 import math
 from geo.floatset import FloatInterval, FloatSet
+from geo.real import ALL_REALS_INTERVAL, EMPTY_REAL_INTERVAL, real, realset
 
 
 class TestFloatInterval(unittest.TestCase):
@@ -108,9 +109,11 @@ class TestFloatInterval(unittest.TestCase):
         diff_ab = a.difference(b)
         self.assertEqual(len(diff_ab), 2)
         self.assertEqual(diff_ab[0].left, 0.0)
-        self.assertEqual(diff_ab[0].right, 2.0)
-        self.assertEqual(diff_ab[1].left, 3.0)
+        self.assertEqual(diff_ab[0].right, math.nextafter(2.0, -math.inf))
+        self.assertEqual(diff_ab[1].left, math.nextafter(3.0, math.inf))
         self.assertEqual(diff_ab[1].right, 5.0)
+        self.assertFalse(diff_ab[0].contains(2.0))
+        self.assertFalse(diff_ab[1].contains(3.0))
 
         # Disjoint intervals
         diff_ac = a.difference(c)
@@ -131,8 +134,8 @@ class TestFloatInterval(unittest.TestCase):
         sym_diff = a.symmetric_difference(b)
         self.assertEqual(len(sym_diff), 2)
         self.assertEqual(sym_diff[0].left, 0.0)
-        self.assertEqual(sym_diff[0].right, 2.0)
-        self.assertEqual(sym_diff[1].left, 3.0)
+        self.assertEqual(sym_diff[0].right, math.nextafter(2.0, -math.inf))
+        self.assertEqual(sym_diff[1].left, math.nextafter(3.0, math.inf))
         self.assertEqual(sym_diff[1].right, 5.0)
 
     def test_operators(self):
@@ -155,7 +158,7 @@ class TestFloatInterval(unittest.TestCase):
         diff = a - b
         self.assertEqual(len(diff), 1)
         self.assertEqual(diff[0].left, 0.0)
-        self.assertEqual(diff[0].right, 2.0)
+        self.assertEqual(diff[0].right, math.nextafter(2.0, -math.inf))
 
         # Symmetric difference
         sym_diff = a ^ b
@@ -191,6 +194,17 @@ class TestFloatInterval(unittest.TestCase):
         empty1 = FloatInterval(1.0, 0.0)
         empty2 = FloatInterval(2.0, 1.0)
         self.assertEqual(empty1, empty2)
+
+    def test_complement(self):
+        """Test complement in the float model."""
+        interval = FloatInterval(0.0, 1.0)
+        complement = interval.complement()
+        self.assertEqual(len(complement), 2)
+        self.assertEqual(complement[0].left, -math.inf)
+        self.assertEqual(complement[0].right,
+                         math.nextafter(0.0, -math.inf))
+        self.assertEqual(complement[1].left, math.nextafter(1.0, math.inf))
+        self.assertEqual(complement[1].right, math.inf)
 
 
 class TestFloatSet(unittest.TestCase):
@@ -291,10 +305,10 @@ class TestFloatSet(unittest.TestCase):
         self.assertEqual(len(diff), 3)
         intervals = list(diff.intervals)
         self.assertEqual(intervals[0][0], 0.0)
-        self.assertEqual(intervals[0][1], 1.0)
-        self.assertEqual(intervals[1][0], 2.0)
-        self.assertEqual(intervals[1][1], 3.0)
-        self.assertEqual(intervals[2][0], 4.0)
+        self.assertEqual(intervals[0][1], math.nextafter(1.0, -math.inf))
+        self.assertEqual(intervals[1][0], math.nextafter(2.0, math.inf))
+        self.assertEqual(intervals[1][1], math.nextafter(3.0, -math.inf))
+        self.assertEqual(intervals[2][0], math.nextafter(4.0, math.inf))
         self.assertEqual(intervals[2][1], 5.0)
 
     def test_symmetric_difference(self):
@@ -327,7 +341,8 @@ class TestFloatSet(unittest.TestCase):
         diff = set1 - set2
         self.assertEqual(len(diff), 1)
         self.assertEqual(diff.intervals[0][0], 0.0)
-        self.assertEqual(diff.intervals[0][1], 1.0)
+        self.assertEqual(diff.intervals[0][1],
+                         math.nextafter(1.0, -math.inf))
 
         # Symmetric difference
         sym_diff = set1 ^ set2
@@ -401,6 +416,17 @@ class TestEdgeCases(unittest.TestCase):
         # Intersection should be empty
         inter = a.intersection(b)
         self.assertTrue(inter.is_empty())
+
+
+class TestRealModule(unittest.TestCase):
+    """Test the float-based real aliases."""
+
+    def test_real_aliases(self):
+        """Test that geo.real exposes the active float model."""
+        self.assertIs(real, float)
+        self.assertIs(realset, FloatSet)
+        self.assertTrue(EMPTY_REAL_INTERVAL.is_empty())
+        self.assertTrue(ALL_REALS_INTERVAL.is_full())
 
 
 if __name__ == "__main__":

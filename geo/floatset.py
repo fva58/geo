@@ -1,12 +1,14 @@
 """Floating-point sets and intervals.
 
-This module provides FloatInterval and FloatSet classes for working with
-sets of real numbers represented as intervals.
+This module implements set operations on the discrete lattice of Python
+``float`` values. Endpoints are therefore adjusted with ``math.nextafter``
+when an operation must exclude a boundary point while still returning closed
+intervals.
 """
 
 # pylint: disable=multiple-statements
 
-from typing import Tuple, Any, Optional, Union, Sequence
+from typing import Tuple, Any, Sequence, List
 import math
 
 from .utils import ValidTuple
@@ -207,13 +209,17 @@ class FloatInterval ( tuple ) :
             return (self,)
 
         result = []
-        # Left part - include if there's a gap
+        # In the float model we keep closed intervals and exclude removed
+        # boundary points by stepping to the neighboring representable float.
         if self.left <= math.nextafter(inter.left, -math.inf):
-            result.append(FloatInterval(self.left, inter.left))
+            result.append(
+                FloatInterval(self.left, math.nextafter(inter.left, -math.inf))
+            )
 
-        # Right part - include if there's a gap
         if inter.right <= math.nextafter(self.right, -math.inf):
-            result.append(FloatInterval(inter.right, self.right))
+            result.append(
+                FloatInterval(math.nextafter(inter.right, math.inf), self.right)
+            )
 
         return tuple(result)
 
@@ -249,10 +255,13 @@ class FloatInterval ( tuple ) :
         """
         res = []
         if not math.isinf ( self[0] ) :
-            res.append ( FloatInterval(-math.inf,
-                                       nextafter(self[0],-math.inf)) )
+            res.append(
+                FloatInterval(-math.inf, math.nextafter(self[0], -math.inf))
+            )
         if not math.isinf ( self[1] ) :
-            res.append ( FloatInterval(nextafter(self[1],math.inf),math.inf) )
+            res.append(
+                FloatInterval(math.nextafter(self[1], math.inf), math.inf)
+            )
         return tuple ( res )
 
     def __and__(self, other: 'FloatInterval') -> 'FloatInterval':
@@ -297,6 +306,7 @@ EMPTY_FLOAT_INTERVAL = FloatInterval ( math.inf , -math.inf )
 assert EMPTY_FLOAT_INTERVAL.is_empty ()
 FULL_FLOAT_INTERVAL = FloatInterval ( -math.inf , math.inf )
 assert not FULL_FLOAT_INTERVAL.is_empty ()
+ALL_FLOATS_INTERVAL = FULL_FLOAT_INTERVAL
 
 
 class FloatSet ( tuple ) : # Tuple[Tuple[float,float],...]

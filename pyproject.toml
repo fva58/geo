@@ -4,11 +4,35 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "geo"
-version = "0.0.0"
+version = "0.0.1"
 readme = "README.rst"
 license = "MIT"
 license-files = ["LICEN[CS]E*"]
 authors = [
   { name="Вячеслав Фёдоров", email="fvamail@gmail.com" },
 ]
-description = "A geometry package"
+description = "Geometry primitives based on immutable float interval sets"
+requires-python = ">=3.11"
+keywords = [
+  "geometry",
+  "intervals",
+  "sets",
+  "circle",
+  "riemannian-geometry",
+]
+classifiers = [
+  "Development Status :: 2 - Pre-Alpha",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Science/Research",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Topic :: Scientific/Engineering :: Mathematics",
+]
+
+[project.urls]
+Homepage = "https://github.com/fva/geo"
+Repository = "https://github.com/fva/geo"
