@@ -9,6 +9,7 @@ sets of real numbers represented as intervals.
 from typing import Tuple, Any, Optional, Union, Sequence
 import math
 
+from .utils import ValidTuple
 
 class FloatInterval ( tuple ) :
     """Interval of real numbers.
@@ -17,14 +18,14 @@ class FloatInterval ( tuple ) :
     right bounds).  An empty interval has left bound greater than
     right bound.
 
-    Attributes:
+    Properties:
         left: Left bound of the interval
         right: Right bound of the interval
 
     """
     __slots__ = ()
 
-    def __new__ ( cls , left , right = None ) :
+    def __new__ ( cls , left , right=None ) :
         """Initialize a FloatInterval.
 
         Args:
@@ -32,7 +33,7 @@ class FloatInterval ( tuple ) :
             right: Right bound of the interval
         """
         if right is None :
-            if isinstance ( left , FloatInterval ) : return left
+            if isinstance ( left , cls ) : return left
             right = left
         return super().__new__ ( cls , (float(left),float(right)) )
 
@@ -59,13 +60,13 @@ class FloatInterval ( tuple ) :
             return NotImplemented
         if self.is_empty() and other.is_empty():
             return True
-        return self.left == other.left and self.right == other.right
+        return super().__eq__ ( other )
 
     def __hash__(self) -> int:
         """Return hash of the interval."""
         if self.is_empty():
             return hash((float('inf'), float('-inf')))
-        return hash((self.left, self.right))
+        return super().__hash__ ()
 
     def is_empty(self) -> bool:
         """Check if the interval is empty.
@@ -74,6 +75,22 @@ class FloatInterval ( tuple ) :
             True if left > right, False otherwise.
         """
         return self.left > self.right
+
+    def is_full(self) -> bool:
+        """Check if the interval is full.
+
+        Returns:
+            True if interval is full float set, False otherwise.
+        """
+        return math.isinf(self.left) and math.isinf(self.right)
+
+    def is_point(self) -> bool:
+        """Check if the interval is single point.
+
+        Returns:
+            True if interval is single point, False otherwise.
+        """
+        return self.left == self.right
 
     def contains(self, x: float) -> bool:
         """Check if the interval contains a point.
@@ -88,6 +105,20 @@ class FloatInterval ( tuple ) :
             return False
         return self.left <= x <= self.right
 
+    def contains_interval(self, other: 'FloatInterval') -> bool:
+        """Check if this interval contains another interval.
+
+        Args:
+            other: Another interval
+
+        Returns:
+            True if other ⊆ self
+        """
+        if self.is_empty() : return other.is_empty ()
+        if other.is_empty() : return True
+        return self.left <= other.left and other.right <= self.right
+
+
     def is_subset(self, other: 'FloatInterval') -> bool:
         """Check if this interval is subset of another interval.
 
@@ -97,11 +128,7 @@ class FloatInterval ( tuple ) :
         Returns:
             True if self ⊆ other, False otherwise.
         """
-        if self.is_empty():
-            return True
-        if other.is_empty():
-            return False
-        return other.left <= self.left and self.right <= other.right
+        return other.contains_interval(self)
 
     def length(self) -> float:
         """Return length of the interval.
@@ -122,14 +149,12 @@ class FloatInterval ( tuple ) :
         Returns:
             Intersection interval (may be empty).
         """
-        if self.is_empty() or other.is_empty():
-            return FloatInterval(1.0, 0.0)  # Empty interval
+        if self.is_empty() or other.is_empty() : return EMPTY_FLOAT_INTERVAL
 
         left = max(self.left, other.left)
         right = min(self.right, other.right)
 
-        if left > right:
-            return FloatInterval(1.0, 0.0)  # Empty interval
+        if left > right: return EMPTY_FLOAT_INTERVAL
         return FloatInterval(left, right)
 
     def union(self, other: 'FloatInterval') -> Tuple['FloatInterval', ...]:
@@ -216,6 +241,20 @@ class FloatInterval ( tuple ) :
             result.extend(diff)
         return tuple(result)
 
+    def complement(self) -> Tuple['FloatInterval',...] :
+        """Return the complement of the interval (the rest of the set).
+
+        Returns:
+            Complement intervals (0, 1 or 2) of the set.
+        """
+        res = []
+        if not math.isinf ( self[0] ) :
+            res.append ( FloatInterval(-math.inf,
+                                       nextafter(self[0],-math.inf)) )
+        if not math.isinf ( self[1] ) :
+            res.append ( FloatInterval(nextafter(self[1],math.inf),math.inf) )
+        return tuple ( res )
+
     def __and__(self, other: 'FloatInterval') -> 'FloatInterval':
         """Operator for intersection: self & other."""
         return self.intersection(other)
@@ -240,6 +279,10 @@ class FloatInterval ( tuple ) :
         """Boolean conversion: True if interval is not empty."""
         return not self.is_empty()
 
+    def __invert__(self) -> Tuple['FloatInterval',...] :
+        """Operator for complement: ~self."""
+        return self.complement()
+
     @classmethod
     def from_tuple(cls, t: Tuple[float, float]) -> 'FloatInterval':
         """Create interval from tuple."""
@@ -249,10 +292,11 @@ class FloatInterval ( tuple ) :
         """Convert interval to tuple."""
         return tuple ( self )
 
+
 EMPTY_FLOAT_INTERVAL = FloatInterval ( math.inf , -math.inf )
 assert EMPTY_FLOAT_INTERVAL.is_empty ()
-ALL_FLOATS_INTERVAL = FloatInterval ( -math.inf , math.inf )
-assert not ALL_FLOATS_INTERVAL.is_empty ()
+FULL_FLOAT_INTERVAL = FloatInterval ( -math.inf , math.inf )
+assert not FULL_FLOAT_INTERVAL.is_empty ()
 
 
 class FloatSet ( tuple ) : # Tuple[Tuple[float,float],...]
@@ -263,7 +307,10 @@ class FloatSet ( tuple ) : # Tuple[Tuple[float,float],...]
     __slots__ = ()
 
     def __new__ ( cls , *args : Any ) :
-        if len(args) == 1 and isinstance(args[0],cls) : return args[0]
+        if len(args) == 1 :
+            if isinstance ( args[0] , cls ) : return args[0]
+            if isinstance ( args[0] , ValidTuple ) :
+                return super().__new__ ( cls , args[0] )
         return super().__new__ ( cls , cls._normalize(cls._translate(args)) )
 
     @property
@@ -274,20 +321,13 @@ class FloatSet ( tuple ) : # Tuple[Tuple[float,float],...]
     def __repr__(self) -> str:
         """Return string representation of the set."""
         intervals_repr = ", ".join(repr(iv) for iv in self)
-        return f"FloatSet(({intervals_repr}))"
+        return f"{self.__class__.__name__}(({intervals_repr}))"
 
     def __str__(self) -> str:
         """Return human-readable string representation."""
         if not self:
             return "∅"
         return " ∪ ".join(str(iv) for iv in self)
-
-    def __contains__(self, x: float) -> bool:
-        """Check if point is in set: x in set."""
-        for interval in self:
-            if FloatInterval.from_tuple(interval).contains(x) :
-                return True
-        return False
 
     @staticmethod
     def _translate ( args ) :
@@ -316,12 +356,17 @@ class FloatSet ( tuple ) : # Tuple[Tuple[float,float],...]
 
         # Sort by left bound
         non_empty.sort()
+        return FloatSet.merge ( non_empty )
 
-        # Merge overlapping intervals
+    @staticmethod
+    def merge ( intervals : List[Tuple[float,float]]
+               ) -> Tuple[Tuple[float,float],...] :
+        """Merge sorted overlapping intervals"""
+        if not intervals : return ()
         result = []
-        current = non_empty[0]
+        current = intervals[0]
 
-        for interval in non_empty[1:]:
+        for interval in intervals[1:] :
             # Check if intervals overlap or touch
             if current[1] > math.nextafter ( interval[0] , -math.inf ) :
                 # Merge intervals
@@ -365,7 +410,7 @@ class FloatSet ( tuple ) : # Tuple[Tuple[float,float],...]
                 if not inter.is_empty():
                     result_intervals.append(inter)
 
-        return FloatSet(result_intervals)
+        return FloatSet ( result_intervals )
 
     def difference(self, other: 'FloatSet') -> 'FloatSet':
         """Compute difference (self - other).
@@ -400,7 +445,6 @@ class FloatSet ( tuple ) : # Tuple[Tuple[float,float],...]
                     break
 
             result_intervals.extend(current_parts)
-
         return FloatSet(result_intervals)
 
     def symmetric_difference(self, other: 'FloatSet') -> 'FloatSet':
@@ -415,6 +459,17 @@ class FloatSet ( tuple ) : # Tuple[Tuple[float,float],...]
         union_set = self.union(other)
         inter_set = self.intersection(other)
         return union_set.difference(inter_set)
+
+    def contains (self, x: float) -> bool:
+        """Check if point is in set: x in set."""
+        for interval in self:
+            if FloatInterval.from_tuple(interval).contains(x) :
+                return True
+        return False
+
+    def __contains__(self, x: float) -> bool:
+        """Check if point is in set: x in set."""
+        return self.contains ( x )
 
     def __or__(self, other: 'FloatSet') -> 'FloatSet':
         """Operator for union: self | other."""
@@ -460,7 +515,7 @@ class FloatSet ( tuple ) : # Tuple[Tuple[float,float],...]
     @classmethod
     def from_single_interval(cls, left: float, right: float) -> 'FloatSet':
         """Create set from single interval."""
-        return cls((FloatInterval(left, right),))
+        return cls ( FloatInterval(left, right) )
 
     @classmethod
     def from_intervals(cls, *intervals: FloatInterval) -> 'FloatSet':
