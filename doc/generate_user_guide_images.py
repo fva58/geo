@@ -63,8 +63,9 @@ def draw_mesh(
     resolution: int = 256,
 ) -> bool:
     """Draw a planar mesh representation when the object exposes one."""
+    mesh_source = getattr(obj, "_charted_source_object", obj)
     try:
-        mesh = obj.mesh(resolution=resolution)
+        mesh = mesh_source.mesh(resolution=resolution)
     except (AttributeError, NotImplementedError, ValueError):
         return False
 
@@ -319,11 +320,99 @@ def save_riemannian_workflows() -> None:
     plt.close(figure)
 
 
+def save_visibility_workflows() -> None:
+    """Save a figure for visibility from a direction and from a point."""
+    plane = EuclideanPlaneSpace()
+    disk = RiemannianGeometricObject.from_charted(
+        plane,
+        Ball(FloatPoint(0.0, 0.0), 1.0),
+    )
+    top_half = disk.visible_from_direction((0.0, 1.0))
+
+    ellipse = RiemannianGeometricObject.from_charted(
+        plane,
+        EllipsoidSurface(
+            FloatPoint(0.0, 0.0),
+            ((2.0, 0.0), (0.0, 1.0)),
+        ),
+    )
+    observer = FloatPoint(0.0, 3.0)
+    visible_arc = ellipse.visible_from_point(observer)
+
+    figure, axes = plt.subplots(1, 2, figsize=(11, 4.5))
+
+    draw_object(
+        axes[0],
+        disk,
+        title="Visible part of a ball from a direction",
+        xlim=(-1.4, 1.4),
+        ylim=(-1.4, 1.4),
+    )
+    top_angles = np.linspace(0.0, math.pi, 200)
+    axes[0].plot(
+        np.cos(top_angles),
+        np.sin(top_angles),
+        color="#d62728",
+        linewidth=3.0,
+    )
+    for x_value in np.linspace(-0.8, 0.8, 5):
+        axes[0].annotate(
+            "",
+            xy=(x_value, 1.25),
+            xytext=(x_value, 1.6),
+            arrowprops={"arrowstyle": "->", "color": "#555555"},
+        )
+
+    draw_object(
+        axes[1],
+        ellipse,
+        title="Observer-facing part of an ellipsoid surface",
+        xlim=(-2.4, 2.4),
+        ylim=(-1.4, 3.4),
+        mesh_only=True,
+    )
+    visible_xs = np.linspace(-1.2, 1.2, 200)
+    visible_ys = np.sqrt(np.maximum(0.0, 1.0 - (visible_xs / 2.0) ** 2))
+    axes[1].plot(
+        visible_xs,
+        visible_ys,
+        color="#d62728",
+        linewidth=3.0,
+    )
+    axes[1].scatter([observer[0]], [observer[1]], color="#2ca02c", s=55.0, zorder=3)
+    for target in [
+        FloatPoint(-1.2, 0.8),
+        FloatPoint(0.0, 1.0),
+        FloatPoint(1.2, 0.8),
+    ]:
+        axes[1].plot(
+            [observer[0], target[0]],
+            [observer[1], target[1]],
+            color="#2ca02c",
+            linewidth=1.5,
+            alpha=0.8,
+        )
+
+    assert FloatPoint(0.0, 1.0) in top_half
+    assert FloatPoint(0.0, -1.0) not in top_half
+    assert FloatPoint(1.2, 0.8) in visible_arc
+    assert FloatPoint(0.0, -1.0) not in visible_arc
+
+    figure.tight_layout()
+    figure.savefig(
+        OUTPUT_DIR / "visibility_workflows.png",
+        dpi=160,
+        bbox_inches="tight",
+    )
+    plt.close(figure)
+
+
 def main() -> None:
     """Generate every image used by the user guide."""
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     save_line_and_circle_sets()
     save_planar_object_zoo()
+    save_visibility_workflows()
     save_riemannian_workflows()
 
 

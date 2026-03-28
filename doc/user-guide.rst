@@ -7,7 +7,8 @@ well.
 1. Build and combine sets on the real line and on the circle.
 2. Use ready-made Euclidean objects from the object zoo.
 3. Compose objects inside a Riemannian space.
-4. Transport objects by projection and smooth maps.
+4. Extract visible parts from convex Euclidean objects.
+5. Transport objects by projection and smooth maps.
 
 Working With Sets on the Line and Circle
 ----------------------------------------
@@ -105,6 +106,47 @@ Typical use cases are:
 - examples where the ambient space matters explicitly;
 - building reusable objects through the standard factories of
   ``RealLineSpace``, ``UnitCircleSpace``, and ``EuclideanPlaneSpace``.
+
+Visibility From a Direction or an Observer
+------------------------------------------
+
+For convex Euclidean families, the package can build the visible part as a new
+geometric object.
+
+.. code-block:: python
+
+   from geo import Ball, EllipsoidSurface, EuclideanPlaneSpace, FloatPoint
+   from geo import RiemannianGeometricObject
+
+   plane = EuclideanPlaneSpace()
+
+   disk = RiemannianGeometricObject.from_charted(
+       plane,
+       Ball(FloatPoint(0.0, 0.0), 1.0),
+   )
+   top_half = disk.visible_from_direction((0.0, 1.0))
+
+   ellipse = RiemannianGeometricObject.from_charted(
+       plane,
+       EllipsoidSurface(FloatPoint(0.0, 0.0), ((2.0, 0.0), (0.0, 1.0))),
+   )
+   visible_arc = ellipse.visible_from_point(FloatPoint(0.0, 3.0))
+
+   print(FloatPoint(0.0, 1.0) in top_half)
+   print(FloatPoint(0.0, -1.0) in top_half)
+   print(FloatPoint(1.2, 0.8) in visible_arc)
+   print(FloatPoint(0.0, -1.0) in visible_arc)
+
+This is useful when you need:
+
+- the illuminated or front-facing part of a sphere, ball, or ellipsoid;
+- the observer-facing arc of a smooth convex boundary;
+- a new object with a local cone model, not just a rendered subset.
+
+.. image:: _static/user_guide/visibility_workflows.png
+   :alt: Visible parts from a direction and from an observer point
+   :align: center
+   :width: 95%
 
 Projecting Objects and Building Smooth Images
 ---------------------------------------------
