@@ -62,6 +62,7 @@ Main pages:
 
 - `doc/index.rst`
 - `doc/overview.rst`
+- `doc/user-guide.rst`
 - `doc/intervals.rst`
 - `doc/circle.rst`
 - `doc/zoo.rst`

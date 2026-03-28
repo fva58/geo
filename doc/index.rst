@@ -9,6 +9,7 @@ layer of differential-geometric abstractions.
    :caption: Contents
 
    overview
+   user-guide
    intervals
    circle
    zoo
