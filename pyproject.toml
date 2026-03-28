@@ -36,3 +36,8 @@ classifiers = [
 [project.urls]
 Homepage = "https://github.com/fva/geo"
 Repository = "https://github.com/fva/geo"
+
+[project.optional-dependencies]
+docs = [
+  "sphinx>=7,<9",
+]

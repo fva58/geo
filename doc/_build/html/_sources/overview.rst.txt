@@ -1,8 +1,5 @@
-geo
-===
-
-``geo`` is an early-stage geometry package built around immutable interval
-sets and a small differential-geometric modeling layer.
+Overview
+========
 
 Current model
 -------------
@@ -13,60 +10,39 @@ This has two direct consequences:
 
 - interval and set operations work on the discrete lattice of representable
   floating-point values;
-- when a set operation removes a boundary point but still returns closed
+- when an operation removes a boundary point but still returns closed
   intervals, the implementation uses ``math.nextafter`` to move to the nearest
   representable float.
 
-Main types
-----------
+Main layers
+-----------
 
-Real line:
+Real line
+~~~~~~~~~
 
 - ``FloatInterval``: one closed interval of ``float`` values;
 - ``FloatSet``: normalized union of disjoint ``FloatInterval`` objects.
 
-Circle:
+Circle
+~~~~~~
 
 - ``FloatAngle``: angle normalized to ``[0, 2π)``;
 - ``FloatCirclePoint``: point on the unit circle represented by an angle;
 - ``FloatCircleInterval``: connected arc on the circle;
 - ``FloatCircleSet``: set of circle points built on top of ``FloatSet``.
 
-Local differential-geometric layer:
+Euclidean and local differential-geometric layer
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - ``FloatPoint`` and ``FloatVector``: Euclidean coordinates in ``R^n``;
 - ``EuclideanNeighborhood``: rectangular coordinate neighborhood;
-- ``Map``, ``Diffeomorphism``, ``Chart``: structural protocols;
+- ``Map``, ``InvertibleMap``, ``Diffeomorphism``, ``Chart``: structural
+  protocols;
 - ``ManifoldChart``, ``ChartTransition``, ``Atlas``: local coordinates on a
   manifold;
 - ``EuclideanCone``, ``RadialCone``, ``SphericalCone``: cone models in
   coordinates;
 - ``ChartedGeometricObject``: geometric object described by local cone models.
-
-For arcs crossing zero, the internal representation is split into two linear
-intervals: one before zero and one after zero.
-
-Documentation
--------------
-
-Detailed documentation now lives in the Sphinx project under `doc/`.
-
-Main pages:
-
-- `doc/index.rst`
-- `doc/overview.rst`
-- `doc/intervals.rst`
-- `doc/circle.rst`
-- `doc/geometry.rst`
-- `doc/api.rst`
-
-Typical commands:
-
-.. code-block:: sh
-
-   pip install -e ".[docs]"
-   make -C doc html
-   make -C doc doctest
 
 Status
 ------
