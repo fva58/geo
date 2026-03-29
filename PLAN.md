@@ -2,201 +2,191 @@
 
 ## Current State
 
-The package has a partially working `float`-based core for sets on the real
-line and an unfinished module for circular geometry.
+The package is no longer in the state described by the older planning notes.
+The repository currently contains:
 
-For the current stage of development, the model of real numbers is fixed as
-`float`. The package should be stabilized in that form before any attempt to
-generalize scalar backends.
+- a working `float`-based interval and set core;
+- working circle geometry modules;
+- Euclidean, manifold, geometric, and Riemannian layers;
+- a non-trivial public API in `geo/__init__.py`;
+- passing tests under `unittest`.
 
-### What already works
+At review time, the following checks passed:
 
-- `geo.floatset` contains a usable immutable representation of intervals and
-  normalized unions of intervals.
-- `tests/test_floatset.py` covers the current behavior of `FloatInterval` and
-  `FloatSet`.
-- `python -m unittest discover -s tests` passes.
+- `python -m unittest discover -s tests`
+- `python -m py_compile geo/*.py`
 
-### What is blocking further development
+The main problem is no longer "the package does not import". The main problem
+is that some higher-level abstractions still overclaim relative to the
+invariants actually enforced by the code.
 
-- `geo.floatcircle` does not compile and cannot be treated as a stable base.
-- `geo.real` imports a name that does not exist.
-- `FloatSet` input normalization does not correctly distinguish interval pairs
-  from sequences of points.
-- `FloatInterval.difference()` and `FloatInterval.complement()` are not
-  mathematically consistent with set difference on the real line.
-- Public package metadata and documentation are still minimal.
+## Planning Principles
 
-## Mathematical Decisions To Fix First
+1. Keep the scalar model fixed as Python `float` for now.
+2. Stabilize the interval/set foundation before extending higher geometry.
+3. Do not broaden the Riemannian layer until its invariants are real.
+4. Keep documentation synchronized with the actual repository state.
 
-Before adding new geometry, the package needs an explicit contract.
+## Main Risks
 
-### Decision 1: domain model
+### Risk 1: foundational set semantics are underspecified
 
-The package currently models subsets of machine `float` values.
+The package claims to work on the discrete lattice of representable `float`
+values, but adjacency and normalization semantics still need a sharper
+contract.
 
-This choice affects the correctness of `difference`, `complement`, and every
-operation that relies on `math.nextafter`. The implementation and the
-documentation should say this explicitly.
+### Risk 2: public validation is too permissive
 
-### Decision 2: boundary semantics
+Some constructors accept overly broad iterable inputs. That creates ambiguous
+parsing rules and unsafe failure modes.
 
-Choose one of the following:
+### Risk 3: local geometric composition is not chart-safe
 
-1. Keep only closed intervals.
-2. Introduce open and half-open boundaries.
+Set-theoretic operations on geometric objects currently assume compatible local
+coordinates without enforcing the required chart transition logic.
 
-Even in the `float` model, endpoint semantics must be written clearly, because
-set difference and complement depend on whether neighboring representable values
-are included or excluded.
+### Risk 4: the metric layer promises more than it guarantees
 
-### Decision 3: circle point model
+The current "Riemannian" naming is stronger than the runtime invariants around
+metric tensors and tangent-space semantics.
 
-Choose the canonical representation of a point on `S^1`:
+## Release Roadmap
 
-1. Angle in `[0, 2pi)`.
-2. Cartesian pair `(x, y)` on the unit circle.
+## v0.0.2
 
-The alternative representation can still be supported by conversion methods,
-but one must be primary.
+Goal: harden the `float` core and clean up the public contract of the package
+foundation.
 
-## Development Roadmap
+### Scope
 
-### Phase 1: stabilize the real-line `float` core
+- interval/set algebra;
+- public input validation;
+- circle behavior that depends on interval normalization;
+- state and contract documentation.
 
-Goal: make `geo.floatset` mathematically and programmatically consistent under
-the explicit assumption that real numbers are represented by Python `float`.
+### Tasks
 
-Tasks:
+- Define the exact adjacency rule for intervals in the representable-float
+  model.
+- Make `FloatInterval.union()` match that rule.
+- Make `FloatSet.merge()` and normalization use the same rule.
+- Add tests for intervals separated by exactly one `math.nextafter` step.
+- Add circle-set tests that rely on the same boundary semantics.
+- Replace recursive "accept almost any iterable" parsing in `FloatSet` with
+  explicit supported forms.
+- Ensure unsupported inputs fail with `TypeError` or `ValueError`, never with
+  recursion-based crashes.
+- Add negative tests for strings, malformed nested iterables, and ambiguous
+  interval-like values.
+- Update `CURRENT_STATE.md` to reflect the actual repository state.
+- Document the float-based model and its endpoint compromises precisely.
 
-- Fix `FloatInterval.complement()` runtime errors.
-- Fix `geo.real` imports and exported aliases.
-- Redesign `FloatSet` input parsing so `(a, b)` means an interval when intended.
-- Revisit `difference` and `complement` semantics for the `float` model.
-- Document the role of `math.nextafter` in endpoint handling.
-- Add tests for:
-  - complements,
-  - tuples as intervals,
-  - infinities,
-  - point intervals,
-  - exact endpoint behavior.
+### Done When
 
-Done when:
+- interval/set behavior matches a written contract;
+- invalid public inputs fail predictably;
+- circle operations remain consistent with the same core semantics;
+- project status documents no longer contradict the code.
 
-- `geo.floatset` and `geo.real` import cleanly.
-- Behavior matches the written specification.
-- Tests cover both normal cases and boundary cases.
+## v0.0.3
 
-### Phase 2: rewrite circular geometry on top of the stabilized core
+Goal: make higher geometry stricter before adding more features.
 
-Goal: replace the current draft in `geo.floatcircle` with a coherent design.
+### Scope
 
-Recommended approach:
+- local chart composition;
+- set-theoretic operations on geometric objects;
+- metric validation and naming discipline.
 
-- Represent a circle interval as an oriented arc.
-- Convert wrapped arcs to one or two linear intervals on `[0, 2pi)`.
-- Reuse the real-line set operations internally.
-- Normalize results back into a circular representation.
+### Tasks
 
-Tasks:
+- Define what it means for two local cone models to be compatible.
+- Refuse composition of local models when chart compatibility cannot be
+  established.
+- Introduce chart-transition-based transport before combining local models from
+  different charts.
+- Add tests where equal objects are represented through different charts.
+- Add tests for boundary local models after union and intersection.
+- Decide whether `ChartedRiemannianSpace` is truly Riemannian or intentionally
+  weaker.
+- If the layer is meant to stay Riemannian, validate positive-definite metric
+  tensors.
+- If weaker structures are intended, rename classes or documentation so the
+  API does not overclaim.
+- Add tests for degenerate and indefinite metric tensors.
 
-- Rewrite `FloatAngle` as a small, well-defined primitive.
-- Define `FloatCirclePoint` consistently with the chosen mathematical model.
-- Reimplement `FloatCircleInterval`.
-- Reimplement `FloatCircleSet`.
-- Add tests for:
-  - normalization modulo `2pi`,
-  - full circle,
-  - single-point arcs,
-  - arcs crossing zero,
-  - set operations on circular intervals.
+### Done When
 
-Done when:
+- geometric-object composition is chart-aware or explicitly rejected;
+- metric semantics are aligned with the names used in the API;
+- regression tests cover the current architectural failure modes.
 
-- `python -m py_compile geo/*.py` passes.
-- The circular API has a documented invariant set.
-- Circle tests live in `tests/` and pass under `unittest`.
+## Later
 
-### Phase 3: define and clean the public API
+Goal: expand only after the package contract is stable.
 
-Goal: make the package usable as a library rather than a code sketch.
+### Scope
 
-Tasks:
+- scope control;
+- product positioning;
+- engineering automation.
 
-- Fill `geo/__init__.py` with the supported public exports.
-- Add module-level documentation and examples.
-- Write a real `README.rst`.
-- Add package metadata in `pyproject.toml`:
-  - `requires-python`,
-  - classifiers,
-  - keywords,
-  - project URLs.
-- Decide on versioning and compatibility policy.
+### Tasks
 
-Done when:
+- Identify which modules are stable and which are experimental.
+- Mark experimental layers clearly in documentation.
+- Avoid extending visibility, projection, and mesh features until the interval
+  and chart-composition foundations are harder.
+- Add stronger engineering automation around linting, tests, and release
+  verification.
+- Re-evaluate whether the package should remain focused on interval/set
+  geometry with a thin local-geometry layer or continue toward a broader
+  manifold/Riemannian toolkit.
 
-- A user can understand the package from the README alone.
-- Import paths are intentional and documented.
-- The package can be built and installed with a meaningful metadata set.
+### Done When
 
-### Phase 4: raise engineering quality
-
-Goal: make future mathematical work cheaper and safer.
-
-Tasks:
-
-- Move all ad hoc scripts into `tests/` or example files.
-- Add linting to the regular workflow.
-- Add coverage checks for the core modules.
-- Consider CI for build, import, lint, and tests.
-
-Done when:
-
-- Every supported module is tested.
-- Regressions are caught automatically.
-- There is no gap between the documented API and tested API.
-
-### Phase 5: extend toward geometry in Riemannian spaces
-
-Goal: build higher-level geometry only after the foundation is stable.
-
-Suggested order:
-
-1. Euclidean points and vectors.
-2. Local charts and coordinate maps.
-3. Geometric subsets in local coordinates.
-4. Riemannian structures and operations.
-
-This phase should start only after phases 1 to 3 are complete.
+- the package has an explicit stability story;
+- new features are added only on top of tested invariants;
+- scope growth follows a clear product direction instead of opportunistic
+  expansion.
 
 ## Immediate Priority Order
 
-1. Fix the mathematical contract for intervals and sets in the `float` model.
-2. Repair `geo.floatset` and simplify `geo.real` to match that contract.
-3. Rewrite `geo.floatcircle` instead of patching the current draft.
-4. Expand tests before adding new geometry.
-5. Finalize packaging and public documentation.
+1. Stabilize the interval/set contract in the explicit `float` model.
+2. Tighten validation and eliminate unsafe parsing behavior.
+3. Align circle behavior with the same core semantics.
+4. Fix or constrain chart-based composition of geometric objects.
+5. Bring the metric layer and its naming into agreement.
+6. Keep planning and status documents synchronized with reality.
 
 ## Short Execution Plan
 
 ### Iteration 1
 
-- Fix imports and runtime errors.
-- Simplify `geo.real` for the explicit `float` model.
-- Document endpoint semantics.
+- Finalize the written interval adjacency contract.
+- Fix `FloatInterval`/`FloatSet` normalization behavior.
+- Add boundary and regression tests for one-step `nextafter` gaps.
 
 ### Iteration 2
 
-- Correct tuple parsing and real-line semantics.
-- Write missing tests for real-line operations.
+- Tighten `FloatSet` input parsing and validation.
+- Add negative tests for unsupported public inputs.
+- Refresh `CURRENT_STATE.md` and related status notes.
 
 ### Iteration 3
 
-- Replace `geo.floatcircle` with a minimal correct implementation.
-- Add circle tests in `tests/`.
+- Define chart compatibility rules for local models.
+- Fix or restrict geometric-object boolean composition.
+- Add regression tests for mixed-chart scenarios.
 
 ### Iteration 4
 
-- Publish a coherent public API.
-- Complete README and package metadata.
-- Prepare the first meaningful pre-release version.
+- Decide the intended semantics of the metric layer.
+- Enforce positive-definite metrics or weaken the terminology.
+- Add tests for degenerate and indefinite metric tensors.
+
+### Iteration 5
+
+- Reassess which modules should be documented as stable.
+- Prepare the next pre-release only after the above invariants are covered by
+  tests.

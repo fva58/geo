@@ -1,11 +1,16 @@
 # Current State Snapshot
 
-Date: 2026-03-28
+Date: 2026-03-29
 
 ## Repository State
 
-- Working tree is clean except for newly added planning documents.
-- `PLAN.md` exists and contains the active development roadmap.
+- The repository contains a working `float`-based interval/set core.
+- `geo.floatcircle` is present and importable.
+- `geo/__init__.py` exposes a non-trivial public API.
+- The repository also contains Euclidean, manifold, geometric, and
+  Riemannian-oriented layers.
+- The working tree is not clean: there are existing documentation-related
+  changes in `doc/` and generated images.
 
 ## Verification Snapshot
 
@@ -20,7 +25,7 @@ python -m unittest discover -s tests
 Result:
 
 - Passed
-- 25 tests
+- 112 tests
 
 ### Bytecode compilation
 
@@ -32,38 +37,48 @@ python -m py_compile geo/*.py
 
 Result:
 
-- Failed in `geo/floatcircle.py`
-- Syntax error at line 289
+- Passed
 
 ## Package Status
 
 ### Stable or partially stable
 
-- `geo.floatset` works well enough for currently covered behavior.
-- `tests/test_floatset.py` is the only real automated test suite.
-- `python -m build --no-isolation` was previously able to build package
-  artifacts, but this does not prove runtime correctness.
+- `geo.floatset` is usable and covered by tests, but its adjacency and
+  normalization semantics still need a sharper written contract.
+- `geo.floatcircle` is importable and covered by tests.
+- `geo.euclidean`, `geo.manifold`, and parts of `geo.geometric` are implemented
+  and exercised by the current test suite.
+- The package metadata and README are now populated.
 
-### Broken or incomplete
+### Risky or still underspecified
 
-- `geo.floatcircle` is not importable due to syntax errors.
-- `geo.real` is not a reliable module in its current form.
-- `README.rst` is empty.
-- `geo/__init__.py` is empty.
+- `FloatSet` input parsing is still too permissive and can fail unsafely on
+  unsupported iterables.
+- The interval/set core still needs a precise contract for adjacency in the
+  representable-float model.
+- Boolean operations on higher-level geometric objects are not yet strict
+  enough about chart compatibility.
+- The current "Riemannian" layer does not yet enforce invariants strong enough
+  to justify the terminology unconditionally.
 
 ## Active Architectural Decision
 
-For the next development stage, the package assumes:
+For the current development stage, the package assumes:
 
-- the model of real numbers is `float`,
-- interval and set operations may use `math` and `math.nextafter`
-  directly,
-- `geo.real` is treated as a compatibility and naming module, not as a
-  general scalar abstraction layer.
+- the scalar model is Python `float`;
+- interval and set operations are defined on representable floating-point
+  values;
+- endpoint adjustments may use `math.nextafter`;
+- broadening the scalar model is lower priority than stabilizing the current
+  `float` contract;
+- higher-level geometry should be constrained by the guarantees of the core,
+  not the other way around.
 
 ## Immediate Focus
 
-1. Stabilize `geo.floatset` under the explicit `float` model.
-2. Repair or simplify `geo.real` so it matches that decision.
-3. Rewrite `geo.floatcircle` on top of the stabilized `float` core.
-4. Expand tests before extending the mathematical scope.
+1. Stabilize `FloatInterval` and `FloatSet` semantics in the explicit `float`
+   model.
+2. Tighten public validation and predictable failure modes.
+3. Align `FloatCircle*` behavior with the same interval/set contract.
+4. Fix or restrict chart-based composition of geometric objects.
+5. Clarify or harden the metric layer before extending the Riemannian API.

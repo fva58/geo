@@ -17,6 +17,11 @@ This has two direct consequences:
   intervals, the implementation uses ``math.nextafter`` to move to the nearest
   representable float.
 
+Normalization follows the same model: two intervals are merged not only when
+they overlap, but also when there is no representable ``float`` between them.
+In particular, ``[a, b]`` and ``[nextafter(b, +inf), c]`` normalize to one
+closed interval.
+
 Main types
 ----------
 
@@ -24,6 +29,14 @@ Real line:
 
 - ``FloatInterval``: one closed interval of ``float`` values;
 - ``FloatSet``: normalized union of disjoint ``FloatInterval`` objects.
+
+``FloatSet`` constructor inputs are intentionally explicit:
+
+- a scalar means one point;
+- ``FloatInterval`` means one interval;
+- a single numeric pair ``(left, right)`` means one interval;
+- sequences are flattened only when they contain supported elements;
+- unsupported values raise ``TypeError`` instead of being recursively guessed.
 
 Circle:
 

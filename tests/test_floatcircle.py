@@ -107,6 +107,20 @@ class TestFloatCircleSet(unittest.TestCase):
         self.assertIn(math.pi / 2, intersection)
         self.assertNotIn(0.0, intersection)
 
+    def test_union_merges_adjacent_representable_arcs(self):
+        """Circle-set unions should merge arcs with no float-angle gap."""
+        boundary = 1.0
+        adjacent = math.nextafter(boundary, math.inf)
+
+        union = FloatCircleSet.from_single_interval(0.0, boundary).union(
+            FloatCircleSet.from_single_interval(adjacent, 2.0)
+        )
+
+        self.assertEqual(
+            union,
+            FloatCircleSet.from_single_interval(0.0, 2.0),
+        )
+
     def test_difference_and_complement(self):
         """Difference and complement should stay inside circle space."""
         left = FloatCircleSet.from_single_interval(0.0, math.pi)

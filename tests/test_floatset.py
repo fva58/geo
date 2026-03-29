@@ -99,6 +99,17 @@ class TestFloatInterval(unittest.TestCase):
         self.assertEqual(empty.union(a), (a,))
         self.assertEqual(empty.union(empty), ())
 
+    def test_union_merges_adjacent_representable_intervals(self):
+        """Adjacent float-lattice intervals should merge."""
+        boundary = 1.0
+        adjacent = math.nextafter(boundary, math.inf)
+
+        union = FloatInterval(0.0, boundary).union(
+            FloatInterval(adjacent, 2.0)
+        )
+
+        self.assertEqual(union, (FloatInterval(0.0, 2.0),))
+
     def test_difference(self):
         """Test interval difference."""
         a = FloatInterval(0.0, 5.0)
@@ -223,6 +234,22 @@ class TestFloatSet(unittest.TestCase):
         self.assertEqual(len(fset), 2)
         self.assertFalse(fset.is_empty())
 
+    def test_single_pair_argument_means_interval(self):
+        """A single numeric pair should be parsed as one interval."""
+        fset = FloatSet((1.0, 2.0))
+        self.assertEqual(fset, FloatSet(FloatInterval(1.0, 2.0)))
+
+    def test_invalid_inputs_raise_type_error(self):
+        """Unsupported constructor inputs should fail predictably."""
+        with self.assertRaises(TypeError):
+            FloatSet("ab")
+
+        with self.assertRaises(TypeError):
+            FloatSet(["ab"])
+
+        with self.assertRaises(TypeError):
+            FloatSet(object())
+
     def test_empty_set(self):
         """Test empty set."""
         empty_set = FloatSet()
@@ -251,6 +278,18 @@ class TestFloatSet(unittest.TestCase):
         ]
         fset = FloatSet(intervals)
         self.assertEqual(len(fset), 3)
+
+    def test_normalization_merges_adjacent_representable_intervals(self):
+        """Normalization should merge intervals with no float between them."""
+        boundary = 1.0
+        adjacent = math.nextafter(boundary, math.inf)
+
+        fset = FloatSet(
+            FloatInterval(0.0, boundary),
+            FloatInterval(adjacent, 2.0),
+        )
+
+        self.assertEqual(fset, FloatSet(FloatInterval(0.0, 2.0)))
 
     def test_contains(self):
         """Test point containment in set."""
@@ -405,11 +444,12 @@ class TestEdgeCases(unittest.TestCase):
 
     def test_floating_point_precision(self):
         """Test handling of floating point precision."""
-        # Use nextafter to create intervals that are truly disjoint
+        # Leave one representable float between the intervals.
         a = FloatInterval(0.0, 1.0)
-        b = FloatInterval(math.nextafter(1.0, math.inf), 2.0)
+        adjacent = math.nextafter(1.0, math.inf)
+        b = FloatInterval(math.nextafter(adjacent, math.inf), 2.0)
 
-        # Should be considered disjoint (b starts just after 1.0)
+        # These are disjoint in the explicit float-lattice model.
         union = a.union(b)
         self.assertEqual(len(union), 2)
 

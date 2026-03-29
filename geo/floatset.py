@@ -8,10 +8,35 @@ intervals.
 
 # pylint: disable=multiple-statements
 
-from typing import Tuple, Any, Sequence, List
+from collections.abc import Sequence
+from typing import Tuple, Any, List
 import math
 
 from .utils import ValidTuple
+
+
+def _previous_float(value: float) -> float:
+    """Return the previous representable float."""
+    return math.nextafter(value, -math.inf)
+
+
+def _intervals_are_separated(
+    left: "FloatInterval",
+    right: "FloatInterval",
+) -> bool:
+    """Return whether two ordered intervals are separated on the float lattice.
+
+    In the explicit float model, two intervals are still considered adjacent
+    when the first ends at the immediate predecessor of the second start.
+    Their union can then still be represented by one closed interval without
+    introducing extra representable values.
+    """
+    return left.right < _previous_float(right.left)
+
+
+def _is_float_scalar(value: object) -> bool:
+    """Return whether a value should be treated as one float point."""
+    return isinstance(value, (float, int))
 
 class FloatInterval ( tuple ) :
     """Interval of real numbers.
@@ -176,14 +201,12 @@ class FloatInterval ( tuple ) :
         if other.is_empty():
             return (self,)
 
-        # Check if intervals overlap or touch
-        # Use nextafter to handle floating point precision
-        # Intervals are disjoint if right of one is less than left of the other
-        # Using <= with nextafter to handle exact comparisons
-        if (self.right <= math.nextafter(other.left, -math.inf) or
-            other.right <= math.nextafter(self.left, -math.inf)):
+        if (self.left <= other.left and
+                _intervals_are_separated(self, other)):
+            return (self, other)
+        if (other.left < self.left and
+                _intervals_are_separated(other, self)):
             # Disjoint intervals
-            if self.left < other.left: return (self, other)
             return (other, self)
 
         # Overlapping or touching intervals
@@ -339,13 +362,56 @@ class FloatSet ( tuple ) : # Tuple[Tuple[float,float],...]
             return "∅"
         return " ∪ ".join(str(iv) for iv in self)
 
-    @staticmethod
-    def _translate ( args ) :
-        for a in args :
-            if isinstance ( a , FloatInterval ) : yield tuple(a)
-            elif isinstance ( a , float ) : yield (a,a)
-            elif isinstance ( a , int ) : yield (float(a),float(a))
-            else : yield from FloatSet._translate ( a )
+    @classmethod
+    def _is_interval_pair(cls, value: object) -> bool:
+        """Return whether a sequence should be treated as one interval."""
+        return (
+            isinstance(value, Sequence) and
+            not isinstance(value, (str, bytes, FloatInterval, FloatSet)) and
+            len(value) == 2 and
+            all(_is_float_scalar(item) for item in value)
+        )
+
+    @classmethod
+    def _translate_value(
+        cls,
+        value: Any,
+        seen: set[int],
+    ) -> Tuple[Tuple[float, float], ...]:
+        """Translate one supported value into interval tuples."""
+        if isinstance(value, FloatInterval):
+            return (tuple(value),)
+        if isinstance(value, cls):
+            return tuple(value)
+        if isinstance(value, ValidTuple):
+            return tuple(value)
+        if _is_float_scalar(value):
+            point = float(value)
+            return ((point, point),)
+        if cls._is_interval_pair(value):
+            return ((float(value[0]), float(value[1])),)
+        if isinstance(value, Sequence) and not isinstance(value, (str, bytes)):
+            marker = id(value)
+            if marker in seen:
+                raise TypeError("Recursive containers are not supported")
+            seen.add(marker)
+            try:
+                translated = []
+                for item in value:
+                    translated.extend(cls._translate_value(item, seen))
+                return tuple(translated)
+            finally:
+                seen.remove(marker)
+        raise TypeError(f"Unsupported FloatSet argument: {value!r}")
+
+    @classmethod
+    def _translate(cls, args: Sequence[Any]) -> Tuple[Tuple[float, float], ...]:
+        """Translate constructor arguments into interval tuples."""
+        translated = []
+        seen: set[int] = set()
+        for value in args:
+            translated.extend(cls._translate_value(value, seen))
+        return tuple(translated)
 
     @staticmethod
     def _normalize ( intervals: Sequence[Tuple[float,float]]
@@ -377,8 +443,8 @@ class FloatSet ( tuple ) : # Tuple[Tuple[float,float],...]
         current = intervals[0]
 
         for interval in intervals[1:] :
-            # Check if intervals overlap or touch
-            if current[1] > math.nextafter ( interval[0] , -math.inf ) :
+            # Merge intervals that overlap or are adjacent on the float lattice.
+            if current[1] >= _previous_float(interval[0]) :
                 # Merge intervals
                 current = ( current[0] , max(current[1],interval[1]) )
             else:

@@ -14,6 +14,10 @@ This has two direct consequences:
   intervals, the implementation uses ``math.nextafter`` to move to the nearest
   representable float.
 
+Normalization uses the same explicit float-lattice semantics. Two intervals
+are merged when they overlap or when they are adjacent with no representable
+``float`` between them.
+
 Main layers
 -----------
 
@@ -22,6 +26,15 @@ Real line
 
 - ``FloatInterval``: one closed interval of ``float`` values;
 - ``FloatSet``: normalized union of disjoint ``FloatInterval`` objects.
+
+The ``FloatSet`` constructor accepts only explicit supported forms:
+
+- a scalar for a point;
+- a ``FloatInterval`` for one interval;
+- a single numeric pair ``(left, right)`` for one interval;
+- sequences built from supported values.
+
+Unsupported inputs raise ``TypeError``.
 
 Circle
 ~~~~~~
