@@ -1,221 +1,198 @@
-# geo Development Plan
+# geo Execution Plan
 
 ## Product Goal
 
-The project target is a geometry tool that can:
+`geo` is being built as a geometry tool that can:
 
-- define spaces such as Euclidean spaces, spheres, tori, and related models;
+- define spaces such as Euclidean spaces, spheres, and tori;
 - build objects inside those spaces through constructors and set-theoretic
   operations;
-- answer geometric questions such as containment and distance;
-- transform or embed spaces and objects into 2D and 3D for visualization.
+- answer questions such as containment, local geometry, and distance;
+- transform or embed spaces and objects into 2D and 3D for visualization;
+- stay usable both from explicit Python code and from interactive notebooks.
 
-The intended architecture is therefore:
+The working architecture remains:
 
 1. `Space`
 2. `Object`
 3. `Transform`
 4. `Visualize`
 
-## Current State
+## Snapshot
 
-The package is no longer in the state described by the older planning notes.
-The repository currently contains:
+Current verified snapshot:
 
-- a working `float`-based interval and set core;
-- working circle geometry modules;
-- Euclidean, manifold, geometric, and metric-space layers;
-- early standard spaces with explicit metric semantics;
-- a non-trivial public API in `geo/__init__.py`;
-- passing tests under `unittest`.
+- `python -m unittest discover -s tests` passes with 158 tests;
+- `python -m py_compile geo/*.py examples/*.py` passes.
 
-At review time, the following checks passed:
+Current headline state:
 
-- `python -m unittest discover -s tests`
-- `python -m py_compile geo/*.py`
-
-The main problem is no longer "the package does not import". The main problem
-is that some higher-level abstractions still overclaim relative to the
-invariants actually enforced by the code.
+- `FloatSet` semantics and validation were tightened;
+- chart-aware local-model composition was improved;
+- the primary ambient-space API is now metric-first;
+- standard spaces include sphere and torus support;
+- objects can be sampled, meshed, plotted, and exported;
+- a notebook-friendly helper layer now exists for interactive workflows.
 
 ## Planning Principles
 
 1. Keep the scalar model fixed as Python `float` for now.
-2. Stabilize the interval/set foundation before extending higher geometry.
-3. Keep the `Space` layer distance-first and visualization-aware.
-4. Keep documentation synchronized with the actual repository state.
+2. Keep `Space` distance-first and visualization-aware.
+3. Treat notebook helpers as convenience wrappers over explicit spaces.
+4. Prefer one public vocabulary (`Metric*`) even when compatibility aliases
+   remain available.
+5. Keep status and stability documents synchronized with the code.
 
-## Main Risks
+## Completed Recently
 
-### Risk 1: foundational set semantics are underspecified
+These items are no longer active plan work:
 
-The package claims to work on the discrete lattice of representable `float`
-values, but adjacency and normalization semantics still need a sharper
-contract.
+- `FloatInterval` / `FloatSet` adjacency semantics were aligned with the
+  documented representable-float model.
+- `FloatSet` input validation was tightened and recursion-based failures were
+  removed.
+- chart-transition-aware local-model transport was added before combining
+  metric objects across charts.
+- the primary public ambient-space contract moved from `Riemannian*` naming to
+  `Metric*` naming.
+- `Space`, `Transform`, sphere/torus object families, mesh/export helpers, and
+  notebook helpers were added.
+- status and critique documents were refreshed to match the current tree.
 
-### Risk 2: public validation is too permissive
+## Active Risks
 
-Some constructors accept overly broad iterable inputs. That creates ambiguous
-parsing rules and unsafe failure modes.
+### Risk 1: stability boundaries are still too soft
 
-### Risk 3: local geometric composition is not chart-safe
+The package now spans core algebra, metric spaces, native non-Euclidean
+objects, transforms, meshing, plotting, exporting, and notebook helpers.
+Those layers do not all have the same maturity.
 
-Set-theoretic operations on geometric objects currently assume compatible local
-coordinates without enforcing the required chart transition logic.
+### Risk 2: compatibility aliases duplicate the mental model
 
-### Risk 4: the project still needs a clearer `Space` abstraction boundary
+`Riemannian*` names still exist beside the newer `Metric*` vocabulary. That is
+useful for migration, but it keeps two conceptual APIs alive at once.
 
-The package already has metric spaces and objects, but it still needs a cleaner
-separation between:
+### Risk 3: interactive convenience can leak hidden state
 
-- intrinsic space semantics;
-- object operations inside a space;
-- transformations between spaces;
-- visualization embeddings into 2D and 3D.
+The notebook layer improves ergonomics, but global default-space state should
+not become an implicit dependency of the core model.
 
-## Release Roadmap
+### Risk 4: docs can drift behind feature work
+
+The package now moves quickly enough that `CURRENT_STATE.md`, `PLAN.md`,
+`CRITIQUE*`, and `doc/stability.rst` need deliberate upkeep.
+
+## Roadmap Table
+
+| Stage | Status | Purpose |
+| --- | --- | --- |
+| `v0.0.2` | active | Stabilize the public contract and document the supported subset |
+| `v0.0.3` | next | Grow higher geometry only where guarantees can be stated clearly |
+| `Later` | queued | Add stronger release discipline and a clearer pre-1.0 stability story |
 
 ## v0.0.2
 
-Goal: harden the `float` core and clean up the public contract of the package
-foundation.
+Goal: consolidate the current surface rather than add unrelated new geometry.
 
-### Scope
+### Deliverables
 
-- interval/set algebra;
-- public input validation;
-- circle behavior that depends on interval normalization;
-- state and contract documentation.
+1. A clear preferred public subset across README, stability docs, and API docs.
+2. Reduced dependence on legacy `Riemannian*` terminology in docs, notebooks,
+   and examples.
+3. A documented notebook workflow that is clearly positioned as convenience
+   sugar over explicit spaces.
 
-### Tasks
+### Remaining Tasks
 
-- Define the exact adjacency rule for intervals in the representable-float
-  model.
-- Make `FloatInterval.union()` match that rule.
-- Make `FloatSet.merge()` and normalization use the same rule.
-- Add tests for intervals separated by exactly one `math.nextafter` step.
-- Add circle-set tests that rely on the same boundary semantics.
-- Replace recursive "accept almost any iterable" parsing in `FloatSet` with
-  explicit supported forms.
-- Ensure unsupported inputs fail with `TypeError` or `ValueError`, never with
-  recursion-based crashes.
-- Add negative tests for strings, malformed nested iterables, and ambiguous
-  interval-like values.
-- Update `CURRENT_STATE.md` to reflect the actual repository state.
-- Document the float-based model and its endpoint compromises precisely.
+- Audit docs and notebooks for legacy `Riemannian*` terminology and replace it
+  where compatibility wording is not required.
+- Decide and document which modules are:
+  - preferred public API;
+  - implemented but evolving;
+  - compatibility-only.
+- Keep `CURRENT_STATE.md`, `PLAN.md`, `CRITIQUE*`, and `doc/stability.rst`
+  synchronized after each documentation or feature batch.
+- Add a few more end-to-end examples that mix explicit `Space` objects with
+  convenience helpers without hiding the core model.
 
-### Done When
+### Exit Criteria
 
-- interval/set behavior matches a written contract;
-- invalid public inputs fail predictably;
-- circle operations remain consistent with the same core semantics;
-- project status documents no longer contradict the code.
+- README, Sphinx docs, and notebooks use `Metric*` terminology by default.
+- The stable-versus-evolving split is explicit and consistent in docs.
+- The interactive layer is documented as thin convenience, not core semantics.
+- No active doc page still describes already-removed limitations.
 
 ## v0.0.3
 
-Goal: make higher geometry stricter before adding more features.
+Goal: grow higher geometry only where guarantees can be stated clearly.
 
-### Scope
+### Deliverables
 
-- local chart composition;
-- set-theoretic operations on geometric objects;
-- `Space` API discipline and naming cleanup.
+1. One or two additional object-family expansions with explicit guarantees.
+2. A clearer `Transform` story beyond pure visualization helpers.
+3. A clearer decision on whether plotting/export helpers are core API or
+   convenience API.
 
-### Tasks
+### Candidate Scope
 
-- Define what it means for two local cone models to be compatible.
-- Introduce chart-transition-based transport before combining local models from
-  different charts.
-- Add tests where equal objects are represented through different charts.
-- Add tests for boundary local models after union and intersection.
-- Consolidate `MetricSpace` and `ChartedMetricSpace` as the preferred public
-  API.
-- Introduce `Space` as the visualization-aware protocol for spaces with metric
-  and 2D/3D embeddings.
-- Add standard non-Euclidean spaces such as `SphereSpace` and `TorusSpace`.
-- Keep older "Riemannian" names in compatibility mode only where needed.
-- Move examples, docs, and tests to the metric-space and `Space` terminology.
+- Expand object families for supported spaces where local-model and meshing
+  guarantees can be tested and documented.
+- Clarify how `Transform` should grow beyond visualization helpers.
+- Decide which plotting/export helpers should be considered core API and which
+  should remain convenience-layer utilities.
+- Continue reducing reliance on compatibility aliases where migration cost is
+  low.
 
-### Done When
+### Proposed Concrete Targets
 
-- geometric-object composition is chart-aware;
-- metric semantics are aligned with the names used in the API;
-- regression tests cover the current architectural failure modes.
+- Choose one concrete geometry expansion, for example:
+  - more native sphere families; or
+  - more torus families; or
+  - explicit wrapped-object workflows across more spaces.
+- Add tests that state the guarantees for those new families:
+  - containment;
+  - local-model behavior at representative boundary points;
+  - sampling/mesh behavior;
+  - visualization/export compatibility where promised.
+- Write one focused documentation page or user-guide section for the chosen
+  expansion.
+- Define whether `Transform` remains point-map-only or grows into a larger
+  object-transport story.
+
+### Exit Criteria
+
+- New geometry layers land with explicit guarantees and tests.
+- `Transform` semantics are clearer than "point map used by examples".
+- The preferred public vocabulary is consistent across code and docs.
+- At least one new expansion is documented end to end, not only implemented.
 
 ## Later
 
-Goal: expand only after the package contract is stable.
+Goal: prepare the package for a stronger pre-1.0 stability story.
 
-### Scope
+### Deliverables
 
-- scope control;
-- product positioning;
-- engineering automation.
+1. Stronger release checks around docs, tests, and public API consistency.
+2. A documented stability promise for the preferred subset.
+3. A clearer scope policy for future growth.
 
 ### Tasks
 
-- Identify which modules are stable and which are experimental.
-- Mark experimental layers clearly in documentation.
-- Avoid extending visibility, projection, and mesh features until the interval
-  and chart-composition foundations are harder.
-- Add stronger engineering automation around linting, tests, and release
-  verification.
-- Re-evaluate whether the package should remain focused on interval/set
-  geometry with a thin local-geometry layer or continue toward a broader
-  manifold/metric-geometry toolkit.
+- Add stronger release checks around docs, tests, and public API consistency.
+- Define what counts as stable enough to mention in a pre-1.0 promise.
+- Decide how far the package should grow as a broad geometry tool versus a
+  tighter core with higher optional layers.
 
-### Done When
+### Exit Criteria
 
-- the package has an explicit stability story;
-- new features are added only on top of tested invariants;
-- scope growth follows a clear product direction instead of opportunistic
-  expansion.
+- Stability claims are backed by repeatable release checks.
+- Public scope growth is intentional rather than opportunistic.
+- Breaking-change expectations are clearer for the preferred subset.
 
 ## Immediate Priority Order
 
-1. Stabilize the interval/set contract in the explicit `float` model.
-2. Tighten validation and eliminate unsafe parsing behavior.
-3. Align circle behavior with the same core semantics.
-4. Fix or constrain chart-based composition of geometric objects.
-5. Build out the `Space` layer with standard spaces and visualization
-   transforms.
-6. Keep planning and status documents synchronized with reality.
-
-## Short Execution Plan
-
-### Iteration 1
-
-- Finalize the written interval adjacency contract.
-- Fix `FloatInterval`/`FloatSet` normalization behavior.
-- Add boundary and regression tests for one-step `nextafter` gaps.
-
-### Iteration 2
-
-- Tighten `FloatSet` input parsing and validation.
-- Add negative tests for unsupported public inputs.
-- Refresh `CURRENT_STATE.md` and related status notes.
-
-### Iteration 3
-
-- Define chart compatibility rules for local models.
-- Fix or restrict geometric-object boolean composition.
-- Add regression tests for mixed-chart scenarios.
-
-### Iteration 4
-
-- Consolidate `distance()` as the primary ambient-space contract.
-- Keep older terminology only as compatibility aliases.
-- Move public examples and docs to metric-space naming.
-
-### Iteration 5
-
-- Introduce standard visualizable spaces such as `SphereSpace` and
-  `TorusSpace`.
-- Define the minimal transform API from intrinsic space points into 2D and 3D.
-- Keep object operations separated from visualization embeddings.
-
-### Iteration 6
-
-- Reassess which modules should be documented as stable.
-- Prepare the next pre-release only after the above invariants are covered by
-  tests.
+1. Keep stability and status documents synchronized.
+2. Tighten the stable/experimental boundary.
+3. Continue migrating docs and examples toward `Metric*` terminology.
+4. Keep notebook helpers thin and explicit.
+5. Expand geometry only where guarantees stay understandable.

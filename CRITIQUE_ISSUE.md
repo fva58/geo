@@ -1,100 +1,95 @@
-# Stabilize Core Invariants Before Extending Higher Geometry Layers
+# Keep the Package Surface Aligned With Its Stability Guarantees
 
 ## Summary
 
-The package has a promising core idea around immutable interval/set objects on
-top of Python `float`, but the current implementation exposes higher-level
-geometry abstractions whose guarantees are weaker than the public API suggests.
+The package has moved well beyond the state described in the original critique.
+Core `FloatSet` semantics, validation, metric-space naming, and chart-aware
+local-model composition have all been improved.
 
-The main concern is not that the code is completely broken. Tests pass and the
-package imports. The concern is that some foundational invariants are either
-not enforced or are implemented in a way that only works on happy-path
-examples.
+The main concern is now different: the project has accumulated a broad public
+surface quickly, and its stable-versus-experimental boundary needs to stay
+explicit as that surface grows.
 
 ## Main Problems
 
-### 1. Chart-unsafe composition of local models
+### 1. Scope is growing faster than the stability story
 
-Boolean operations on `RiemannianGeometricObject` combine local cone models as
-if both operands already lived in the same coordinate chart. The current code
-checks only the dimension, not chart compatibility or the needed transition.
+The package now exposes:
 
-That can produce incorrect local geometry for objects that are equal as sets
-but represented through different charts.
+- float-based interval and circle algebra;
+- metric spaces and ambient-space objects;
+- `Space` embeddings into 2D and 3D;
+- native sphere and torus object families;
+- meshing, export adapters, and plotting helpers;
+- notebook-oriented convenience helpers.
 
-Relevant code:
-- `geo/riemannian.py:197`
-- `geo/riemannian.py:212`
-- `geo/riemannian.py:218`
+That is already a serious public API surface for a pre-1.0 geometry package.
+The code is much healthier than before, but docs and release notes need to
+keep telling users which parts are the safest to build on.
 
-### 2. "Riemannian" metrics are not enforced to be Riemannian
+Relevant files:
+- `README.rst`
+- `doc/stability.rst`
+- `geo/__init__.py`
 
-`ChartedRiemannianSpace` accepts symmetric degenerate tensors. As a result, the
-package can represent semimetrics while exposing a Riemannian API.
+### 2. Legacy compatibility names still duplicate the mental model
 
-Relevant code:
-- `geo/riemannian.py:41`
-- `geo/riemannian.py:52`
-- `geo/riemannian.py:149`
+The package now prefers `MetricSpace` and `MetricGeometricObject`, but
+`Riemannian*` aliases remain available. That is a reasonable migration tactic,
+yet it also leaves two vocabularies in circulation.
 
-### 3. Float-set normalization is weaker than the documented model
+Relevant files:
+- `geo/riemannian.py`
+- `geo/__init__.py`
+- `doc/api.rst`
 
-The README says the package works on the discrete lattice of representable
-floats, but adjacent intervals separated by one `nextafter` step are still
-kept disjoint. That makes the normalization logic weaker than the documented
-mathematical model.
+### 3. Notebook convenience uses global mutable default-space state
 
-Relevant code:
-- `README.rst:10`
-- `README.rst:14`
-- `geo/floatset.py:183`
-- `geo/floatset.py:381`
-- `geo/floatcircle.py:261`
+The new interactive layer is useful, but it introduces process-global ambient
+context. That is fine as a convenience feature, as long as it remains clearly
+documented as optional sugar rather than core semantics.
 
-### 4. Input validation fails unsafely in `FloatSet`
+Relevant files:
+- `geo/interactive.py`
+- `doc/user-guide.rst`
 
-Unsupported iterable inputs can recurse until `RecursionError` instead of
-raising a controlled `TypeError`.
+### 4. Status documents can drift again unless maintained deliberately
 
-Relevant code:
-- `geo/floatset.py:343`
-- `geo/floatset.py:348`
+The previous critique became stale because the code moved faster than the
+status notes. The same failure mode will repeat unless `CURRENT_STATE.md`,
+`PLAN.md`, and `doc/stability.rst` are treated as maintained artifacts.
 
-### 5. Repository state documents are stale
-
-`CURRENT_STATE.md` no longer matches the real state of the repository. That is
-small compared to the code issues, but it makes the engineering status harder
-to trust.
-
-Relevant code:
-- `CURRENT_STATE.md:22`
-- `CURRENT_STATE.md:35`
-- `CURRENT_STATE.md:49`
+Relevant files:
+- `CURRENT_STATE.md`
+- `PLAN.md`
+- `doc/stability.rst`
 
 ## Why This Matters
 
-The current package is strongest at the interval/set layer. The further it
-goes into manifold and Riemannian abstractions, the more important it becomes
-to enforce exact invariants instead of relying on documentation and intention.
+The project now has enough working capability that its next risk is not
+"nothing works". The risk is that users will not know which guarantees are
+hard, which are compatibility shims, and which layers are still evolving.
 
-If those invariants are not enforced, the package risks becoming broad before
-it becomes reliable.
+That matters more as soon as the package is used from notebooks, examples, or
+third-party code, where convenience APIs and experimental layers can easily
+look more stable than they really are.
 
 ## Suggested Direction
 
-1. Fix and specify the interval/set foundation first.
-2. Tighten validation and failure modes in public constructors.
-3. Make chart transitions explicit in local-model composition.
-4. Either enforce positive-definite metrics or soften the naming of the
-   current metric layer.
-5. Keep project-state documentation synchronized with the actual tree.
+1. Keep the stable subset explicit and current.
+2. Continue moving docs and examples toward metric-space terminology.
+3. Keep the interactive default-space layer thin and obviously optional.
+4. Add stronger release/documentation synchronization so status drift is caught
+   early.
+5. Expand the higher geometry surface only when the package can explain the
+   resulting guarantees clearly.
 
 ## Verification
 
-Local checks at review time:
+Local checks at update time:
 
-- `python -m unittest discover -s tests` passed with 112 tests
-- `python -m py_compile geo/*.py` passed
+- `python -m unittest discover -s tests` passed with 158 tests
+- `python -m py_compile geo/*.py examples/*.py` passed
 
-So this is not a "project does not work" issue. It is a "core invariants and
-scope discipline need tightening" issue.
+This is now a scope-and-clarity issue, not the earlier core-invariant failure
+issue.

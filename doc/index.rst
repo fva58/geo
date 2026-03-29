@@ -10,6 +10,7 @@ layer of differential-geometric abstractions.
 
    overview
    stability
+   roadmap
    user-guide
    intervals
    circle

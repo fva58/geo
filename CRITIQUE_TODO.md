@@ -1,80 +1,68 @@
 # Critique Follow-Up Checklist
 
-## v0.0.2
+## Already Resolved
 
-### Core Algebra
+- [x] Align `FloatInterval`/`FloatSet` adjacency semantics with the documented
+      representable-float model.
+- [x] Add regression tests for `math.nextafter`-adjacent intervals and related
+      circle behavior.
+- [x] Replace unsafe recursive `FloatSet` parsing with explicit public input
+      validation.
+- [x] Make unsupported `FloatSet` inputs fail with controlled `TypeError` or
+      `ValueError`.
+- [x] Introduce chart-transition-aware transport before combining local models
+      across charts.
+- [x] Reframe the primary ambient-space API around `MetricSpace` instead of
+      overclaiming strict Riemannian tensor semantics.
+- [x] Refresh stale repository-status documents from the early project state.
 
-- [ ] Define the exact interval adjacency semantics for the representable-float
-      model.
-- [ ] Update `FloatInterval.union()` to match that definition.
-- [ ] Update `FloatSet.merge()` and normalization so it uses the same rule.
-- [ ] Add tests for intervals separated by exactly one `math.nextafter` step.
-- [ ] Add tests for circle-set operations that depend on the same adjacency
-      semantics.
+## Near Term
 
-### Validation
+### Stability Discipline
 
-- [ ] Replace recursive "accept almost any iterable" parsing in `FloatSet`
-      with explicit supported input forms.
-- [ ] Make unsupported public inputs fail with `TypeError` or `ValueError`,
-      never `RecursionError`.
-- [ ] Add negative tests for strings, nested invalid iterables, and malformed
-      interval-like inputs.
+- [ ] Update `doc/stability.rst` so it matches the current feature set,
+      especially sphere/torus object families and notebook helpers.
+- [ ] Keep `CURRENT_STATE.md`, `PLAN.md`, and critique documents synchronized
+      after each feature batch.
+- [ ] Decide which modules are "preferred public API" versus "implemented but
+      still evolving".
 
-### Documentation
+### Naming Cleanup
 
-- [ ] Update `CURRENT_STATE.md` so it reflects the current repository state.
-- [ ] Keep test counts and import/build status synchronized with reality.
-- [ ] Document the exact mathematical compromises of the float-based model.
+- [ ] Reduce the use of legacy `Riemannian*` compatibility names in docs,
+      examples, and tests.
+- [ ] Decide whether some compatibility aliases should eventually move to a
+      deprecation path.
 
-### Regression Guard
+### Interactive Layer
 
-- [ ] Add tests reproducing the invalid-input recursion scenario.
-- [ ] Run `python -m unittest discover -s tests` after each fix batch.
+- [ ] Keep `geo.interactive` explicitly documented as a notebook convenience
+      layer, not as the core semantic model.
+- [ ] Add a few more notebook-oriented examples that mix `use_space()`,
+      `plot()`, and explicit `Space` objects without hiding too much state.
 
-## v0.0.3
+## Medium Term
 
-### Local Geometry
+### Product Surface
 
-- [ ] Define what it means for two local cone models to be compatible.
-- [ ] Refuse set-theoretic composition of local models when chart compatibility
-      cannot be established.
-- [ ] Introduce chart-transition-based transport before combining local models
-      from different charts.
-- [ ] Add tests where equal objects are represented through different charts.
-- [ ] Add tests that verify boundary local models after union/intersection.
+- [ ] Expand object families only where the package can explain the local-model
+      and meshing guarantees clearly.
+- [ ] Clarify how transforms should grow beyond visualization helpers into
+      richer space-to-space workflows.
+- [ ] Decide how far file export and plotting helpers should live inside core
+      versus convenience layers.
 
-### Metric Layer
+### Engineering Automation
 
-- [ ] Decide whether `ChartedRiemannianSpace` should enforce positive-definite
-      metrics or intentionally support weaker structures.
-- [ ] If the answer is "Riemannian", validate positive-definiteness.
-- [ ] If the answer is "weaker metric object", rename classes or documentation
-      so the API does not overclaim.
-- [ ] Add tests for rejecting degenerate and indefinite metric tensors.
-
-### Regression Guard
-
-- [ ] Add tests reproducing the chart-composition bug scenario.
-- [ ] Add tests reproducing the degenerate-metric acceptance scenario.
-- [ ] Run `python -m unittest discover -s tests` after each fix batch.
+- [ ] Add stronger release checks for docs and public API synchronization.
+- [ ] Add a lightweight policy for updating test counts, examples, and status
+      docs when public features land.
 
 ## Later
 
-### Scope Control
+### Versioning and Stability
 
-- [ ] Identify which modules are considered stable today.
-- [ ] Mark experimental layers explicitly in docs if they are not yet stable.
-- [ ] Avoid extending visibility/projection/mesh features until the interval
-      and chart-composition foundations are harder.
-
-### Documentation
-
-- [ ] Document which guarantees are semantic conventions versus enforced
-      runtime invariants.
-
-### Product Direction
-
-- [ ] Re-evaluate whether the package should stay centered on interval/set
-      geometry with a small local-geometry layer, or continue toward a broader
-      manifold/Riemannian toolkit.
+- [ ] Formalize a stability promise for pre-1.0 releases.
+- [ ] Define what should count as a breaking change across the stable subset.
+- [ ] Reassess whether the package should keep growing as a broad geometry tool
+      or preserve a tighter core with optional higher layers.

@@ -103,9 +103,11 @@ Status
 
 The package is still under active development. The current focus is:
 
-1. stabilize the ``float``-based core;
-2. keep the public API coherent;
-3. extend the geometric model only after the interval foundation is stable.
+1. keep the stable subset explicit as the surface grows;
+2. keep the public API coherent under the preferred ``Metric*`` vocabulary;
+3. extend higher geometry only where guarantees can be stated clearly.
 
 For a practical split between the stable core and the still-experimental
 higher geometry layers, see :doc:`stability`.
+
+For the current public roadmap, see :doc:`roadmap`.

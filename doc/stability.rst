@@ -1,72 +1,91 @@
 Stability Guide
 ===============
 
-This page describes which parts of ``geo`` should currently be treated as
-stable enough for regular use and which parts should still be considered
-experimental.
+This page describes which parts of ``geo`` are currently the safest to build
+on and which parts should still be treated as evolving.
 
-Stable Core
------------
+Preferred Stable Subset
+-----------------------
 
-The current stable core is the float-based set layer and the small metric-space
-and space-visualization layers built on top of it.
-
-Preferred stable building blocks:
+The current preferred subset is:
 
 - ``FloatInterval`` and ``FloatSet``
 - ``FloatAngle``, ``FloatCircleInterval``, and ``FloatCircleSet``
 - ``FloatPoint`` and ``FloatVector``
 - ``MetricSpace`` and ``ChartedMetricSpace``
+- ``MetricGeometricObject``
 - ``Space`` for visualization-aware ambient spaces
 - ``Transform`` and ``PointTransform`` for reusable point maps
-- ``MetricGeometricObject``
 - ``RealLineSpace``, ``UnitCircleSpace``, and ``EuclideanPlaneSpace``
+- ``ObjectMesh`` export adapters and basic plotting helpers
 
-What "stable" means here:
+What "preferred stable" means here:
 
-- these names reflect the intended public terminology;
+- these names match the intended public terminology;
 - the explicit ``float`` model is documented;
-- boundary behavior is covered by regression tests;
-- unsupported constructor inputs are expected to fail predictably.
+- boundary and validation behavior are covered by tests;
+- these layers are central to the product direction.
 
-Experimental Layers
--------------------
+Implemented But Still Evolving
+------------------------------
 
-The higher local-geometry layer should still be treated as experimental.
+The package also contains working layers that should still be treated with more
+care:
 
-That currently includes:
-
-- cone-based local modeling beyond the simplest standard objects;
-- ``SphereSpace`` and ``TorusSpace`` as early standard spaces without object
-  families comparable to the Euclidean plane;
+- cone-based local modeling beyond the tested standard cases;
 - visibility operations;
 - projection workflows;
-- mesh generation as a geometric API guarantee;
-- richer manifold and differential-geometric composition beyond the tested
-  standard examples.
+- native non-Euclidean object families beyond the first sphere/torus set;
+- mesh generation as a long-term API guarantee rather than just a useful
+  workflow;
+- file-export and plotting convenience helpers as public surface;
+- notebook-oriented helpers in ``geo.interactive``.
 
-These features are implemented and tested on the current examples, but their
-API and guarantees may still shift as the package clarifies its longer-term
-scope.
+That includes current features such as:
+
+- ``SphereSpace`` and ``TorusSpace``;
+- ``SphereSpace.point_object()`` / ``SphereSpace.cap()``;
+- ``TorusSpace.point_object()`` / ``TorusSpace.patch()``;
+- object-level sampling and meshing across the broader metric-object zoo;
+- interactive current-space helpers like ``use_space()`` and ``plot()``.
+
+These layers are real and tested, but their long-term public guarantees are
+not yet as stable as the smaller core.
 
 Compatibility Names
 -------------------
 
-Some older names remain available for compatibility, but they are no longer the
-preferred terminology.
+Some older names remain available for compatibility, but they are no longer
+the preferred terminology.
 
 Examples:
 
-- ``RiemannianSpace`` is a compatibility alias over the newer metric-space
-  contract;
-- ``ChartedRiemannianSpace`` is a compatibility alias over
-  ``ChartedMetricSpace``;
-- ``RiemannianGeometricObject`` is a compatibility alias over
-  ``MetricGeometricObject``;
-- ``EuclideanRiemannianSpace`` is a compatibility alias over
-  ``EuclideanMetricSpace``.
+- ``RiemannianSpace`` over the newer metric-space contract;
+- ``ChartedRiemannianSpace`` over ``ChartedMetricSpace``;
+- ``RiemannianGeometricObject`` over ``MetricGeometricObject``;
+- ``EuclideanRiemannianSpace`` over ``EuclideanMetricSpace``.
 
 When writing new code, prefer the metric-space names.
+
+Notebook Helpers
+----------------
+
+The interactive layer in ``geo.interactive`` is intentionally a convenience
+layer.
+
+Use it when:
+
+- you are exploring from a notebook;
+- you want a default ambient space;
+- you want short helpers such as ``point()``, ``disk()``, ``cap()``, or
+  ``plot()``.
+
+Do not treat it as the semantic center of the package. The explicit model is
+still:
+
+1. create a space;
+2. create an object in that space;
+3. sample, mesh, transform, plot, or export it.
 
 Practical Guidance
 ------------------
@@ -77,10 +96,10 @@ If you want the safest current subset of the package, stay close to:
 2. ``FloatCircle*`` objects on the circle.
 3. ``RealLineSpace``, ``UnitCircleSpace``, and ``EuclideanPlaneSpace`` with
    ``distance()`` as the ambient-space contract.
-4. ``Space`` embeddings when you need deterministic 2D/3D coordinates for
-   visualization.
-5. Standard geometric constructors and set-theoretic operations already
-   covered by tests.
+4. ``Space`` embeddings when you need deterministic 2D/3D coordinates.
+5. Standard object constructors and set-theoretic operations already covered
+   by tests.
 
-If you move into visibility, projections, or more elaborate local-model
-composition, treat the API as useful but still evolving.
+If you move deeper into visibility, projections, native non-Euclidean object
+families, or notebook convenience state, treat the API as useful but still
+evolving.

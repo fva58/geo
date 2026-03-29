@@ -1,112 +1,98 @@
 # Project Review
 
+## Status
+
+This review was rewritten on 2026-03-29 after the recent `MetricSpace`,
+`Space`, meshing/export, and notebook-helper work.
+
+The earlier critique is no longer accurate as written. The following issues
+from the original review are now resolved:
+
+- chart-unsafe local-model composition in metric-object Boolean operations;
+- overclaiming "Riemannian" tensor semantics in the primary public API;
+- `FloatSet`/`FloatInterval` adjacency semantics around `math.nextafter`;
+- unsafe recursive `FloatSet` input parsing that could raise
+  `RecursionError`;
+- stale repository-status documents from the very early project state.
+
 ## Findings
 
-1. High: boolean operations on `RiemannianGeometricObject` combine local cone
-   models as if both objects were already expressed in the same chart. The
-   implementation only checks chart dimension, then evaluates both cones on
-   the same coordinate point and returns the result in the left chart. This
-   can produce incorrect local geometry for equal set-theoretic objects
-   described in different charts.
+1. Medium: the project now has a broad and useful public surface, but the
+   stable/experimental boundary still needs tighter discipline. The package
+   exposes interval algebra, metric spaces, native sphere/torus objects,
+   transforms, meshing, export adapters, plotting helpers, and notebook
+   shortcuts. That is already a large product surface for a pre-1.0 geometry
+   package, and not every layer has the same maturity guarantees.
    Files:
-   - `geo/riemannian.py:197`
-   - `geo/riemannian.py:212`
-   - `geo/riemannian.py:218`
+   - `doc/stability.rst`
+   - `README.rst`
+   - `geo/__init__.py`
 
-2. High: `ChartedRiemannianSpace` does not enforce positive-definite metrics.
-   `_coerce_metric_tensor` checks only shape and symmetry, and `norm()` accepts
-   degenerate tensors as long as the quadratic form is not negative. That
-   means the package currently accepts structures that are not Riemannian
-   metrics under the advertised terminology.
+2. Medium: compatibility naming still duplicates the conceptual model.
+   Keeping `Riemannian*` aliases is pragmatic, but it also leaves two
+   parallel vocabularies in the public API. That increases onboarding cost and
+   makes it easier for examples and downstream code to drift back to the older
+   terminology.
    Files:
-   - `geo/riemannian.py:41`
-   - `geo/riemannian.py:52`
-   - `geo/riemannian.py:149`
+   - `geo/__init__.py`
+   - `geo/riemannian.py`
+   - `doc/api.rst`
 
-3. Medium: the `FloatInterval`/`FloatSet` normalization logic does not fully
-   match the documented "discrete lattice of representable floats" model.
-   Adjacent intervals separated by exactly one `nextafter` step are kept
-   disjoint even when there is no representable float between them. That makes
-   the foundational normalization weaker than the README claims.
+3. Medium: the new notebook convenience layer uses process-global mutable
+   state for the current default space. This is a reasonable tradeoff for
+   notebooks, but it should remain clearly documented as convenience state,
+   not as part of the semantic core. Otherwise hidden ambient context can make
+   examples, tests, and larger applications harder to reason about.
    Files:
-   - `README.rst:10`
-   - `README.rst:14`
-   - `geo/floatset.py:183`
-   - `geo/floatset.py:381`
-   - `geo/floatcircle.py:261`
+   - `geo/interactive.py`
+   - `doc/user-guide.rst`
 
-4. Medium: invalid input handling in `FloatSet` fails unsafely. Recursive
-   translation of arbitrary iterables can end in `RecursionError` for values
-   like `FloatSet("ab")` instead of raising a normal `TypeError`.
+4. Low: project-state documents still need ongoing synchronization after large
+   feature pushes. The original critique documents became stale because the
+   package moved quickly; the same can happen again unless these files are
+   treated as maintained engineering artifacts rather than one-time notes.
    Files:
-   - `geo/floatset.py:343`
-   - `geo/floatset.py:348`
-
-5. Low: repository status documents are stale enough to misrepresent the
-   actual state of the codebase. `CURRENT_STATE.md` says `floatcircle` is not
-   importable, `README.rst` is empty, `geo/__init__.py` is empty, and there
-   are 25 tests; none of that matches the current tree.
-   Files:
-   - `CURRENT_STATE.md:22`
-   - `CURRENT_STATE.md:35`
-   - `CURRENT_STATE.md:49`
-   - `README.rst:1`
-   - `geo/__init__.py:1`
-
-## Bugs
-
-- `RiemannianGeometricObject.union/intersection/difference/symmetric_difference`
-  rely on `_combine_local_models`, but that helper ignores chart transitions.
-  The result is only valid if both operands already use compatible local
-  coordinates, which is not enforced.
-
-- `ChartedRiemannianSpace.metric_tensor()` accepts symmetric degenerate
-  matrices, so the class can represent pseudo- or semi-metrics while exposing
-  a Riemannian API.
-
-- `FloatSet._translate()` recursively descends into unsupported iterables and
-  can blow the stack instead of producing a controlled validation error.
+   - `CURRENT_STATE.md`
+   - `PLAN.md`
+   - `doc/stability.rst`
 
 ## Architecture
 
-- The core idea is solid: immutable interval and set objects over Python
-  `float` can be a useful and coherent package foundation.
+- The core idea is stronger now than in the original review: the package has a
+  coherent `float`-based set foundation, a distance-first ambient-space layer,
+  and a growing visualization/export story.
 
-- The current scope is too wide for the maturity of the core. The project
-  already exposes intervals, circle sets, local charts, cone models,
-  visibility, projections, mesh generation, and a Riemannian layer.
+- The product direction is now much clearer: define spaces, construct objects
+  inside them, answer metric questions, and transform or embed them into 2D/3D
+  for visualization.
 
-- The strongest part of the package is still the interval/set foundation. The
-  higher-level geometry layers look experimental and are not yet protected by
-  invariants strong enough to justify the full mathematical terminology used
-  in the API.
+- The main remaining risk is no longer "broken invariants in obvious core
+  operations". It is scope control. The package now has enough working layers
+  that each new addition should justify where it sits on the
+  stable-versus-experimental boundary.
 
-- The main positioning risk is the "Riemannian" label. Right now the package
-  does not yet enforce positive-definite metrics or correct chart-aware local
-  composition, so the name promises more than the implementation guarantees.
+- The notebook helper layer is useful and aligned with the product goal, but
+  it should stay thin. Interactive convenience should wrap the core model, not
+  become a second implicit programming model.
 
 ## Roadmap
 
-1. Stabilize `FloatInterval` and `FloatSet` so their algebra exactly matches
-   the representable-float model described in the documentation.
-
-2. Tighten public input validation and make failure modes predictable
-   (`TypeError`/`ValueError` instead of recursion-based crashes).
-
-3. Introduce explicit compatibility rules for local models and chart
-   transitions before composing geometric objects across charts.
-
-4. Either harden the metric layer to real Riemannian invariants
-   (positive-definiteness, clearer tangent semantics) or temporarily weaken
-   the naming until those guarantees exist.
-
-5. Keep project-state documents synchronized with the actual codebase and test
-   suite, otherwise they stop being useful as engineering artifacts.
+1. Keep the stable subset explicit and current in `README`, `doc/stability`,
+   and release notes.
+2. Gradually reduce reliance on legacy `Riemannian*` compatibility names in
+   docs, examples, and tests.
+3. Keep notebook helpers as a convenience layer with minimal hidden state and
+   clear escape hatches back to explicit `Space` objects.
+4. Add stronger release automation around docs, tests, and public API checks so
+   status drift is caught early.
+5. Expand object families and transforms only where the package can explain the
+   resulting guarantees clearly.
 
 ## Verification
 
-- `python -m unittest discover -s tests` -> passed, 112 tests
-- `python -m py_compile geo/*.py` -> passed
+- `python -m unittest discover -s tests` -> passed, 158 tests
+- `python -m py_compile geo/*.py examples/*.py` -> passed
 
-These checks confirm that the current happy path works, but they do not cover
-the invariant-level issues listed above.
+The current package is in a materially better state than the original review
+described. The remaining critique is mostly about scope discipline, API
+clarity, and maintaining that improved state as the surface grows.
