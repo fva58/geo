@@ -9,7 +9,7 @@ Stable Core
 -----------
 
 The current stable core is the float-based set layer and the small metric-space
-layer built on top of it.
+and space-visualization layers built on top of it.
 
 Preferred stable building blocks:
 
@@ -17,6 +17,7 @@ Preferred stable building blocks:
 - ``FloatAngle``, ``FloatCircleInterval``, and ``FloatCircleSet``
 - ``FloatPoint`` and ``FloatVector``
 - ``MetricSpace`` and ``ChartedMetricSpace``
+- ``Space`` for visualization-aware ambient spaces
 - ``MetricGeometricObject``
 - ``RealLineSpace``, ``UnitCircleSpace``, and ``EuclideanPlaneSpace``
 
@@ -35,6 +36,8 @@ The higher local-geometry layer should still be treated as experimental.
 That currently includes:
 
 - cone-based local modeling beyond the simplest standard objects;
+- ``SphereSpace`` and ``TorusSpace`` as early standard spaces without object
+  families comparable to the Euclidean plane;
 - visibility operations;
 - projection workflows;
 - mesh generation as a geometric API guarantee;
@@ -73,8 +76,10 @@ If you want the safest current subset of the package, stay close to:
 2. ``FloatCircle*`` objects on the circle.
 3. ``RealLineSpace``, ``UnitCircleSpace``, and ``EuclideanPlaneSpace`` with
    ``distance()`` as the ambient-space contract.
-4. Standard geometric constructors and set-theoretic operations already covered
-   by tests.
+4. ``Space`` embeddings when you need deterministic 2D/3D coordinates for
+   visualization.
+5. Standard geometric constructors and set-theoretic operations already
+   covered by tests.
 
 If you move into visibility, projections, or more elaborate local-model
 composition, treat the API as useful but still evolving.

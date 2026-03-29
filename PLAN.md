@@ -1,5 +1,22 @@
 # geo Development Plan
 
+## Product Goal
+
+The project target is a geometry tool that can:
+
+- define spaces such as Euclidean spaces, spheres, tori, and related models;
+- build objects inside those spaces through constructors and set-theoretic
+  operations;
+- answer geometric questions such as containment and distance;
+- transform or embed spaces and objects into 2D and 3D for visualization.
+
+The intended architecture is therefore:
+
+1. `Space`
+2. `Object`
+3. `Transform`
+4. `Visualize`
+
 ## Current State
 
 The package is no longer in the state described by the older planning notes.
@@ -8,6 +25,7 @@ The repository currently contains:
 - a working `float`-based interval and set core;
 - working circle geometry modules;
 - Euclidean, manifold, geometric, and metric-space layers;
+- early standard spaces with explicit metric semantics;
 - a non-trivial public API in `geo/__init__.py`;
 - passing tests under `unittest`.
 
@@ -24,7 +42,7 @@ invariants actually enforced by the code.
 
 1. Keep the scalar model fixed as Python `float` for now.
 2. Stabilize the interval/set foundation before extending higher geometry.
-3. Do not broaden the metric layer beyond its actual guarantees.
+3. Keep the `Space` layer distance-first and visualization-aware.
 4. Keep documentation synchronized with the actual repository state.
 
 ## Main Risks
@@ -45,10 +63,15 @@ parsing rules and unsafe failure modes.
 Set-theoretic operations on geometric objects currently assume compatible local
 coordinates without enforcing the required chart transition logic.
 
-### Risk 4: terminology can still overclaim
+### Risk 4: the project still needs a clearer `Space` abstraction boundary
 
-Some compatibility names still carry stronger historical terminology than the
-current distance-based contract.
+The package already has metric spaces and objects, but it still needs a cleaner
+separation between:
+
+- intrinsic space semantics;
+- object operations inside a space;
+- transformations between spaces;
+- visualization embeddings into 2D and 3D.
 
 ## Release Roadmap
 
@@ -96,7 +119,7 @@ Goal: make higher geometry stricter before adding more features.
 
 - local chart composition;
 - set-theoretic operations on geometric objects;
-- metric-space API discipline and naming cleanup.
+- `Space` API discipline and naming cleanup.
 
 ### Tasks
 
@@ -107,8 +130,11 @@ Goal: make higher geometry stricter before adding more features.
 - Add tests for boundary local models after union and intersection.
 - Consolidate `MetricSpace` and `ChartedMetricSpace` as the preferred public
   API.
+- Introduce `Space` as the visualization-aware protocol for spaces with metric
+  and 2D/3D embeddings.
+- Add standard non-Euclidean spaces such as `SphereSpace` and `TorusSpace`.
 - Keep older "Riemannian" names in compatibility mode only where needed.
-- Move examples, docs, and tests to the metric-space terminology.
+- Move examples, docs, and tests to the metric-space and `Space` terminology.
 
 ### Done When
 
@@ -151,7 +177,8 @@ Goal: expand only after the package contract is stable.
 2. Tighten validation and eliminate unsafe parsing behavior.
 3. Align circle behavior with the same core semantics.
 4. Fix or constrain chart-based composition of geometric objects.
-5. Bring the metric-space layer and its naming into agreement.
+5. Build out the `Space` layer with standard spaces and visualization
+   transforms.
 6. Keep planning and status documents synchronized with reality.
 
 ## Short Execution Plan
@@ -181,6 +208,13 @@ Goal: expand only after the package contract is stable.
 - Move public examples and docs to metric-space naming.
 
 ### Iteration 5
+
+- Introduce standard visualizable spaces such as `SphereSpace` and
+  `TorusSpace`.
+- Define the minimal transform API from intrinsic space points into 2D and 3D.
+- Keep object operations separated from visualization embeddings.
+
+### Iteration 6
 
 - Reassess which modules should be documented as stable.
 - Prepare the next pre-release only after the above invariants are covered by

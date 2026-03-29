@@ -85,10 +85,10 @@ This is the right layer for:
    :align: center
    :width: 85%
 
-Working in a Riemannian Space
------------------------------
+Working in a Metric Space
+-------------------------
 
-The Riemannian layer wraps charted objects into a named ambient space and adds
+The metric-space layer wraps charted objects into a named ambient space and adds
 set-theoretic operations between objects that live in the same space.
 
 .. code-block:: python
@@ -113,6 +113,30 @@ Typical use cases are:
 - examples where the ambient space matters explicitly;
 - building reusable objects through the standard factories of
   ``RealLineSpace``, ``UnitCircleSpace``, and ``EuclideanPlaneSpace``.
+
+Spaces With Visualization Embeddings
+------------------------------------
+
+When you need both intrinsic distances and deterministic coordinates for
+rendering, use the ``Space`` layer.
+
+.. code-block:: python
+
+   import math
+
+   from geo import SphereSpace, TorusSpace
+
+   sphere = SphereSpace(radius=1.0)
+   first = sphere.point_from_angles(0.0, 0.0)
+   second = sphere.point_from_angles(math.pi / 2.0, 0.0)
+
+   print(sphere.distance(first, second))
+   print(sphere.to_3d(first))
+   print(sphere.to_2d(second, method="equirectangular"))
+
+   torus = TorusSpace()
+   print(torus.distance((0.0, 0.0), (math.pi, 0.0)))
+   print(torus.to_3d((0.0, 0.0)))
 
 Visibility From a Direction or an Observer
 ------------------------------------------

@@ -9,6 +9,9 @@ Date: 2026-03-29
 - `geo/__init__.py` exposes a non-trivial public API.
 - The repository also contains Euclidean, manifold, geometric, and
   metric-space-oriented layers.
+- A new `Space` protocol now models spaces with both `distance()` and explicit
+  2D/3D visualization transforms.
+- Early standard point spaces now include `SphereSpace` and `TorusSpace`.
 - The preferred public terminology is now metric-space-based, while older
   "Riemannian" names remain as compatibility aliases.
 - The working tree may be dirty during active development; this snapshot does
@@ -27,7 +30,7 @@ python -m unittest discover -s tests
 Result:
 
 - Passed
-- 118 tests
+- 126 tests
 
 ### Bytecode compilation
 
@@ -52,6 +55,8 @@ Result:
 - `geo.euclidean`, `geo.manifold`, and parts of `geo.geometric` are implemented
   and exercised by the current test suite.
 - The metric-space layer now uses `distance()` as its primary public contract.
+- The ambient-space layer now also exposes a visualization-aware `Space`
+  protocol.
 - The package metadata and README are now populated.
 
 ### Risky or still underspecified
@@ -60,8 +65,9 @@ Result:
   though the actual contract is metric-space-based.
 - The package still needs a clearer stability boundary between core modules and
   higher experimental geometry layers.
-- The metric-space layer currently focuses on distance, not on a stronger
-  tensor-based differential-metric API.
+- `SphereSpace` and `TorusSpace` currently model point geometry and
+  visualization embeddings, but they do not yet offer the same ready-made
+  object families available in the Euclidean plane.
 
 ## Active Architectural Decision
 
@@ -74,6 +80,8 @@ For the current development stage, the package assumes:
 - broadening the scalar model is lower priority than stabilizing the current
   `float` contract;
 - the ambient-space abstraction is distance-first rather than tensor-first;
+- spaces may expose non-isometric 2D/3D visualization embeddings in addition
+  to intrinsic distance;
 - higher-level geometry should be constrained by the guarantees of the core,
   not the other way around.
 
@@ -84,5 +92,5 @@ For the current development stage, the package assumes:
 2. Keep public validation and failure modes explicit and predictable.
 3. Align `FloatCircle*` behavior with the same interval/set contract.
 4. Continue tightening chart-based composition of geometric objects.
-5. Consolidate the metric-space API and phase older naming into compatibility
-   status only.
+5. Grow the `Space` API around explicit standard spaces and visualization
+   transforms.

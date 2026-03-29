@@ -73,6 +73,7 @@ from .riemannian import (
     RiemannianSpace,
     UnitCircleSpace,
 )
+from .space import Space, SphereSpace, TorusPoint, TorusSpace
 from .real import (
     ALL_REALS_INTERVAL,
     EMPTY_REAL_INTERVAL,
@@ -125,6 +126,7 @@ __all__ = [
     "HalfPlane",
     "PlanarAngle",
     "MetricSpace",
+    "Space",
     "ChartedMetricSpace",
     "MetricGeometricObject",
     "RiemannianSpace",
@@ -132,6 +134,9 @@ __all__ = [
     "RiemannianGeometricObject",
     "RealLineSpace",
     "UnitCircleSpace",
+    "SphereSpace",
+    "TorusPoint",
+    "TorusSpace",
     "EuclideanMetricSpace",
     "EuclideanRiemannianSpace",
     "EuclideanPlaneSpace",

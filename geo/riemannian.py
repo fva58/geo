@@ -464,6 +464,37 @@ class RealLineSpace(ChartedMetricSpace[float]):
             name=name or "R",
         )
 
+    @property
+    def space_kind(self) -> str:
+        """Return the space kind identifier."""
+        return "real-line"
+
+    def to_2d(
+        self,
+        point: float,
+        method: str = "default",
+    ) -> tuple[float, float]:
+        """Return a 2D visualization of a real-line point."""
+        if method not in ("default", "line"):
+            raise ValueError(f"Unknown 2D visualization method: {method!r}")
+        value = float(point)
+        if value not in self:
+            raise ValueError("Point is outside the real line")
+        return (value, 0.0)
+
+    def to_3d(
+        self,
+        point: float,
+        method: str = "default",
+    ) -> tuple[float, float, float]:
+        """Return a 3D visualization of a real-line point."""
+        if method not in ("default", "line"):
+            raise ValueError(f"Unknown 3D visualization method: {method!r}")
+        value = float(point)
+        if value not in self:
+            raise ValueError("Point is outside the real line")
+        return (value, 0.0, 0.0)
+
     def point(
         self,
         point: float,
@@ -501,6 +532,33 @@ class UnitCircleSpace(ChartedMetricSpace[FloatCirclePoint]):
             ),
             name=name or "S1",
         )
+
+    @property
+    def space_kind(self) -> str:
+        """Return the space kind identifier."""
+        return "unit-circle"
+
+    def to_2d(
+        self,
+        point: FloatCirclePoint,
+        method: str = "default",
+    ) -> tuple[float, float]:
+        """Return a planar embedding of a circle point."""
+        if method not in ("default", "embedding"):
+            raise ValueError(f"Unknown 2D visualization method: {method!r}")
+        circle_point = FloatCirclePoint(point)
+        if circle_point not in self:
+            raise ValueError("Point is outside the unit circle")
+        return circle_point.to_cartesian()
+
+    def to_3d(
+        self,
+        point: FloatCirclePoint,
+        method: str = "default",
+    ) -> tuple[float, float, float]:
+        """Return a 3D embedding of a circle point."""
+        x, y = self.to_2d(point, method="embedding" if method == "default" else method)
+        return (x, y, 0.0)
 
     def point(
         self,
@@ -549,6 +607,45 @@ class EuclideanMetricSpace(ChartedMetricSpace[FloatPoint]):
             ),
             name=name or f"R^{dim}",
         )
+
+    @property
+    def space_kind(self) -> str:
+        """Return the space kind identifier."""
+        return "euclidean"
+
+    def to_2d(
+        self,
+        point: FloatPoint,
+        method: str = "default",
+    ) -> tuple[float, float]:
+        """Return a 2D visualization by truncation or zero-padding."""
+        if method not in ("default", "orthographic"):
+            raise ValueError(f"Unknown 2D visualization method: {method!r}")
+        coordinates = FloatPoint(point)
+        if coordinates not in self:
+            raise ValueError("Point is outside the Euclidean space")
+        values = tuple(coordinates)
+        if self.dim >= 2:
+            return (values[0], values[1])
+        return (values[0], 0.0)
+
+    def to_3d(
+        self,
+        point: FloatPoint,
+        method: str = "default",
+    ) -> tuple[float, float, float]:
+        """Return a 3D visualization by truncation or zero-padding."""
+        if method not in ("default", "orthographic"):
+            raise ValueError(f"Unknown 3D visualization method: {method!r}")
+        coordinates = FloatPoint(point)
+        if coordinates not in self:
+            raise ValueError("Point is outside the Euclidean space")
+        values = tuple(coordinates)
+        if self.dim >= 3:
+            return (values[0], values[1], values[2])
+        if self.dim == 2:
+            return (values[0], values[1], 0.0)
+        return (values[0], 0.0, 0.0)
 
     def point(
         self,
