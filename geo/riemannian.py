@@ -14,6 +14,7 @@ from .geometric import (
     CirclePointObject,
     CircleSetObject,
     ChartedGeometricObject,
+    Ball,
     EuclideanPointObject,
     EuclideanSpace,
     HalfPlane,
@@ -22,6 +23,7 @@ from .geometric import (
     RealLine,
     RealPointObject,
     RealSetObject,
+    Sphere,
     WholePlane,
 )
 from .manifold import Manifold
@@ -168,6 +170,14 @@ class ChartedMetricSpace(Generic[PointT]):
         if distance < 0.0:
             raise ValueError("Distance must be non-negative")
         return distance
+
+    def wrap(
+        self,
+        obj: ChartedGeometricObject[PointT],
+        name: str = "",
+    ) -> "MetricGeometricObject[PointT]":
+        """Wrap a charted object into this ambient metric space."""
+        return MetricGeometricObject.from_charted(self, obj, name=name)
 
 
 class ChartedRiemannianSpace(ChartedMetricSpace[PointT]):
@@ -325,6 +335,85 @@ class MetricGeometricObject(ChartedGeometricObject[PointT]):
         if source_object is not None and hasattr(source_object, "mesh"):
             return source_object.mesh(resolution=resolution, bounds=bounds)
         return super().mesh(resolution=resolution, bounds=bounds)
+
+    def _plotting_mesh(
+        self,
+        resolution: int = 64,
+        bounds=None,
+    ) -> ObjectMesh:
+        """Return a plotting mesh while tolerating mesh APIs without bounds."""
+        if bounds is None:
+            return self.mesh(resolution=resolution)
+        try:
+            return self.mesh(resolution=resolution, bounds=bounds)
+        except TypeError as exc:
+            if "bounds" not in str(exc):
+                raise
+            return self.mesh(resolution=resolution)
+
+    def plot_matplotlib(
+        self,
+        resolution: int = 64,
+        bounds=None,
+        axes=None,
+        ax=None,
+        *,
+        color: str = "#1f1f1f",
+        linewidth: float = 1.5,
+        marker_size: float = 20.0,
+    ):
+        """Plot the object mesh through the Matplotlib helper."""
+        from .mesh_plot import plot_mesh_matplotlib
+
+        return plot_mesh_matplotlib(
+            self._plotting_mesh(resolution=resolution, bounds=bounds),
+            axes=axes,
+            ax=ax,
+            color=color,
+            linewidth=linewidth,
+            marker_size=marker_size,
+        )
+
+    def plot_plotly(
+        self,
+        resolution: int = 64,
+        bounds=None,
+        axes=None,
+        figure=None,
+        *,
+        name: str | None = None,
+    ):
+        """Plot the object mesh through the Plotly helper."""
+        from .mesh_plot import plot_mesh_plotly
+
+        return plot_mesh_plotly(
+            self._plotting_mesh(resolution=resolution, bounds=bounds),
+            axes=axes,
+            figure=figure,
+            name=name or self.name or "object",
+        )
+
+    def show(
+        self,
+        resolution: int = 64,
+        bounds=None,
+        axes=None,
+        ax=None,
+        *,
+        color: str = "#1f1f1f",
+        linewidth: float = 1.5,
+        marker_size: float = 20.0,
+    ):
+        """Alias for ``plot_matplotlib()`` for interactive sessions."""
+        return self.plot_matplotlib(
+            resolution=resolution,
+            bounds=bounds,
+            axes=axes,
+            ax=ax,
+            color=color,
+            linewidth=linewidth,
+            marker_size=marker_size,
+        )
 
     def _require_same_space(
         self,
@@ -846,6 +935,33 @@ class EuclideanPlaneSpace(EuclideanMetricSpace):
             WholePlane(name=name),
             name=name,
         )
+
+    def ball(
+        self,
+        center: FloatPoint,
+        radius: float,
+        name: str = "",
+    ) -> MetricGeometricObject[FloatPoint]:
+        """Return a closed Euclidean disk in the ambient plane."""
+        return self.wrap(Ball(center, radius, name=name), name=name)
+
+    def disk(
+        self,
+        center: FloatPoint,
+        radius: float,
+        name: str = "",
+    ) -> MetricGeometricObject[FloatPoint]:
+        """Return a closed Euclidean disk in the ambient plane."""
+        return self.ball(center, radius, name=name)
+
+    def circle(
+        self,
+        center: FloatPoint,
+        radius: float,
+        name: str = "",
+    ) -> MetricGeometricObject[FloatPoint]:
+        """Return the boundary circle in the ambient plane."""
+        return self.wrap(Sphere(center, radius, name=name), name=name)
 
     def half_plane(
         self,

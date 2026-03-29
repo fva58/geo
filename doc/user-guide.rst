@@ -120,6 +120,54 @@ Typical use cases are:
 - building reusable objects through the standard factories of
   ``RealLineSpace``, ``UnitCircleSpace``, and ``EuclideanPlaneSpace``.
 
+Interactive Notebook Shortcuts
+------------------------------
+
+For exploratory notebook work, the package also exposes a tiny convenience
+layer around a current default space. By default this space is an
+``EuclideanPlaneSpace``.
+
+.. code-block:: python
+
+   import math
+
+   from geo import (
+       SphereSpace,
+       cap,
+       disk,
+       plot,
+       point,
+       use_space,
+       using_space,
+   )
+
+   disk_object = disk((0.0, 0.0), 1.0)
+   origin = point(0.0, 0.0)
+
+   sphere = use_space(SphereSpace())
+   north = sphere.point_from_angles(0.0, math.pi / 2.0)
+   hemisphere = cap(north, math.pi / 2.0)
+
+   sphere_2 = SphereSpace(radius=2.0)
+   with using_space(sphere_2):
+       tilted_cap = cap(
+           sphere_2.point_from_angles(math.pi / 4.0, 0.0),
+           math.pi / 3.0,
+       )
+
+   figure, axis = plot(hemisphere, resolution=12)
+
+   print(origin.name or "point")
+   print(len(hemisphere.mesh(resolution=12).cells))
+
+The shortcuts are intentionally small:
+
+- ``use_space()`` and ``using_space()`` switch the default ambient space;
+- ``point()``, ``disk()``, ``arc()``, ``cap()``, and ``patch()`` build the
+  most common objects inside that space;
+- ``plot()`` accepts either an object or an ``ObjectMesh`` and routes to
+  Matplotlib or Plotly with less boilerplate.
+
 Spaces With Visualization Embeddings
 ------------------------------------
 

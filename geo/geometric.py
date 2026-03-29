@@ -5,6 +5,7 @@ from __future__ import annotations
 import math
 from collections.abc import Sequence
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Callable, Generic, Protocol, TypeVar, runtime_checkable
 
 import numpy as np
@@ -968,6 +969,44 @@ class ObjectMesh:
 
         return mesh_to_threejs_data(self)
 
+    def plot_matplotlib(
+        self,
+        axes: Sequence[int] | None = None,
+        ax=None,
+        *,
+        color: str = "#1f1f1f",
+        linewidth: float = 1.5,
+        marker_size: float = 20.0,
+    ):
+        """Plot the mesh with the Matplotlib helper."""
+        from .mesh_plot import plot_mesh_matplotlib
+
+        return plot_mesh_matplotlib(
+            self,
+            axes=axes,
+            ax=ax,
+            color=color,
+            linewidth=linewidth,
+            marker_size=marker_size,
+        )
+
+    def plot_plotly(
+        self,
+        axes: Sequence[int] | None = None,
+        figure=None,
+        *,
+        name: str = "mesh",
+    ):
+        """Plot the mesh with the Plotly helper."""
+        from .mesh_plot import plot_mesh_plotly
+
+        return plot_mesh_plotly(
+            self,
+            axes=axes,
+            figure=figure,
+            name=name,
+        )
+
     def obj_text(self) -> str:
         """Return a Wavefront OBJ representation of the mesh."""
         from .mesh_io import mesh_to_obj_text
@@ -986,23 +1025,23 @@ class ObjectMesh:
 
         return mesh_to_gltf_json_data(self)
 
-    def write_obj(self, path: str) -> None:
+    def write_obj(self, path: str | Path) -> Path:
         """Write the mesh as OBJ."""
         from .mesh_io import write_obj
 
-        write_obj(self, path)
+        return write_obj(self, path)
 
-    def write_ply(self, path: str) -> None:
+    def write_ply(self, path: str | Path) -> Path:
         """Write the mesh as ASCII PLY."""
         from .mesh_io import write_ply
 
-        write_ply(self, path)
+        return write_ply(self, path)
 
-    def write_gltf_json(self, path: str) -> None:
+    def write_gltf_json(self, path: str | Path) -> Path:
         """Write the mesh as glTF-friendly JSON."""
         from .mesh_io import write_gltf_json
 
-        write_gltf_json(self, path)
+        return write_gltf_json(self, path)
 
 
 def _require_positive_resolution(resolution: int) -> int:

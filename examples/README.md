@@ -10,7 +10,7 @@ the project:
 - `04_set_operations_2d.ipynb`: 2D set-theoretic operations with plotted
   unions, intersections, differences, and symmetric differences
 - `08_modern_space_object_mesh_pipeline.ipynb`: current end-to-end pipeline
-  from spaces and objects to meshes, plots, and export data
+  from spaces and objects to meshes, plots, export data, and notebook helpers
 
 It also contains runnable Python scripts for the newer end-to-end workflows:
 
