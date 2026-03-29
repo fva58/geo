@@ -71,6 +71,9 @@ def draw_mesh(
     except (AttributeError, NotImplementedError, ValueError):
         return False
 
+    if not mesh.vertices:
+        return False
+
     if mesh.dim > 2:
         mesh = mesh.projected(axes)
 
@@ -173,7 +176,7 @@ def draw_object(
     except (AttributeError, NotImplementedError, ValueError):
         mesh = None
 
-    if mesh is not None and mesh.dim == 2:
+    if mesh is not None and mesh.vertices and mesh.dim == 2:
         polyline = _ordered_polyline(mesh)
         if polyline is not None and not np.any(grid) and len(polyline) >= 3:
             vertices = np.asarray(
@@ -477,6 +480,41 @@ def save_visibility_workflows() -> None:
         bbox_inches="tight",
     )
     plt.close(figure)
+
+    result_figure, result_axes = plt.subplots(1, 2, figsize=(10.5, 4.5))
+
+    draw_object(
+        result_axes[0],
+        top_half,
+        title="Result of visible_from_direction",
+        xlim=(-1.4, 1.4),
+        ylim=(-1.4, 1.4),
+        mesh_only=True,
+    )
+
+    draw_object(
+        result_axes[1],
+        visible_arc,
+        title="Result of visible_from_point",
+        xlim=(-2.4, 2.4),
+        ylim=(-1.4, 3.4),
+        mesh_only=True,
+    )
+    result_axes[1].scatter(
+        [observer[0]],
+        [observer[1]],
+        color="#2ca02c",
+        s=55.0,
+        zorder=3,
+    )
+
+    result_figure.tight_layout()
+    result_figure.savefig(
+        OUTPUT_DIR / "visibility_results.png",
+        dpi=160,
+        bbox_inches="tight",
+    )
+    plt.close(result_figure)
 
 
 def main() -> None:

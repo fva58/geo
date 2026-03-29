@@ -30,6 +30,13 @@ modeling rather than differential geometry.
    print(math.pi / 4.0 in circle_set)
    print(math.pi in circle_set)
 
+In the real-line constructor, a single numeric pair such as ``(0.0, 2.0)``
+means one interval, while a scalar such as ``5.0`` means one point.
+
+The normalization rule follows the explicit ``float`` lattice model: intervals
+are merged not only when they overlap, but also when there is no representable
+``float`` between them.
+
 This is a good fit for:
 
 - finite unions of intervals on the real line;
@@ -147,6 +154,14 @@ This is useful when you need:
    :alt: Visible parts from a direction and from an observer point
    :align: center
    :width: 95%
+
+The next figure shows the geometric objects returned by the visibility
+operations themselves.
+
+.. image:: _static/user_guide/visibility_results.png
+   :alt: Result objects produced by visible_from_direction and visible_from_point
+   :align: center
+   :width: 90%
 
 Projecting Objects and Building Smooth Images
 ---------------------------------------------
