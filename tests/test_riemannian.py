@@ -18,6 +18,7 @@ from geo import (
     ManifoldChart,
     MetricGeometricObject,
     MetricSpace,
+    ObjectMesh,
     RealLineSpace,
     RiemannianGeometricObject,
     RiemannianSpace,
@@ -76,6 +77,14 @@ class TestRiemannianObjects(unittest.TestCase):
         self.assertIn(FloatPoint(1.0), boundary.cone)
         self.assertNotIn(FloatPoint(-1.0), boundary.cone)
 
+        samples = obj.sample_points(resolution=8)
+        mesh = obj.mesh(resolution=8)
+        self.assertTrue(samples)
+        self.assertTrue(all(point in obj for point in samples))
+        self.assertIsInstance(mesh, ObjectMesh)
+        self.assertEqual(mesh.dim, 2)
+        self.assertTrue(mesh.cells)
+
     def test_circle_arc(self):
         """An arc should be a geometric object in the unit circle space."""
         space = UnitCircleSpace()
@@ -86,6 +95,14 @@ class TestRiemannianObjects(unittest.TestCase):
         boundary = obj.local_model_at(FloatCirclePoint(0.0))
         self.assertIn(FloatPoint(1.0), boundary.cone)
         self.assertNotIn(FloatPoint(-1.0), boundary.cone)
+
+        samples = obj.sample_points(resolution=8)
+        mesh = obj.mesh(resolution=8)
+        self.assertTrue(samples)
+        self.assertTrue(all(point in obj for point in samples))
+        self.assertIsInstance(mesh, ObjectMesh)
+        self.assertEqual(mesh.dim, 2)
+        self.assertTrue(mesh.cells)
 
     def test_plane_objects(self):
         """Standard planar objects should live in the Euclidean plane space."""
@@ -101,6 +118,24 @@ class TestRiemannianObjects(unittest.TestCase):
         apex_model = angle.local_model_at(FloatPoint(0.0, 0.0))
         self.assertIn(FloatPoint(1.0, 1.0), apex_model.cone)
         self.assertNotIn(FloatPoint(-1.0, 1.0), apex_model.cone)
+
+        disk = MetricGeometricObject.from_charted(
+            space,
+            Ball(FloatPoint(0.0, 0.0), 1.0),
+            name="disk",
+        )
+        point_object = space.point(FloatPoint(0.0, 0.0))
+        disk_samples = disk.sample_points(resolution=8)
+        disk_mesh = disk.mesh(resolution=8)
+        point_samples = point_object.sample_points(resolution=8)
+        point_mesh = point_object.mesh(resolution=8)
+        self.assertTrue(disk_samples)
+        self.assertTrue(all(point in disk for point in disk_samples))
+        self.assertIsInstance(disk_mesh, ObjectMesh)
+        self.assertEqual(disk_mesh.dim, 2)
+        self.assertTrue(disk_mesh.cells)
+        self.assertEqual(point_samples, (FloatPoint(0.0, 0.0),))
+        self.assertEqual(point_mesh.vertices, (FloatPoint(0.0, 0.0),))
 
     def test_real_line_set_operations(self):
         """Set-theoretic operations should work on real-line objects."""

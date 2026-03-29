@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import math
 from typing import Callable, Generic, Protocol, TypeVar, runtime_checkable
 
 import numpy as np
 
 from .euclidean import FloatPoint, FloatVector
-from .floatcircle import FloatCirclePoint
+from .floatcircle import FloatAngle, FloatCircleInterval, FloatCirclePoint
 from .geometric import (
     Circle,
     CirclePointObject,
@@ -16,6 +17,7 @@ from .geometric import (
     EuclideanPointObject,
     EuclideanSpace,
     HalfPlane,
+    ObjectMesh,
     PlanarAngle,
     RealLine,
     RealPointObject,
@@ -59,6 +61,49 @@ def _numeric_local_jacobian(
         image_minus = _point_array(mapping(FloatPoint(base - delta)))
         jacobian[:, index] = (image_plus - image_minus) / (2.0 * step)
     return jacobian
+
+
+def _sample_linear_values(
+    left: float,
+    right: float,
+    steps: int,
+) -> tuple[float, ...]:
+    """Return evenly sampled values on one closed interval."""
+    steps = max(1, int(steps))
+    if math.isclose(left, right, abs_tol=1e-15):
+        return (left,)
+    if steps == 1:
+        return ((left + right) / 2.0,)
+    return tuple(
+        left + (right - left) * index / (steps - 1)
+        for index in range(steps)
+    )
+
+
+def _polyline_mesh_from_embedded_parts(
+    parts: tuple[tuple[FloatPoint, ...], ...],
+    closed: tuple[bool, ...] | None = None,
+) -> ObjectMesh:
+    """Return a polyline mesh from embedded point parts."""
+    vertices: list[FloatPoint] = []
+    cells: list[tuple[int, ...]] = []
+    offset = 0
+    closed = closed or tuple(False for _ in parts)
+    for part, close_ring in zip(parts, closed):
+        if not part:
+            continue
+        vertices.extend(part)
+        if len(part) == 1:
+            cells.append((offset,))
+        else:
+            cells.extend(
+                (offset + index, offset + index + 1)
+                for index in range(len(part) - 1)
+            )
+            if close_ring:
+                cells.append((offset + len(part) - 1, offset))
+        offset += len(part)
+    return ObjectMesh(tuple(vertices), tuple(cells))
 
 
 @runtime_checkable
@@ -160,6 +205,126 @@ class MetricGeometricObject(ChartedGeometricObject[PointT]):
         )
         wrapped._charted_source_object = obj
         return wrapped
+
+    def _mesh_from_real_source(self, resolution: int) -> ObjectMesh:
+        """Return a visualization mesh for a real-line source object."""
+        source_object = getattr(self, "_charted_source_object")
+        if isinstance(source_object, RealPointObject):
+            point = float(source_object.point)
+            return ObjectMesh((FloatPoint(self.space.to_2d(point)),), ((0,),))
+
+        parts = []
+        for interval in source_object.point_set:
+            left, right = interval
+            values = _sample_linear_values(left, right, max(2, resolution))
+            parts.append(tuple(FloatPoint(self.space.to_2d(value)) for value in values))
+        return _polyline_mesh_from_embedded_parts(tuple(parts))
+
+    def _sample_points_from_real_source(
+        self,
+        resolution: int,
+    ) -> tuple[float, ...]:
+        """Return sampled points for a real-line source object."""
+        source_object = getattr(self, "_charted_source_object")
+        if isinstance(source_object, RealPointObject):
+            return (float(source_object.point),)
+
+        samples: list[float] = []
+        for interval in source_object.point_set:
+            left, right = interval
+            samples.extend(_sample_linear_values(left, right, max(2, resolution)))
+        return tuple(samples)
+
+    def _mesh_from_circle_source(self, resolution: int) -> ObjectMesh:
+        """Return a visualization mesh for a circle source object."""
+        source_object = getattr(self, "_charted_source_object")
+        if isinstance(source_object, CirclePointObject):
+            point = FloatCirclePoint(source_object.point)
+            return ObjectMesh((FloatPoint(self.space.to_2d(point)),), ((0,),))
+
+        parts = []
+        closed = []
+        wrapped_arc = (
+            len(source_object.point_set) == 2 and
+            float(source_object.point_set[0][0]) == 0.0 and
+            float(source_object.point_set[-1][1]) == FloatAngle.MAX_ANGLE
+        )
+        for index, interval in enumerate(source_object.point_set):
+            circle_interval = FloatCircleInterval(interval)
+            values = _sample_linear_values(
+                float(circle_interval.start),
+                float(circle_interval.end),
+                max(2, resolution),
+            )
+            parts.append(tuple(FloatPoint(self.space.to_2d(value)) for value in values))
+            closed.append(bool(source_object.point_set.is_full()))
+            if wrapped_arc and index == len(source_object.point_set) - 1:
+                parts[-1] = parts[-1] + (FloatPoint(self.space.to_2d(0.0)),)
+        return _polyline_mesh_from_embedded_parts(tuple(parts), tuple(closed))
+
+    def _sample_points_from_circle_source(
+        self,
+        resolution: int,
+    ) -> tuple[FloatCirclePoint, ...]:
+        """Return sampled points for a circle source object."""
+        source_object = getattr(self, "_charted_source_object")
+        if isinstance(source_object, CirclePointObject):
+            return (FloatCirclePoint(source_object.point),)
+
+        samples: list[FloatCirclePoint] = []
+        for interval in source_object.point_set:
+            circle_interval = FloatCircleInterval(interval)
+            values = _sample_linear_values(
+                float(circle_interval.start),
+                float(circle_interval.end),
+                max(2, resolution),
+            )
+            samples.extend(FloatCirclePoint(value) for value in values)
+        return tuple(samples)
+
+    def _mesh_from_euclidean_point_source(self) -> ObjectMesh:
+        """Return a singleton mesh for an Euclidean point source object."""
+        source_object = getattr(self, "_charted_source_object")
+        return ObjectMesh((FloatPoint(source_object.point),), ((0,),))
+
+    def sample_points(self, resolution: int = 24):
+        """Return sample points on the geometric object when supported."""
+        resolution = max(1, int(resolution))
+        if hasattr(self, "_sample_points_fn"):
+            return tuple(self._sample_points_fn(resolution))
+
+        source_object = getattr(self, "_charted_source_object", None)
+        if isinstance(source_object, (RealPointObject, RealSetObject)):
+            return self._sample_points_from_real_source(resolution)
+        if isinstance(source_object, (CirclePointObject, CircleSetObject)):
+            return self._sample_points_from_circle_source(resolution)
+        if isinstance(source_object, EuclideanPointObject):
+            return (FloatPoint(source_object.point),)
+
+        if source_object is not None and hasattr(source_object, "mesh"):
+            return tuple(source_object.mesh(resolution=resolution).vertices)
+        return tuple(super().mesh(resolution=resolution).vertices)
+
+    def mesh(
+        self,
+        resolution: int = 64,
+        bounds=None,
+    ) -> ObjectMesh:
+        """Return a mesh or polyline approximation when supported."""
+        resolution = max(1, int(resolution))
+        if hasattr(self, "_mesh_fn"):
+            return self._mesh_fn(resolution)
+
+        source_object = getattr(self, "_charted_source_object", None)
+        if isinstance(source_object, (RealPointObject, RealSetObject)):
+            return self._mesh_from_real_source(resolution)
+        if isinstance(source_object, (CirclePointObject, CircleSetObject)):
+            return self._mesh_from_circle_source(resolution)
+        if isinstance(source_object, EuclideanPointObject):
+            return self._mesh_from_euclidean_point_source()
+        if source_object is not None and hasattr(source_object, "mesh"):
+            return source_object.mesh(resolution=resolution, bounds=bounds)
+        return super().mesh(resolution=resolution, bounds=bounds)
 
     def _require_same_space(
         self,

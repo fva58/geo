@@ -84,6 +84,13 @@ Native sampled objects currently include:
 - torus point objects and torus patches with ``sample_points()`` and
   ``mesh()``.
 
+The common metric-object layer now also exposes object-level sampling/meshing
+for a broader zoo:
+
+- real-line points and subsets;
+- circle points and arcs/subsets;
+- wrapped Euclidean objects that already have geometric mesh support.
+
 For arcs crossing zero, the internal representation is split into two linear
 intervals: one before zero and one after zero.
 

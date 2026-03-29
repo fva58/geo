@@ -237,6 +237,28 @@ methods directly.
    print(len(patch.sample_points(resolution=12)))
    print(len(patch.mesh(resolution=12).cells))
 
+Broader Object Zoo Sampling
+---------------------------
+
+The same object-level API now works for more of the standard zoo, not only for
+the new sphere and torus objects.
+
+.. code-block:: python
+
+   import math
+
+   from geo import EuclideanPlaneSpace, RealLineSpace, UnitCircleSpace
+
+   line = RealLineSpace().subset((0.0, 2.0), 5.0)
+   arc = UnitCircleSpace().arc(0.0, math.pi / 2.0)
+   disk = EuclideanPlaneSpace().point((0.0, 0.0))
+
+   print(len(line.sample_points(resolution=8)))
+   print(len(line.mesh(resolution=8).cells))
+   print(len(arc.sample_points(resolution=8)))
+   print(len(arc.mesh(resolution=8).cells))
+   print(len(disk.sample_points(resolution=8)))
+
 Visibility From a Direction or an Observer
 ------------------------------------------
 

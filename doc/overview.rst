@@ -84,6 +84,13 @@ The native non-Euclidean objects now carry the same idea one level lower:
 - sphere point objects and caps expose ``sample_points()`` and ``mesh()``;
 - torus point objects and patches expose ``sample_points()`` and ``mesh()``.
 
+The common metric wrapper now extends object-level sampling and meshing to a
+broader zoo as well:
+
+- real-line points and subsets;
+- circle points and arcs/subsets;
+- wrapped Euclidean objects whose charted source already supports meshing.
+
 Status
 ------
 
