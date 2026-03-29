@@ -67,6 +67,11 @@ Metric-space layer
 - ``RealLineSpace``, ``UnitCircleSpace``, ``EuclideanPlaneSpace``,
   ``SphereSpace``, ``TorusSpace``: standard spaces with ready-made objects.
 
+The non-Euclidean spaces currently start with small native object families:
+
+- ``SphereSpace.point_object()`` and ``SphereSpace.cap()``;
+- ``TorusSpace.point_object()`` and ``TorusSpace.patch()``.
+
 Status
 ------
 

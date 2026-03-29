@@ -65,6 +65,11 @@ Metric-space layer:
 - ``RealLineSpace``, ``UnitCircleSpace``, ``EuclideanPlaneSpace``,
   ``SphereSpace``, ``TorusSpace``: standard spaces with ready-made objects.
 
+Non-Euclidean object families currently include:
+
+- ``SphereSpace.point_object()`` and ``SphereSpace.cap()``;
+- ``TorusSpace.point_object()`` and ``TorusSpace.patch()``.
+
 For arcs crossing zero, the internal representation is split into two linear
 intervals: one before zero and one after zero.
 

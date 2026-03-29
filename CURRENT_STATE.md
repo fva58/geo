@@ -31,7 +31,7 @@ python -m unittest discover -s tests
 Result:
 
 - Passed
-- 133 tests
+- 135 tests
 
 ### Bytecode compilation
 
@@ -60,6 +60,8 @@ Result:
   protocol.
 - The package now has explicit visualization transforms into Euclidean 2D and
   3D.
+- `SphereSpace` and `TorusSpace` now expose their first native object
+  families: singleton objects, spherical caps, and torus patches.
 - The package metadata and README are now populated.
 
 ### Risky or still underspecified

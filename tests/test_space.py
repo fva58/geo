@@ -82,6 +82,26 @@ class TestSpaceProtocol(unittest.TestCase):
         with self.assertRaises(ValueError):
             space.to_2d(north_pole)
 
+    def test_sphere_point_object_and_cap(self):
+        """Sphere spaces should expose singleton and cap objects."""
+        space = SphereSpace()
+        north_pole = space.point_from_angles(0.0, math.pi / 2.0)
+        equator = space.point_from_angles(0.0, 0.0)
+        south_pole = space.point_from_angles(0.0, -math.pi / 2.0)
+
+        point_object = space.point_object(north_pole)
+        hemisphere = space.cap(north_pole, math.pi / 2.0)
+
+        self.assertIn(north_pole, point_object)
+        self.assertNotIn(equator, point_object)
+        self.assertIn(north_pole, hemisphere)
+        self.assertIn(equator, hemisphere)
+        self.assertNotIn(south_pole, hemisphere)
+
+        boundary = hemisphere.local_model_at(equator)
+        self.assertIn(FloatPoint(0.0, 1.0), boundary.cone)
+        self.assertNotIn(FloatPoint(0.0, -1.0), boundary.cone)
+
     def test_torus_distance_and_visualization(self):
         """The torus should use the flat product metric."""
         space = TorusSpace(major_radius=3.0, minor_radius=1.0)
@@ -97,3 +117,16 @@ class TestSpaceProtocol(unittest.TestCase):
         """A torus point should reject ambiguous one-angle construction."""
         with self.assertRaises(TypeError):
             TorusPoint(1.0)
+
+    def test_torus_patch_local_model(self):
+        """Torus patches should expose product boundary cones."""
+        space = TorusSpace()
+        patch = space.patch((0.0, math.pi / 2.0), (0.0, math.pi / 2.0))
+
+        self.assertIn(TorusPoint(math.pi / 4.0, math.pi / 4.0), patch)
+        self.assertNotIn(TorusPoint(math.pi, math.pi / 4.0), patch)
+
+        boundary = patch.local_model_at(TorusPoint(0.0, 0.0))
+        self.assertIn(FloatPoint(1.0, 1.0), boundary.cone)
+        self.assertNotIn(FloatPoint(-1.0, 1.0), boundary.cone)
+        self.assertNotIn(FloatPoint(1.0, -1.0), boundary.cone)

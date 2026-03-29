@@ -156,6 +156,28 @@ calling ``to_2d()`` or ``to_3d()`` directly.
 
    print(transform(point))
 
+Native Objects on Sphere and Torus
+----------------------------------
+
+The first non-Euclidean object families are intentionally small but explicit.
+
+.. code-block:: python
+
+   import math
+
+   from geo import SphereSpace, TorusPoint, TorusSpace
+
+   sphere = SphereSpace()
+   north = sphere.point_from_angles(0.0, math.pi / 2.0)
+   hemisphere = sphere.cap(north, math.pi / 2.0)
+
+   torus = TorusSpace()
+   patch = torus.patch((0.0, math.pi / 2.0), (0.0, math.pi / 2.0))
+
+   print(north in hemisphere)
+   print(sphere.point_from_angles(0.0, -math.pi / 2.0) in hemisphere)
+   print(TorusPoint(math.pi / 4.0, math.pi / 4.0) in patch)
+
 Visibility From a Direction or an Observer
 ------------------------------------------
 
