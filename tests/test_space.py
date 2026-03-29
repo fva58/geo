@@ -121,6 +121,25 @@ class TestSpaceProtocol(unittest.TestCase):
         self.assertTrue(cap_mesh.cells)
         self.assertTrue(all(vertex in cap for vertex in cap_mesh.vertices))
 
+    def test_sphere_native_objects_expose_sampling_and_mesh(self):
+        """Sphere native objects should expose their own mesh API."""
+        space = SphereSpace()
+        north = space.point_from_angles(0.0, math.pi / 2.0)
+        point_object = space.point_object(north)
+        cap = space.cap(north, math.pi / 3.0)
+
+        point_samples = point_object.sample_points()
+        point_mesh = point_object.mesh()
+        cap_samples = cap.sample_points(resolution=12)
+        cap_mesh = cap.mesh(resolution=12)
+
+        self.assertEqual(point_samples, (north,))
+        self.assertEqual(point_mesh.vertices, (north,))
+        self.assertTrue(cap_samples)
+        self.assertTrue(all(sample in cap for sample in cap_samples))
+        self.assertIsInstance(cap_mesh, ObjectMesh)
+        self.assertTrue(all(vertex in cap for vertex in cap_mesh.vertices))
+
     def test_torus_distance_and_visualization(self):
         """The torus should use the flat product metric."""
         space = TorusSpace(major_radius=3.0, minor_radius=1.0)
@@ -184,3 +203,24 @@ class TestSpaceProtocol(unittest.TestCase):
                 for vertex in patch_mesh.vertices
             )
         )
+
+    def test_torus_native_objects_expose_sampling_and_mesh(self):
+        """Torus native objects should expose their own mesh API."""
+        space = TorusSpace()
+        point_object = space.point_object((0.0, 0.0))
+        patch = space.patch((0.0, math.pi / 2.0), (0.0, math.pi / 2.0))
+
+        point_samples = point_object.sample_points()
+        point_mesh = point_object.mesh()
+        patch_samples = patch.sample_points(resolution=12)
+        patch_mesh = patch.mesh(resolution=12)
+
+        self.assertEqual(point_samples, (TorusPoint(0.0, 0.0),))
+        self.assertIsInstance(point_mesh, ObjectMesh)
+        self.assertEqual(point_mesh.dim, 3)
+        self.assertEqual(len(point_mesh.vertices), 1)
+        self.assertTrue(patch_samples)
+        self.assertTrue(all(sample in patch for sample in patch_samples))
+        self.assertIsInstance(patch_mesh, ObjectMesh)
+        self.assertEqual(patch_mesh.dim, 3)
+        self.assertTrue(patch_mesh.cells)

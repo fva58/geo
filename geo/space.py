@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Sequence
-from typing import Protocol, TypeVar, runtime_checkable
+from typing import Callable, Generic, Protocol, TypeVar, runtime_checkable
 
 from .euclidean import EuclideanNeighborhood, FloatPoint, FloatVector
 from .floatcircle import (
@@ -372,6 +372,32 @@ class Space(MetricSpace[PointT], Protocol[PointT]):
         """Return a 3D visualization embedding of a point."""
 
 
+class SampledMetricObject(MetricGeometricObject[PointT], Generic[PointT]):
+    """Metric object with explicit sampling and mesh hooks."""
+
+    def __init__(
+        self,
+        space: MetricSpace[PointT],
+        contains: Callable[[PointT], bool],
+        local_model: Callable[[PointT], LocalConeModel[PointT]],
+        sample_points: Callable[[int], tuple[PointT, ...]],
+        mesh: Callable[[int], ObjectMesh],
+        name: str = "",
+    ) -> None:
+        """Initialize the sampled metric object."""
+        super().__init__(space, contains, local_model, name=name)
+        self._sample_points = sample_points
+        self._mesh = mesh
+
+    def sample_points(self, resolution: int = 24) -> tuple[PointT, ...]:
+        """Return sample points on the object."""
+        return tuple(self._sample_points(int(resolution)))
+
+    def mesh(self, resolution: int = 24) -> ObjectMesh:
+        """Return a visualization mesh of the object."""
+        return self._mesh(int(resolution))
+
+
 class SphereSpace:
     """Metric sphere represented by embedded points in ``R^3``.
 
@@ -484,16 +510,18 @@ class SphereSpace:
         self,
         point: object,
         name: str = "",
-    ) -> MetricGeometricObject[FloatPoint]:
+    ) -> SampledMetricObject[FloatPoint]:
         """Return a singleton object on the sphere."""
         sphere_point = self.point(point)
-        return MetricGeometricObject(
+        return SampledMetricObject(
             self,
             contains=lambda candidate: self.point(candidate) == sphere_point,
             local_model=lambda candidate: LocalConeModel(
                 _sphere_chart(sphere_point),
                 _point_cone(2),
             ),
+            sample_points=lambda resolution: (sphere_point,),
+            mesh=lambda resolution: ObjectMesh((sphere_point,), ((0,),)),
             name=name or "sphere-point",
         )
 
@@ -509,7 +537,7 @@ class SphereSpace:
         center: object,
         radius: float,
         name: str = "",
-    ) -> MetricGeometricObject[FloatPoint]:
+    ) -> SampledMetricObject[FloatPoint]:
         """Return the closed geodesic cap around a center point."""
         center_point = self.point(center)
         cap_radius = float(radius)
@@ -525,13 +553,15 @@ class SphereSpace:
             cap_radius / self.radius
         )
         if math.isclose(cap_radius, max_radius, abs_tol=1e-12):
-            return MetricGeometricObject(
+            return SampledMetricObject(
                 self,
                 contains=lambda point: point in self,
                 local_model=lambda point: LocalConeModel(
                     _sphere_chart(self.point(point)),
                     EuclideanCone.whole(2),
                 ),
+                sample_points=lambda resolution: self.sample_points(resolution),
+                mesh=lambda resolution: self.mesh(resolution),
                 name=name or "sphere-cap",
             )
 
@@ -567,10 +597,18 @@ class SphereSpace:
                     )
             return LocalConeModel(chart, cone)
 
-        return MetricGeometricObject(
+        return SampledMetricObject(
             self,
             contains=contains,
             local_model=local_model,
+            sample_points=lambda resolution: tuple(
+                self.cap_mesh(center_point, cap_radius, resolution).vertices
+            ),
+            mesh=lambda resolution: self.cap_mesh(
+                center_point,
+                cap_radius,
+                resolution,
+            ),
             name=name or "sphere-cap",
         )
 
@@ -783,15 +821,20 @@ class TorusSpace:
         self,
         point: object,
         name: str = "",
-    ) -> MetricGeometricObject[TorusPoint]:
+    ) -> SampledMetricObject[TorusPoint]:
         """Return a singleton object on the torus."""
         torus_point = self.point(point)
-        return MetricGeometricObject(
+        return SampledMetricObject(
             self,
             contains=lambda candidate: self.point(candidate) == torus_point,
             local_model=lambda candidate: LocalConeModel(
                 _torus_chart(torus_point),
                 _point_cone(2),
+            ),
+            sample_points=lambda resolution: (torus_point,),
+            mesh=lambda resolution: ObjectMesh(
+                (FloatPoint(self.to_3d(torus_point)),),
+                ((0,),),
             ),
             name=name or "torus-point",
         )
@@ -801,7 +844,7 @@ class TorusSpace:
         major_set: object,
         minor_set: object,
         name: str = "",
-    ) -> MetricGeometricObject[TorusPoint]:
+    ) -> SampledMetricObject[TorusPoint]:
         """Return a rectangular angular patch on the torus."""
         major_circle_set = FloatCircleSet(major_set)
         minor_circle_set = FloatCircleSet(minor_set)
@@ -831,10 +874,26 @@ class TorusSpace:
             )
             return LocalConeModel(chart, cone)
 
-        return MetricGeometricObject(
+        return SampledMetricObject(
             self,
             contains=contains,
             local_model=local_model,
+            sample_points=lambda resolution: tuple(
+                TorusPoint(major, minor)
+                for major in _sample_circle_set(
+                    major_circle_set,
+                    max(2, int(resolution)),
+                )
+                for minor in _sample_circle_set(
+                    minor_circle_set,
+                    max(2, int(resolution // 2)),
+                )
+            ),
+            mesh=lambda resolution: self.patch_mesh(
+                major_circle_set,
+                minor_circle_set,
+                resolution,
+            ),
             name=name or "torus-patch",
         )
 

@@ -77,6 +77,13 @@ Sampling and meshing currently include:
 - ``TorusSpace.sample_points()``, ``TorusSpace.mesh()``,
   ``TorusSpace.patch_mesh()``.
 
+Native sampled objects currently include:
+
+- sphere point objects and spherical caps with ``sample_points()`` and
+  ``mesh()``;
+- torus point objects and torus patches with ``sample_points()`` and
+  ``mesh()``.
+
 For arcs crossing zero, the internal representation is split into two linear
 intervals: one before zero and one after zero.
 

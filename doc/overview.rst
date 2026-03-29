@@ -79,6 +79,11 @@ They also provide early visualization helpers:
 - ``TorusSpace.sample_points()``, ``TorusSpace.mesh()``,
   ``TorusSpace.patch_mesh()``.
 
+The native non-Euclidean objects now carry the same idea one level lower:
+
+- sphere point objects and caps expose ``sample_points()`` and ``mesh()``;
+- torus point objects and patches expose ``sample_points()`` and ``mesh()``.
+
 Status
 ------
 

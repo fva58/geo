@@ -31,7 +31,7 @@ python -m unittest discover -s tests
 Result:
 
 - Passed
-- 137 tests
+- 139 tests
 
 ### Bytecode compilation
 
@@ -64,6 +64,8 @@ Result:
   families: singleton objects, spherical caps, and torus patches.
 - `SphereSpace` and `TorusSpace` now also expose sampling and visualization
   mesh methods for 3D rendering workflows.
+- Native sphere and torus objects now expose object-level `sample_points()`
+  and `mesh()` methods instead of relying only on space-level helpers.
 - The package metadata and README are now populated.
 
 ### Risky or still underspecified

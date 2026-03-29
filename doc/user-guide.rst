@@ -211,6 +211,32 @@ and triangle meshes directly.
    print(len(torus_mesh.vertices), len(torus_mesh.cells))
    print(len(patch_mesh.vertices), len(patch_mesh.cells))
 
+Object-Level Sampling and Meshes
+--------------------------------
+
+The native objects on sphere and torus now expose their own sampling and mesh
+methods directly.
+
+.. code-block:: python
+
+   import math
+
+   from geo import SphereSpace, TorusSpace
+
+   sphere = SphereSpace()
+   cap = sphere.cap(
+       sphere.point_from_angles(0.0, math.pi / 2.0),
+       math.pi / 3.0,
+   )
+
+   torus = TorusSpace()
+   patch = torus.patch((0.0, math.pi / 2.0), (0.0, math.pi / 2.0))
+
+   print(len(cap.sample_points(resolution=12)))
+   print(len(cap.mesh(resolution=12).cells))
+   print(len(patch.sample_points(resolution=12)))
+   print(len(patch.mesh(resolution=12).cells))
+
 Visibility From a Direction or an Observer
 ------------------------------------------
 
