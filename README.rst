@@ -91,6 +91,13 @@ for a broader zoo:
 - circle points and arcs/subsets;
 - wrapped Euclidean objects that already have geometric mesh support.
 
+`ObjectMesh` now also has unified export/plot adapters:
+
+- ``wireframe_data()`` for generic edge/cell export;
+- ``matplotlib_data()`` for Matplotlib-oriented plain data;
+- ``plotly_data()`` for Plotly trace dictionaries;
+- ``threejs_data()`` for indexed Three.js geometry buffers.
+
 For arcs crossing zero, the internal representation is split into two linear
 intervals: one before zero and one after zero.
 

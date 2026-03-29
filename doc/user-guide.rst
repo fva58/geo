@@ -259,6 +259,27 @@ the new sphere and torus objects.
    print(len(arc.mesh(resolution=8).cells))
    print(len(disk.sample_points(resolution=8)))
 
+Export Adapters for ObjectMesh
+------------------------------
+
+`ObjectMesh` now exposes plain export adapters, so the same mesh can feed
+different rendering layers without a hard dependency on any plotting library.
+
+.. code-block:: python
+
+   from geo import Ball, FloatPoint
+
+   mesh = Ball(FloatPoint(0.0, 0.0), 1.0).mesh(resolution=12)
+
+   wireframe = mesh.wireframe_data()
+   matplotlib_data = mesh.matplotlib_data()
+   plotly_data = mesh.plotly_data(name="disk")
+   threejs_data = mesh.threejs_data()
+
+   print(wireframe["edges"][:3])
+   print(plotly_data[0]["type"])
+   print(len(threejs_data["position"]))
+
 Visibility From a Direction or an Observer
 ------------------------------------------
 

@@ -934,6 +934,40 @@ class ObjectMesh:
         )
         return ObjectMesh(projected_vertices, self.cells)
 
+    def wireframe_data(
+        self,
+        axes: Sequence[int] | None = None,
+    ) -> dict[str, object]:
+        """Return generic wireframe export data."""
+        from .mesh_export import mesh_to_wireframe_data
+
+        return mesh_to_wireframe_data(self, axes=axes)
+
+    def matplotlib_data(
+        self,
+        axes: Sequence[int] | None = None,
+    ) -> dict[str, object]:
+        """Return Matplotlib-style plotting data."""
+        from .mesh_export import mesh_to_matplotlib_data
+
+        return mesh_to_matplotlib_data(self, axes=axes)
+
+    def plotly_data(
+        self,
+        axes: Sequence[int] | None = None,
+        name: str = "mesh",
+    ) -> list[dict[str, object]]:
+        """Return Plotly-compatible trace dictionaries."""
+        from .mesh_export import mesh_to_plotly_data
+
+        return mesh_to_plotly_data(self, axes=axes, name=name)
+
+    def threejs_data(self) -> dict[str, object]:
+        """Return Three.js-style indexed geometry data."""
+        from .mesh_export import mesh_to_threejs_data
+
+        return mesh_to_threejs_data(self)
+
 
 def _require_positive_resolution(resolution: int) -> int:
     """Validate a mesh resolution parameter."""

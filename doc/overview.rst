@@ -91,6 +91,10 @@ broader zoo as well:
 - circle points and arcs/subsets;
 - wrapped Euclidean objects whose charted source already supports meshing.
 
+On top of that, ``ObjectMesh`` now provides plain export adapters for generic
+wireframes, Matplotlib-style data, Plotly traces, and Three.js indexed
+geometry.
+
 Status
 ------
 

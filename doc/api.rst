@@ -11,6 +11,7 @@ Preferred public terminology:
   embeddings;
 - use ``Transform`` and ``PointTransform`` for pointwise transport between
   spaces;
+- use ``ObjectMesh`` export adapters for plotting and frontend integration;
 - use ``MetricGeometricObject`` for geometric objects in those spaces;
 - treat the older ``Riemannian*`` names as compatibility aliases.
 

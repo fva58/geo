@@ -60,6 +60,12 @@ from .geometric import (
     CircleSetObject,
 )
 from .manifold import Atlas, ChartTransition, Manifold, ManifoldChart
+from .mesh_export import (
+    mesh_to_matplotlib_data,
+    mesh_to_plotly_data,
+    mesh_to_threejs_data,
+    mesh_to_wireframe_data,
+)
 from .riemannian import (
     ChartedMetricSpace,
     ChartedRiemannianSpace,
@@ -121,6 +127,10 @@ __all__ = [
     "SphericalCone",
     "LocalConeModel",
     "ObjectMesh",
+    "mesh_to_wireframe_data",
+    "mesh_to_matplotlib_data",
+    "mesh_to_plotly_data",
+    "mesh_to_threejs_data",
     "ChartedGeometricObject",
     "SmoothImageObject",
     "RealPointObject",

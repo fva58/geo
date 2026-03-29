@@ -31,7 +31,7 @@ python -m unittest discover -s tests
 Result:
 
 - Passed
-- 139 tests
+- 142 tests
 
 ### Bytecode compilation
 
@@ -69,6 +69,8 @@ Result:
 - The broader object zoo now also exposes object-level sampling and meshing for
   real-line, circle, and wrapped Euclidean objects through the common metric
   object layer.
+- `ObjectMesh` now exposes plain-data export adapters for wireframe,
+  Matplotlib-style, Plotly-style, and Three.js-style consumers.
 - The package metadata and README are now populated.
 
 ### Risky or still underspecified
