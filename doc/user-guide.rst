@@ -6,7 +6,7 @@ well.
 
 1. Build and combine sets on the real line and on the circle.
 2. Use ready-made Euclidean objects from the object zoo.
-3. Compose objects inside a Riemannian space.
+3. Compose objects inside a named metric space.
 4. Extract visible parts from convex Euclidean objects.
 5. Transport objects by projection and smooth maps.
 
@@ -106,6 +106,12 @@ set-theoretic operations between objects that live in the same space.
    print(FloatPoint(1.0, 1.0) in quadrant)
    print(FloatPoint(-1.0, 1.0) in quadrant)
    print(FloatPoint(1.0, 1.0) in angle)
+   print(len(quadrant.mesh(bounds=((-0.2, 2.0), (-0.2, 2.0))).cells))
+
+This is the main layer to use when the answer should depend on the ambient
+space rather than on a standalone Euclidean predicate. The resulting objects
+keep the usual object API, so after one construction step you can continue with
+membership checks, Boolean operations, local models, sampling, and meshing.
 
 Typical use cases are:
 
@@ -137,6 +143,23 @@ rendering, use the ``Space`` layer.
    torus = TorusSpace()
    print(torus.distance((0.0, 0.0), (math.pi, 0.0)))
    print(torus.to_3d((0.0, 0.0)))
+
+This layer is the bridge between intrinsic geometry and reproducible
+visualization. A ``Space`` instance answers metric questions such as
+``distance()`` and also exposes deterministic embeddings:
+
+- ``to_2d()`` for charts, flat angular coordinates, or equirectangular views;
+- ``to_3d()`` for embedded rendering coordinates;
+- native object factories such as ``cap()`` and ``patch()`` in spaces that
+  support them.
+
+The next figure shows the same idea in two common settings: a spherical cap in
+equirectangular coordinates and a torus patch in flat angular coordinates.
+
+.. image:: _static/user_guide/space_visualizations.png
+   :alt: SphereSpace and TorusSpace shown through their visualization coordinates
+   :align: center
+   :width: 92%
 
 Point Transforms Between Spaces
 -------------------------------
@@ -178,6 +201,11 @@ The first non-Euclidean object families are intentionally small but explicit.
    print(sphere.point_from_angles(0.0, -math.pi / 2.0) in hemisphere)
    print(TorusPoint(math.pi / 4.0, math.pi / 4.0) in patch)
 
+The important point is that these are native geometric objects, not only helper
+predicates. They participate in the same object workflows as the Euclidean zoo:
+containment, local boundary models, Boolean composition inside one space,
+sampling, and meshing.
+
 Sampling and Meshes for Visualization
 -------------------------------------
 
@@ -211,6 +239,11 @@ and triangle meshes directly.
    print(len(torus_mesh.vertices), len(torus_mesh.cells))
    print(len(patch_mesh.vertices), len(patch_mesh.cells))
 
+Use the space-level methods when you want a canonical mesh of the whole ambient
+space or when a rendering pipeline is organized around the space first and the
+object second. This is especially convenient for visual overviews, parameter
+sweeps, and reusable scene setup.
+
 Object-Level Sampling and Meshes
 --------------------------------
 
@@ -237,6 +270,14 @@ methods directly.
    print(len(patch.sample_points(resolution=12)))
    print(len(patch.mesh(resolution=12).cells))
 
+This object-level API is the better choice when the object is already the main
+unit of work. The usual pattern is:
+
+1. build a space;
+2. build one native object inside it;
+3. sample or mesh that object directly;
+4. hand the resulting ``ObjectMesh`` to plotting or file export.
+
 Broader Object Zoo Sampling
 ---------------------------
 
@@ -259,6 +300,21 @@ the new sphere and torus objects.
    print(len(arc.mesh(resolution=8).cells))
    print(len(disk.sample_points(resolution=8)))
 
+The same mental model now works across several families:
+
+- line subsets and circle arcs;
+- native sphere and torus objects;
+- wrapped charted Euclidean objects when the source object already supports
+  meshing.
+
+The figure below shows four representative outputs of that shared sampling and
+meshing layer.
+
+.. image:: _static/user_guide/space_meshes.png
+   :alt: Native sphere and torus meshes together with line and wrapped Euclidean meshes
+   :align: center
+   :width: 92%
+
 Export Adapters for ObjectMesh
 ------------------------------
 
@@ -280,6 +336,13 @@ different rendering layers without a hard dependency on any plotting library.
    print(plotly_data[0]["type"])
    print(len(threejs_data["position"]))
 
+This is the lowest-friction integration point for downstream tools. The mesh
+stays inside plain Python data structures, so you can:
+
+- inspect edges and cells in tests;
+- pass arrays into plotting code;
+- serialize the same geometry into web-friendly data formats.
+
 Ready Plot Helpers and File Export
 ----------------------------------
 
@@ -298,6 +361,20 @@ directly or write standard mesh files.
    write_obj(mesh, Path("disk.obj"))
 
    print(type(figure).__name__)
+
+The matching example scripts in ``examples/05_space_object_mesh_pipeline.py``,
+``examples/06_metric_object_zoo_pipeline.py``, and
+``examples/07_plot_and_export_pipeline.py`` show the same workflow end to end:
+
+1. define a space or a standard object;
+2. build a native or wrapped geometric object;
+3. obtain an ``ObjectMesh``;
+4. plot it or export it as ``OBJ``, ``PLY``, or ``glTF``-friendly JSON.
+
+.. image:: _static/user_guide/mesh_exports.png
+   :alt: ObjectMesh adapters for plotting, summaries, and export formats
+   :align: center
+   :width: 92%
 
 Visibility From a Direction or an Observer
 ------------------------------------------
@@ -413,8 +490,8 @@ Use this layer when you need:
 - geometric objects defined as images of source objects;
 - workflows that mix explicit geometry with local differential structure.
 
-.. image:: _static/user_guide/riemannian_workflows.png
-   :alt: Intersection, projection, and smooth image workflows
+.. image:: _static/user_guide/metric_workflows.png
+   :alt: Metric-space intersection, projection, and smooth image workflows
    :align: center
    :width: 100%
 

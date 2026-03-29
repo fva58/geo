@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import math
+import os
 import sys
 from pathlib import Path
+
+os.environ.setdefault("MPLCONFIGDIR", "/tmp")
 
 import matplotlib
 
@@ -30,6 +33,9 @@ from geo import (
     MetricGeometricObject,
     PlanarAngle,
     RealLineSpace,
+    SphereSpace,
+    TorusPoint,
+    TorusSpace,
 )
 
 
@@ -93,6 +99,37 @@ def draw_mesh(
             color=color,
             linewidth=linewidth,
         )
+    return True
+
+
+def draw_projected_mesh(
+    ax,
+    mesh,
+    *,
+    axes: tuple[int, int] = (0, 1),
+    color: str = "#1f1f1f",
+    linewidth: float = 1.8,
+    point_size: float = 14.0,
+) -> bool:
+    """Draw a projected mesh directly."""
+    if not mesh.vertices:
+        return False
+    if mesh.dim > 2:
+        mesh = mesh.projected(axes)
+    if mesh.dim != 2 or not mesh.vertices:
+        return False
+
+    vertices = np.asarray([tuple(vertex) for vertex in mesh.vertices], dtype=float)
+    edges = mesh.edge_indices()
+    if edges:
+        for start, end in sorted(edges):
+            ax.plot(
+                vertices[[start, end], 0],
+                vertices[[start, end], 1],
+                color=color,
+                linewidth=linewidth,
+            )
+    ax.scatter(vertices[:, 0], vertices[:, 1], s=point_size, c=color, zorder=3)
     return True
 
 
@@ -294,7 +331,7 @@ def save_planar_object_zoo() -> None:
     plt.close(figure)
 
 
-def save_riemannian_workflows() -> None:
+def save_metric_workflows() -> None:
     """Save a figure for set operations, projections, and smooth images."""
     plane = EuclideanPlaneSpace()
 
@@ -346,7 +383,7 @@ def save_riemannian_workflows() -> None:
     draw_object(
         axes[0],
         quadrant,
-        title="Intersection in EuclideanPlaneSpace",
+        title="Intersection in a metric space",
         xlim=(-0.5, 3.0),
         ylim=(-0.5, 3.0),
     )
@@ -388,7 +425,219 @@ def save_riemannian_workflows() -> None:
 
     figure.tight_layout()
     figure.savefig(
-        OUTPUT_DIR / "riemannian_workflows.png",
+        OUTPUT_DIR / "metric_workflows.png",
+        dpi=160,
+        bbox_inches="tight",
+    )
+    plt.close(figure)
+
+
+def save_space_visualizations() -> None:
+    """Save a figure for the visualization-aware space layer."""
+    sphere = SphereSpace()
+    north = sphere.point_from_angles(0.0, math.pi / 2.0)
+    cap = sphere.cap(north, math.pi / 3.0)
+    sphere_samples = sphere.sample_points(resolution=28)
+    cap_samples = cap.sample_points(resolution=28)
+
+    torus = TorusSpace()
+    patch = torus.patch((0.0, math.pi / 2.0), (0.0, math.pi / 2.0))
+    torus_samples = torus.sample_points(resolution=22)
+    patch_samples = patch.sample_points(resolution=22)
+
+    figure, axes = plt.subplots(1, 2, figsize=(11, 4.6))
+
+    sphere_ax, torus_ax = axes
+    sphere_xy = np.asarray(
+        [sphere.to_2d(point, method="equirectangular") for point in sphere_samples],
+        dtype=float,
+    )
+    cap_xy = np.asarray(
+        [sphere.to_2d(point, method="equirectangular") for point in cap_samples],
+        dtype=float,
+    )
+    sphere_ax.scatter(
+        sphere_xy[:, 0],
+        sphere_xy[:, 1],
+        s=14.0,
+        color="#cfcfcf",
+        alpha=0.7,
+    )
+    sphere_ax.scatter(
+        cap_xy[:, 0],
+        cap_xy[:, 1],
+        s=18.0,
+        color="#d62728",
+        alpha=0.9,
+    )
+    sphere_ax.set_title("SphereSpace in equirectangular coordinates")
+    sphere_ax.set_xlabel("longitude")
+    sphere_ax.set_ylabel("latitude")
+    sphere_ax.grid(True, alpha=0.2)
+
+    torus_xy = np.asarray([torus.to_2d(point) for point in torus_samples], dtype=float)
+    patch_xy = np.asarray([torus.to_2d(point) for point in patch_samples], dtype=float)
+    torus_ax.scatter(
+        torus_xy[:, 0],
+        torus_xy[:, 1],
+        s=14.0,
+        color="#cfcfcf",
+        alpha=0.65,
+    )
+    torus_ax.scatter(
+        patch_xy[:, 0],
+        patch_xy[:, 1],
+        s=18.0,
+        color="#1f77b4",
+        alpha=0.9,
+    )
+    torus_ax.set_title("TorusSpace in flat angular coordinates")
+    torus_ax.set_xlabel("major angle")
+    torus_ax.set_ylabel("minor angle")
+    torus_ax.set_xlim(-0.2, 2.0 * math.pi + 0.2)
+    torus_ax.set_ylim(-0.2, 2.0 * math.pi + 0.2)
+    torus_ax.grid(True, alpha=0.2)
+
+    figure.tight_layout()
+    figure.savefig(
+        OUTPUT_DIR / "space_visualizations.png",
+        dpi=160,
+        bbox_inches="tight",
+    )
+    plt.close(figure)
+
+
+def save_space_meshes() -> None:
+    """Save a figure for native-object meshing workflows."""
+    sphere = SphereSpace()
+    north = sphere.point_from_angles(0.0, math.pi / 2.0)
+    cap = sphere.cap(north, math.pi / 3.0)
+    cap_mesh = cap.mesh(resolution=14)
+
+    torus = TorusSpace()
+    patch = torus.patch((0.0, math.pi / 2.0), (0.0, math.pi / 2.0))
+    patch_mesh = patch.mesh(resolution=14)
+
+    line = RealLineSpace().subset((0.0, 2.0), 5.0)
+    line_mesh = line.mesh(resolution=12)
+
+    circle = EuclideanPlaneSpace()
+    disk = MetricGeometricObject.from_charted(
+        circle,
+        Ball(FloatPoint(0.0, 0.0), 1.0),
+        name="disk",
+    )
+    disk_mesh = disk.mesh(resolution=14)
+
+    figure, axes = plt.subplots(2, 2, figsize=(10.8, 9.0))
+
+    draw_projected_mesh(
+        axes[0, 0],
+        cap_mesh,
+        axes=(0, 2),
+        color="#d62728",
+    )
+    axes[0, 0].set_title("Spherical cap mesh (projected)")
+    axes[0, 0].set_aspect("equal")
+    axes[0, 0].grid(True, alpha=0.2)
+
+    draw_projected_mesh(
+        axes[0, 1],
+        patch_mesh,
+        axes=(0, 1),
+        color="#1f77b4",
+    )
+    axes[0, 1].set_title("Torus patch mesh (projected)")
+    axes[0, 1].set_aspect("equal")
+    axes[0, 1].grid(True, alpha=0.2)
+
+    draw_projected_mesh(
+        axes[1, 0],
+        line_mesh,
+        color="#2ca02c",
+    )
+    axes[1, 0].set_title("Real-line subset mesh")
+    axes[1, 0].set_aspect("equal")
+    axes[1, 0].grid(True, alpha=0.2)
+
+    draw_projected_mesh(
+        axes[1, 1],
+        disk_mesh,
+        color="#9467bd",
+    )
+    axes[1, 1].set_title("Wrapped Euclidean object mesh")
+    axes[1, 1].set_aspect("equal")
+    axes[1, 1].grid(True, alpha=0.2)
+
+    figure.tight_layout()
+    figure.savefig(
+        OUTPUT_DIR / "space_meshes.png",
+        dpi=160,
+        bbox_inches="tight",
+    )
+    plt.close(figure)
+
+
+def save_mesh_exports() -> None:
+    """Save a figure for mesh export and plotting workflows."""
+    mesh = Ball(FloatPoint(0.0, 0.0), 1.0).mesh(resolution=18)
+    projected = mesh.projected((0, 1))
+    wireframe = projected.wireframe_data()
+    plotly_data = projected.plotly_data(name="disk")
+    threejs_data = projected.threejs_data()
+
+    figure, axes = plt.subplots(1, 3, figsize=(14, 4.3))
+
+    draw_projected_mesh(
+        axes[0],
+        projected,
+        color="#1f77b4",
+    )
+    axes[0].set_title("Matplotlib-style mesh view")
+    axes[0].set_aspect("equal")
+    axes[0].grid(True, alpha=0.2)
+
+    axes[1].axis("off")
+    axes[1].set_title("Wireframe / Plotly summary")
+    axes[1].text(
+        0.0,
+        1.0,
+        "\n".join(
+            [
+                f"vertices: {len(wireframe['vertices'])}",
+                f"edges: {len(wireframe['edges'])}",
+                f"cells: {len(wireframe['cells'])}",
+                f"plotly traces: {len(plotly_data)}",
+            ]
+        ),
+        va="top",
+        ha="left",
+        family="monospace",
+        fontsize=11,
+    )
+
+    axes[2].axis("off")
+    axes[2].set_title("Three.js / file export summary")
+    axes[2].text(
+        0.0,
+        1.0,
+        "\n".join(
+            [
+                f"position values: {len(threejs_data['position'])}",
+                f"line indices: {len(threejs_data['line_indices'])}",
+                f"triangle indices: {len(threejs_data['triangle_indices'])}",
+                "file targets: OBJ / PLY / glTF JSON",
+            ]
+        ),
+        va="top",
+        ha="left",
+        family="monospace",
+        fontsize=11,
+    )
+
+    figure.tight_layout()
+    figure.savefig(
+        OUTPUT_DIR / "mesh_exports.png",
         dpi=160,
         bbox_inches="tight",
     )
@@ -522,8 +771,11 @@ def main() -> None:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     save_line_and_circle_sets()
     save_planar_object_zoo()
+    save_space_visualizations()
+    save_space_meshes()
+    save_mesh_exports()
     save_visibility_workflows()
-    save_riemannian_workflows()
+    save_metric_workflows()
 
 
 if __name__ == "__main__":
