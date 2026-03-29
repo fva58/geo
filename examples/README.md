@@ -5,10 +5,12 @@ the project:
 
 - `01_intervals_and_circle.ipynb`: interval and circle primitives
 - `02_object_zoo_visualization.ipynb`: Euclidean object zoo with plots
-- `03_riemannian_objects_and_projections.ipynb`: Riemannian objects, set
+- `03_riemannian_objects_and_projections.ipynb`: metric objects, set
   operations, projections, and smooth images
 - `04_set_operations_2d.ipynb`: 2D set-theoretic operations with plotted
   unions, intersections, differences, and symmetric differences
+- `08_modern_space_object_mesh_pipeline.ipynb`: current end-to-end pipeline
+  from spaces and objects to meshes, plots, and export data
 
 It also contains runnable Python scripts for the newer end-to-end workflows:
 

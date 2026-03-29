@@ -137,6 +137,12 @@ as:
 - `metric object -> sampling/mesh`
 - `mesh -> plot/export`
 
+The notebook set has also been updated to the current metric-space terminology
+and now includes a modern pipeline notebook covering:
+
+- `space -> native object -> mesh`
+- `mesh -> plotting/export data`
+
 Typical commands:
 
 .. code-block:: sh
