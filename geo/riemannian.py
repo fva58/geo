@@ -1,8 +1,7 @@
-"""Riemannian spaces and geometric objects inside them."""
+"""Metric spaces and geometric objects inside them."""
 
 from __future__ import annotations
 
-import math
 from typing import Callable, Generic, Protocol, TypeVar, runtime_checkable
 
 import numpy as np
@@ -38,60 +37,60 @@ def _whole_neighborhood(dim: int):
     return EuclideanNeighborhood.whole(dim)
 
 
-def _coerce_metric_tensor(
-    matrix: MetricTensor,
-    dim: int,
-) -> MetricTensor:
-    """Normalize a metric tensor into a square float matrix."""
-    array = np.asarray(matrix, dtype=float)
-    if array.shape != (dim, dim):
-        raise ValueError(
-            "Metric tensor dimension mismatch: "
-            f"{array.shape} != ({dim}, {dim})"
-        )
-    if not np.allclose(array, array.T):
-        raise ValueError("Metric tensor must be symmetric")
-    return tuple(
-        tuple(float(value) for value in row)
-        for row in array
-    )
+def _point_array(point: FloatPoint) -> np.ndarray:
+    """Return local coordinates as a NumPy float array."""
+    return np.asarray(FloatPoint(point), dtype=float)
+
+
+def _numeric_local_jacobian(
+    mapping: Callable[[FloatPoint], FloatPoint],
+    point: FloatPoint,
+    step: float = 1e-6,
+) -> np.ndarray:
+    """Approximate the Jacobian of a local coordinate transition."""
+    point = FloatPoint(point)
+    base = _point_array(point)
+    image_dim = FloatPoint(mapping(point)).dim
+    jacobian = np.zeros((image_dim, point.dim), dtype=float)
+    for index in range(point.dim):
+        delta = np.zeros(point.dim, dtype=float)
+        delta[index] = step
+        image_plus = _point_array(mapping(FloatPoint(base + delta)))
+        image_minus = _point_array(mapping(FloatPoint(base - delta)))
+        jacobian[:, index] = (image_plus - image_minus) / (2.0 * step)
+    return jacobian
 
 
 @runtime_checkable
-class RiemannianSpace(Manifold[PointT], Protocol[PointT]):
-    """Protocol for a manifold equipped with a Riemannian metric."""
+class MetricSpace(Manifold[PointT], Protocol[PointT]):
+    """Protocol for a manifold equipped with a distance function.
 
-    def metric_tensor(self, point: PointT) -> MetricTensor:
-        """Return the metric tensor in local coordinates at a point."""
+    The contract is intentionally weak enough to model pseudometric spaces:
+    implementations are expected to provide a non-negative symmetric distance,
+    and different points may still have distance zero.
+    """
 
-    def inner_product(
-        self,
-        point: PointT,
-        left: FloatVector,
-        right: FloatVector,
-    ) -> float:
-        """Return the metric inner product of two tangent vectors."""
-
-    def norm(
-        self,
-        point: PointT,
-        vector: FloatVector,
-    ) -> float:
-        """Return the metric norm of a tangent vector."""
+    def distance(self, left: PointT, right: PointT) -> float:
+        """Return the distance between two points."""
 
 
-class ChartedRiemannianSpace(Generic[PointT]):
-    """Concrete Riemannian space given by a manifold and a metric tensor."""
+@runtime_checkable
+class RiemannianSpace(MetricSpace[PointT], Protocol[PointT]):
+    """Compatibility alias for the older metric-space naming."""
+
+
+class ChartedMetricSpace(Generic[PointT]):
+    """Concrete metric space given by a manifold and a distance function."""
 
     def __init__(
         self,
         manifold: Manifold[PointT],
-        metric_tensor: Callable[[PointT], MetricTensor],
+        distance: Callable[[PointT, PointT], float],
         name: str = "",
     ) -> None:
-        """Initialize the Riemannian space."""
+        """Initialize the metric space."""
         self.manifold = manifold
-        self._metric_tensor = metric_tensor
+        self._distance = distance
         self.name = name
 
     @property
@@ -102,7 +101,7 @@ class ChartedRiemannianSpace(Generic[PointT]):
     def __repr__(self) -> str:
         """Return a debug representation."""
         label = f", name={self.name!r}" if self.name else ""
-        return f"ChartedRiemannianSpace(dim={self.dim}{label})"
+        return f"ChartedMetricSpace(dim={self.dim}{label})"
 
     def contains(self, point: PointT) -> bool:
         """Check whether a point belongs to the underlying manifold."""
@@ -112,51 +111,30 @@ class ChartedRiemannianSpace(Generic[PointT]):
         """Check whether a point belongs to the underlying manifold."""
         return self.contains(point)
 
-    def metric_tensor(self, point: PointT) -> MetricTensor:
-        """Return the metric tensor at the given point."""
-        if point not in self:
-            raise ValueError("Point is outside the Riemannian space")
-        return _coerce_metric_tensor(self._metric_tensor(point), self.dim)
-
-    def inner_product(
+    def distance(
         self,
-        point: PointT,
-        left: FloatVector,
-        right: FloatVector,
+        left: PointT,
+        right: PointT,
     ) -> float:
-        """Return the metric inner product at a point."""
-        left = FloatVector(left)
-        right = FloatVector(right)
-        if left.dim != self.dim or right.dim != self.dim:
-            raise ValueError(
-                "Tangent vector dimension mismatch: "
-                f"{left.dim}, {right.dim} != {self.dim}"
-            )
-        metric = np.asarray(self.metric_tensor(point), dtype=float)
-        result = np.asarray(left, dtype=float) @ metric @ np.asarray(
-            right,
-            dtype=float,
-        )
-        return float(result)
-
-    def norm(
-        self,
-        point: PointT,
-        vector: FloatVector,
-    ) -> float:
-        """Return the metric norm at a point."""
-        squared_norm = self.inner_product(point, vector, vector)
-        if squared_norm < -1e-12:
-            raise ValueError("Metric tensor is not positive semidefinite")
-        return math.sqrt(max(0.0, squared_norm))
+        """Return the distance between two points."""
+        if left not in self or right not in self:
+            raise ValueError("Points must belong to the metric space")
+        distance = float(self._distance(left, right))
+        if distance < 0.0:
+            raise ValueError("Distance must be non-negative")
+        return distance
 
 
-class RiemannianGeometricObject(ChartedGeometricObject[PointT]):
-    """Geometric object with an explicitly Riemannian ambient space."""
+class ChartedRiemannianSpace(ChartedMetricSpace[PointT]):
+    """Compatibility alias for the older charted metric-space naming."""
+
+
+class MetricGeometricObject(ChartedGeometricObject[PointT]):
+    """Geometric object with an explicitly metric ambient space."""
 
     def __init__(
         self,
-        space: RiemannianSpace[PointT],
+        space: MetricSpace[PointT],
         contains: Callable[[PointT], bool],
         local_model,
         name: str = "",
@@ -168,11 +146,11 @@ class RiemannianGeometricObject(ChartedGeometricObject[PointT]):
     @classmethod
     def from_charted(
         cls,
-        space: RiemannianSpace[PointT],
+        space: MetricSpace[PointT],
         obj: ChartedGeometricObject[PointT],
         name: str = "",
-    ) -> "RiemannianGeometricObject[PointT]":
-        """Wrap an existing charted object in a Riemannian ambient space."""
+    ) -> "MetricGeometricObject[PointT]":
+        """Wrap an existing charted object in a metric ambient space."""
         chosen_name = name or getattr(obj, "name", "")
         wrapped = cls(
             space,
@@ -185,12 +163,12 @@ class RiemannianGeometricObject(ChartedGeometricObject[PointT]):
 
     def _require_same_space(
         self,
-        other: "RiemannianGeometricObject[PointT]",
+        other: "MetricGeometricObject[PointT]",
     ) -> None:
         """Require two objects to live in the same ambient space instance."""
         if self.space is not other.space:
             raise ValueError(
-                "Set-theoretic operations require the same Riemannian space"
+                "Set-theoretic operations require the same ambient space"
             )
 
     @staticmethod
@@ -206,11 +184,34 @@ class RiemannianGeometricObject(ChartedGeometricObject[PointT]):
         if left_model.chart.dim != right_model.chart.dim:
             raise ValueError("Local model dimensions do not match")
         dim = left_model.chart.dim
+        origin = FloatPoint.origin(dim)
+
+        def transition(point: FloatPoint) -> FloatPoint:
+            manifold_point = left_model.chart.inverse(point)
+            return FloatPoint(right_model.chart(manifold_point))
+
+        transition_origin = FloatPoint(transition(origin))
+        if not np.allclose(
+            _point_array(transition_origin),
+            np.zeros(dim, dtype=float),
+            atol=1e-7,
+            rtol=1e-7,
+        ):
+            raise ValueError(
+                "Local charts do not share the same base point coordinates"
+            )
+
+        transition_jacobian = _numeric_local_jacobian(transition, origin)
+        if np.linalg.matrix_rank(transition_jacobian) != dim:
+            raise ValueError("Local chart transition is singular at the base point")
+
         cone = EuclideanCone(
             dim,
             contains=lambda point: operation(
                 left_model.cone.contains(point),
-                right_model.cone.contains(point),
+                right_model.cone.contains(
+                    FloatPoint(transition_jacobian @ _point_array(point))
+                ),
             ),
             neighborhood=_whole_neighborhood(dim),
             name=name,
@@ -219,9 +220,9 @@ class RiemannianGeometricObject(ChartedGeometricObject[PointT]):
 
     def union(
         self,
-        other: "RiemannianGeometricObject[PointT]",
+        other: "MetricGeometricObject[PointT]",
         name: str = "",
-    ) -> "RiemannianGeometricObject[PointT]":
+    ) -> "MetricGeometricObject[PointT]":
         """Return the set-theoretic union of two objects."""
         self._require_same_space(other)
 
@@ -238,7 +239,7 @@ class RiemannianGeometricObject(ChartedGeometricObject[PointT]):
             return other.local_model_at(point)
 
         chosen_name = name or f"({self.name})|({other.name})"
-        return RiemannianGeometricObject(
+        return MetricGeometricObject(
             self.space,
             contains=lambda point: point in self or point in other,
             local_model=local_model,
@@ -247,9 +248,9 @@ class RiemannianGeometricObject(ChartedGeometricObject[PointT]):
 
     def intersection(
         self,
-        other: "RiemannianGeometricObject[PointT]",
+        other: "MetricGeometricObject[PointT]",
         name: str = "",
-    ) -> "RiemannianGeometricObject[PointT]":
+    ) -> "MetricGeometricObject[PointT]":
         """Return the set-theoretic intersection of two objects."""
         self._require_same_space(other)
 
@@ -262,7 +263,7 @@ class RiemannianGeometricObject(ChartedGeometricObject[PointT]):
             )
 
         chosen_name = name or f"({self.name})&({other.name})"
-        return RiemannianGeometricObject(
+        return MetricGeometricObject(
             self.space,
             contains=lambda point: point in self and point in other,
             local_model=local_model,
@@ -271,9 +272,9 @@ class RiemannianGeometricObject(ChartedGeometricObject[PointT]):
 
     def difference(
         self,
-        other: "RiemannianGeometricObject[PointT]",
+        other: "MetricGeometricObject[PointT]",
         name: str = "",
-    ) -> "RiemannianGeometricObject[PointT]":
+    ) -> "MetricGeometricObject[PointT]":
         """Return the set-theoretic difference ``self \\ other``."""
         self._require_same_space(other)
 
@@ -288,7 +289,7 @@ class RiemannianGeometricObject(ChartedGeometricObject[PointT]):
             return self.local_model_at(point)
 
         chosen_name = name or f"({self.name})-({other.name})"
-        return RiemannianGeometricObject(
+        return MetricGeometricObject(
             self.space,
             contains=lambda point: point in self and point not in other,
             local_model=local_model,
@@ -297,9 +298,9 @@ class RiemannianGeometricObject(ChartedGeometricObject[PointT]):
 
     def symmetric_difference(
         self,
-        other: "RiemannianGeometricObject[PointT]",
+        other: "MetricGeometricObject[PointT]",
         name: str = "",
-    ) -> "RiemannianGeometricObject[PointT]":
+    ) -> "MetricGeometricObject[PointT]":
         """Return the symmetric difference of two objects."""
         self._require_same_space(other)
 
@@ -316,7 +317,7 @@ class RiemannianGeometricObject(ChartedGeometricObject[PointT]):
             )
 
         chosen_name = name or f"({self.name})^({other.name})"
-        return RiemannianGeometricObject(
+        return MetricGeometricObject(
             self.space,
             contains=lambda point: (point in self) ^ (point in other),
             local_model=local_model,
@@ -325,29 +326,29 @@ class RiemannianGeometricObject(ChartedGeometricObject[PointT]):
 
     def __or__(
         self,
-        other: "RiemannianGeometricObject[PointT]",
-    ) -> "RiemannianGeometricObject[PointT]":
+        other: "MetricGeometricObject[PointT]",
+    ) -> "MetricGeometricObject[PointT]":
         """Return the union operator result."""
         return self.union(other)
 
     def __and__(
         self,
-        other: "RiemannianGeometricObject[PointT]",
-    ) -> "RiemannianGeometricObject[PointT]":
+        other: "MetricGeometricObject[PointT]",
+    ) -> "MetricGeometricObject[PointT]":
         """Return the intersection operator result."""
         return self.intersection(other)
 
     def __sub__(
         self,
-        other: "RiemannianGeometricObject[PointT]",
-    ) -> "RiemannianGeometricObject[PointT]":
+        other: "MetricGeometricObject[PointT]",
+    ) -> "MetricGeometricObject[PointT]":
         """Return the difference operator result."""
         return self.difference(other)
 
     def __xor__(
         self,
-        other: "RiemannianGeometricObject[PointT]",
-    ) -> "RiemannianGeometricObject[PointT]":
+        other: "MetricGeometricObject[PointT]",
+    ) -> "MetricGeometricObject[PointT]":
         """Return the symmetric-difference operator result."""
         return self.symmetric_difference(other)
 
@@ -357,7 +358,7 @@ class RiemannianGeometricObject(ChartedGeometricObject[PointT]):
         target_hyperplane,
         direction: FloatVector,
         name: str = "",
-    ) -> "RiemannianGeometricObject[PointT]":
+    ) -> "MetricGeometricObject[PointT]":
         """Project an Euclidean object along a direction onto a hyperplane."""
         projected = super().project_along_direction_onto(
             source_hyperplane,
@@ -366,7 +367,7 @@ class RiemannianGeometricObject(ChartedGeometricObject[PointT]):
             name=name,
         )
         chosen_name = name or getattr(projected, "name", "")
-        return RiemannianGeometricObject.from_charted(
+        return MetricGeometricObject.from_charted(
             self.space,
             projected,
             name=chosen_name,
@@ -378,7 +379,7 @@ class RiemannianGeometricObject(ChartedGeometricObject[PointT]):
         target_hyperplane,
         center: FloatPoint,
         name: str = "",
-    ) -> "RiemannianGeometricObject[PointT]":
+    ) -> "MetricGeometricObject[PointT]":
         """Project an Euclidean object from a point onto a hyperplane."""
         projected = super().project_from_point_onto(
             source_hyperplane,
@@ -387,7 +388,7 @@ class RiemannianGeometricObject(ChartedGeometricObject[PointT]):
             name=name,
         )
         chosen_name = name or getattr(projected, "name", "")
-        return RiemannianGeometricObject.from_charted(
+        return MetricGeometricObject.from_charted(
             self.space,
             projected,
             name=chosen_name,
@@ -397,12 +398,12 @@ class RiemannianGeometricObject(ChartedGeometricObject[PointT]):
         self,
         direction: FloatVector,
         name: str = "",
-    ) -> "RiemannianGeometricObject[PointT]":
+    ) -> "MetricGeometricObject[PointT]":
         """Return the part of an Euclidean object visible from a direction."""
         source_object = getattr(self, "_charted_source_object", self)
         visible = source_object.visible_from_direction(direction, name=name)
         chosen_name = name or getattr(visible, "name", "")
-        return RiemannianGeometricObject.from_charted(
+        return MetricGeometricObject.from_charted(
             self.space,
             visible,
             name=chosen_name,
@@ -412,12 +413,12 @@ class RiemannianGeometricObject(ChartedGeometricObject[PointT]):
         self,
         point: FloatPoint,
         name: str = "",
-    ) -> "RiemannianGeometricObject[PointT]":
+    ) -> "MetricGeometricObject[PointT]":
         """Return the part of an Euclidean object visible from a point."""
         source_object = getattr(self, "_charted_source_object", self)
         visible = source_object.visible_from_point(point, name=name)
         chosen_name = name or getattr(visible, "name", "")
-        return RiemannianGeometricObject.from_charted(
+        return MetricGeometricObject.from_charted(
             self.space,
             visible,
             name=chosen_name,
@@ -427,12 +428,12 @@ class RiemannianGeometricObject(ChartedGeometricObject[PointT]):
         self,
         forward: Callable[[PointT], TargetT],
         preimage_on_image: Callable[[TargetT], PointT],
-        target_space: RiemannianSpace[TargetT],
+        target_space: MetricSpace[TargetT],
         target_chart,
         contains_image_point: Callable[[TargetT], bool] | None = None,
         name: str = "",
-    ) -> "RiemannianGeometricObject[TargetT]":
-        """Return the image object under a smooth map into a Riemannian space."""
+    ) -> "MetricGeometricObject[TargetT]":
+        """Return the image object under a smooth map into a metric space."""
         image_object = super().image_under_smooth_map(
             forward,
             preimage_on_image,
@@ -442,21 +443,24 @@ class RiemannianGeometricObject(ChartedGeometricObject[PointT]):
             name=name,
         )
         chosen_name = name or getattr(image_object, "name", "")
-        return RiemannianGeometricObject.from_charted(
+        return MetricGeometricObject.from_charted(
             target_space,
             image_object,
             name=chosen_name,
         )
 
 
-class RealLineSpace(ChartedRiemannianSpace[float]):
-    """The real line with its standard Euclidean metric."""
+RiemannianGeometricObject = MetricGeometricObject
+
+
+class RealLineSpace(ChartedMetricSpace[float]):
+    """The real line with its standard metric."""
 
     def __init__(self, name: str = "") -> None:
-        """Initialize the standard Riemannian real line."""
+        """Initialize the standard metric real line."""
         super().__init__(
             RealLine(),
-            metric_tensor=lambda point: ((1.0,),),
+            distance=lambda left, right: abs(float(left) - float(right)),
             name=name or "R",
         )
 
@@ -464,9 +468,9 @@ class RealLineSpace(ChartedRiemannianSpace[float]):
         self,
         point: float,
         name: str = "",
-    ) -> RiemannianGeometricObject[float]:
+    ) -> MetricGeometricObject[float]:
         """Return a singleton object in the real line."""
-        return RiemannianGeometricObject.from_charted(
+        return MetricGeometricObject.from_charted(
             self,
             RealPointObject(point, name=name),
             name=name,
@@ -476,23 +480,25 @@ class RealLineSpace(ChartedRiemannianSpace[float]):
         self,
         *point_set: object,
         name: str = "",
-    ) -> RiemannianGeometricObject[float]:
+    ) -> MetricGeometricObject[float]:
         """Return a geometric object built from a ``FloatSet``."""
-        return RiemannianGeometricObject.from_charted(
+        return MetricGeometricObject.from_charted(
             self,
             RealSetObject(*point_set, name=name),
             name=name,
         )
 
 
-class UnitCircleSpace(ChartedRiemannianSpace[FloatCirclePoint]):
-    """The unit circle with its standard angular metric."""
+class UnitCircleSpace(ChartedMetricSpace[FloatCirclePoint]):
+    """The unit circle with its standard arc-length metric."""
 
     def __init__(self, name: str = "") -> None:
-        """Initialize the standard Riemannian unit circle."""
+        """Initialize the standard metric unit circle."""
         super().__init__(
             Circle(),
-            metric_tensor=lambda point: ((1.0,),),
+            distance=lambda left, right: float(
+                FloatCirclePoint(left).distance_to(FloatCirclePoint(right))
+            ),
             name=name or "S1",
         )
 
@@ -500,9 +506,9 @@ class UnitCircleSpace(ChartedRiemannianSpace[FloatCirclePoint]):
         self,
         point: FloatCirclePoint,
         name: str = "",
-    ) -> RiemannianGeometricObject[FloatCirclePoint]:
+    ) -> MetricGeometricObject[FloatCirclePoint]:
         """Return a singleton object on the unit circle."""
-        return RiemannianGeometricObject.from_charted(
+        return MetricGeometricObject.from_charted(
             self,
             CirclePointObject(point, name=name),
             name=name,
@@ -512,9 +518,9 @@ class UnitCircleSpace(ChartedRiemannianSpace[FloatCirclePoint]):
         self,
         *point_set: object,
         name: str = "",
-    ) -> RiemannianGeometricObject[FloatCirclePoint]:
+    ) -> MetricGeometricObject[FloatCirclePoint]:
         """Return a geometric object built from a ``FloatCircleSet``."""
-        return RiemannianGeometricObject.from_charted(
+        return MetricGeometricObject.from_charted(
             self,
             CircleSetObject(*point_set, name=name),
             name=name,
@@ -525,24 +531,22 @@ class UnitCircleSpace(ChartedRiemannianSpace[FloatCirclePoint]):
         start: FloatCirclePoint,
         end: FloatCirclePoint,
         name: str = "",
-    ) -> RiemannianGeometricObject[FloatCirclePoint]:
+    ) -> MetricGeometricObject[FloatCirclePoint]:
         """Return a connected arc on the unit circle."""
         return self.subset((start, end), name=name)
 
 
-class EuclideanRiemannianSpace(ChartedRiemannianSpace[FloatPoint]):
-    """Euclidean space with its standard Riemannian metric."""
+class EuclideanMetricSpace(ChartedMetricSpace[FloatPoint]):
+    """Euclidean space with its standard metric."""
 
     def __init__(self, dim: int, name: str = "") -> None:
-        """Initialize Euclidean space with the identity metric."""
+        """Initialize Euclidean space with the Euclidean distance."""
         self._dim = dim
-        identity = tuple(
-            tuple(1.0 if i == j else 0.0 for j in range(dim))
-            for i in range(dim)
-        )
         super().__init__(
             EuclideanSpace(dim),
-            metric_tensor=lambda point: identity,
+            distance=lambda left, right: FloatPoint(left).distance_to(
+                FloatPoint(right)
+            ),
             name=name or f"R^{dim}",
         )
 
@@ -550,28 +554,32 @@ class EuclideanRiemannianSpace(ChartedRiemannianSpace[FloatPoint]):
         self,
         point: FloatPoint,
         name: str = "",
-    ) -> RiemannianGeometricObject[FloatPoint]:
+    ) -> MetricGeometricObject[FloatPoint]:
         """Return a singleton object in Euclidean space."""
-        return RiemannianGeometricObject.from_charted(
+        return MetricGeometricObject.from_charted(
             self,
             EuclideanPointObject(point, name=name),
             name=name,
         )
 
 
-class EuclideanPlaneSpace(EuclideanRiemannianSpace):
+class EuclideanRiemannianSpace(EuclideanMetricSpace):
+    """Compatibility alias for the older Euclidean metric-space naming."""
+
+
+class EuclideanPlaneSpace(EuclideanMetricSpace):
     """The Euclidean plane with several standard geometric objects."""
 
     def __init__(self, name: str = "") -> None:
-        """Initialize the standard Riemannian plane."""
+        """Initialize the standard metric plane."""
         super().__init__(2, name=name or "R^2")
 
     def whole_plane(
         self,
         name: str = "",
-    ) -> RiemannianGeometricObject[FloatPoint]:
+    ) -> MetricGeometricObject[FloatPoint]:
         """Return the whole plane as a geometric object."""
-        return RiemannianGeometricObject.from_charted(
+        return MetricGeometricObject.from_charted(
             self,
             WholePlane(name=name),
             name=name,
@@ -582,9 +590,9 @@ class EuclideanPlaneSpace(EuclideanRiemannianSpace):
         normal: FloatVector,
         offset: float = 0.0,
         name: str = "",
-    ) -> RiemannianGeometricObject[FloatPoint]:
+    ) -> MetricGeometricObject[FloatPoint]:
         """Return a closed half-plane."""
-        return RiemannianGeometricObject.from_charted(
+        return MetricGeometricObject.from_charted(
             self,
             HalfPlane(normal, offset=offset, name=name),
             name=name,
@@ -596,9 +604,9 @@ class EuclideanPlaneSpace(EuclideanRiemannianSpace):
         start: FloatCirclePoint,
         end: FloatCirclePoint,
         name: str = "",
-    ) -> RiemannianGeometricObject[FloatPoint]:
+    ) -> MetricGeometricObject[FloatPoint]:
         """Return a closed planar angle with interior."""
-        return RiemannianGeometricObject.from_charted(
+        return MetricGeometricObject.from_charted(
             self,
             PlanarAngle(apex, start, end, name=name),
             name=name,
@@ -607,11 +615,15 @@ class EuclideanPlaneSpace(EuclideanRiemannianSpace):
 
 __all__ = [
     "MetricTensor",
+    "MetricSpace",
+    "ChartedMetricSpace",
+    "MetricGeometricObject",
     "RiemannianSpace",
     "ChartedRiemannianSpace",
     "RiemannianGeometricObject",
     "RealLineSpace",
     "UnitCircleSpace",
+    "EuclideanMetricSpace",
     "EuclideanRiemannianSpace",
     "EuclideanPlaneSpace",
 ]

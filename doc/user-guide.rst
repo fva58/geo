@@ -123,17 +123,17 @@ geometric object.
 .. code-block:: python
 
    from geo import Ball, EllipsoidSurface, EuclideanPlaneSpace, FloatPoint
-   from geo import RiemannianGeometricObject
+   from geo import MetricGeometricObject
 
    plane = EuclideanPlaneSpace()
 
-   disk = RiemannianGeometricObject.from_charted(
+   disk = MetricGeometricObject.from_charted(
        plane,
        Ball(FloatPoint(0.0, 0.0), 1.0),
    )
    top_half = disk.visible_from_direction((0.0, 1.0))
 
-   ellipse = RiemannianGeometricObject.from_charted(
+   ellipse = MetricGeometricObject.from_charted(
        plane,
        EllipsoidSurface(FloatPoint(0.0, 0.0), ((2.0, 0.0), (0.0, 1.0))),
    )
@@ -175,10 +175,10 @@ new place instead of being rebuilt from scratch.
 
    from geo import EuclideanNeighborhood, EuclideanPlaneSpace, FloatPoint
    from geo import FloatVector, Hyperplane, ManifoldChart, RealLineSpace
-   from geo import RiemannianGeometricObject
+   from geo import MetricGeometricObject
 
    plane = EuclideanPlaneSpace()
-   source_line = RiemannianGeometricObject.from_charted(
+   source_line = MetricGeometricObject.from_charted(
        plane,
        Hyperplane((0.0, 1.0), offset=1.0),
    )

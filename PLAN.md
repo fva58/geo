@@ -7,7 +7,7 @@ The repository currently contains:
 
 - a working `float`-based interval and set core;
 - working circle geometry modules;
-- Euclidean, manifold, geometric, and Riemannian layers;
+- Euclidean, manifold, geometric, and metric-space layers;
 - a non-trivial public API in `geo/__init__.py`;
 - passing tests under `unittest`.
 
@@ -24,7 +24,7 @@ invariants actually enforced by the code.
 
 1. Keep the scalar model fixed as Python `float` for now.
 2. Stabilize the interval/set foundation before extending higher geometry.
-3. Do not broaden the Riemannian layer until its invariants are real.
+3. Do not broaden the metric layer beyond its actual guarantees.
 4. Keep documentation synchronized with the actual repository state.
 
 ## Main Risks
@@ -45,10 +45,10 @@ parsing rules and unsafe failure modes.
 Set-theoretic operations on geometric objects currently assume compatible local
 coordinates without enforcing the required chart transition logic.
 
-### Risk 4: the metric layer promises more than it guarantees
+### Risk 4: terminology can still overclaim
 
-The current "Riemannian" naming is stronger than the runtime invariants around
-metric tensors and tangent-space semantics.
+Some compatibility names still carry stronger historical terminology than the
+current distance-based contract.
 
 ## Release Roadmap
 
@@ -96,28 +96,23 @@ Goal: make higher geometry stricter before adding more features.
 
 - local chart composition;
 - set-theoretic operations on geometric objects;
-- metric validation and naming discipline.
+- metric-space API discipline and naming cleanup.
 
 ### Tasks
 
 - Define what it means for two local cone models to be compatible.
-- Refuse composition of local models when chart compatibility cannot be
-  established.
 - Introduce chart-transition-based transport before combining local models from
   different charts.
 - Add tests where equal objects are represented through different charts.
 - Add tests for boundary local models after union and intersection.
-- Decide whether `ChartedRiemannianSpace` is truly Riemannian or intentionally
-  weaker.
-- If the layer is meant to stay Riemannian, validate positive-definite metric
-  tensors.
-- If weaker structures are intended, rename classes or documentation so the
-  API does not overclaim.
-- Add tests for degenerate and indefinite metric tensors.
+- Consolidate `MetricSpace` and `ChartedMetricSpace` as the preferred public
+  API.
+- Keep older "Riemannian" names in compatibility mode only where needed.
+- Move examples, docs, and tests to the metric-space terminology.
 
 ### Done When
 
-- geometric-object composition is chart-aware or explicitly rejected;
+- geometric-object composition is chart-aware;
 - metric semantics are aligned with the names used in the API;
 - regression tests cover the current architectural failure modes.
 
@@ -141,7 +136,7 @@ Goal: expand only after the package contract is stable.
   verification.
 - Re-evaluate whether the package should remain focused on interval/set
   geometry with a thin local-geometry layer or continue toward a broader
-  manifold/Riemannian toolkit.
+  manifold/metric-geometry toolkit.
 
 ### Done When
 
@@ -156,7 +151,7 @@ Goal: expand only after the package contract is stable.
 2. Tighten validation and eliminate unsafe parsing behavior.
 3. Align circle behavior with the same core semantics.
 4. Fix or constrain chart-based composition of geometric objects.
-5. Bring the metric layer and its naming into agreement.
+5. Bring the metric-space layer and its naming into agreement.
 6. Keep planning and status documents synchronized with reality.
 
 ## Short Execution Plan
@@ -181,9 +176,9 @@ Goal: expand only after the package contract is stable.
 
 ### Iteration 4
 
-- Decide the intended semantics of the metric layer.
-- Enforce positive-definite metrics or weaken the terminology.
-- Add tests for degenerate and indefinite metric tensors.
+- Consolidate `distance()` as the primary ambient-space contract.
+- Keep older terminology only as compatibility aliases.
+- Move public examples and docs to metric-space naming.
 
 ### Iteration 5
 

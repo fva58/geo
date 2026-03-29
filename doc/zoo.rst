@@ -69,9 +69,9 @@ Projections
 Euclidean objects also support projections onto hyperplanes, either from a
 point or along a fixed direction::
 
-    >>> from geo import EuclideanPlaneSpace, FloatPoint, Hyperplane, RiemannianGeometricObject
+    >>> from geo import EuclideanPlaneSpace, FloatPoint, Hyperplane, MetricGeometricObject
     >>> plane = EuclideanPlaneSpace()
-    >>> source_line = RiemannianGeometricObject.from_charted(
+    >>> source_line = MetricGeometricObject.from_charted(
     ...     plane,
     ...     Hyperplane((0.0, 1.0), offset=1.0),
     ... )
@@ -93,9 +93,9 @@ Visible parts
 Convex Euclidean families also support visible parts, either from an observer
 point or from a fixed direction::
 
-    >>> from geo import Ball, EllipsoidSurface, FloatPoint, RiemannianGeometricObject
+    >>> from geo import Ball, EllipsoidSurface, FloatPoint, MetricGeometricObject
     >>> plane = EuclideanPlaneSpace()
-    >>> disk = RiemannianGeometricObject.from_charted(
+    >>> disk = MetricGeometricObject.from_charted(
     ...     plane,
     ...     Ball((0.0, 0.0), 1.0),
     ... )
@@ -104,7 +104,7 @@ point or from a fixed direction::
     True
     >>> FloatPoint(0.0, -1.0) in top_half
     False
-    >>> ellipse = RiemannianGeometricObject.from_charted(
+    >>> ellipse = MetricGeometricObject.from_charted(
     ...     plane,
     ...     EllipsoidSurface((0.0, 0.0), ((2.0, 0.0), (0.0, 1.0))),
     ... )

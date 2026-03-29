@@ -27,9 +27,9 @@ from geo import (
     HalfPlane,
     Hyperplane,
     ManifoldChart,
+    MetricGeometricObject,
     PlanarAngle,
     RealLineSpace,
-    RiemannianGeometricObject,
 )
 
 
@@ -302,7 +302,7 @@ def save_riemannian_workflows() -> None:
     right = plane.half_plane((1.0, 0.0), offset=0.0)
     quadrant = upper & right
 
-    source_line = RiemannianGeometricObject.from_charted(
+    source_line = MetricGeometricObject.from_charted(
         plane,
         Hyperplane((0.0, 1.0), offset=1.0),
     )
@@ -398,13 +398,13 @@ def save_riemannian_workflows() -> None:
 def save_visibility_workflows() -> None:
     """Save a figure for visibility from a direction and from a point."""
     plane = EuclideanPlaneSpace()
-    disk = RiemannianGeometricObject.from_charted(
+    disk = MetricGeometricObject.from_charted(
         plane,
         Ball(FloatPoint(0.0, 0.0), 1.0),
     )
     top_half = disk.visible_from_direction((0.0, 1.0))
 
-    ellipse = RiemannianGeometricObject.from_charted(
+    ellipse = MetricGeometricObject.from_charted(
         plane,
         EllipsoidSurface(
             FloatPoint(0.0, 0.0),

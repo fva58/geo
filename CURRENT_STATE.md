@@ -8,9 +8,11 @@ Date: 2026-03-29
 - `geo.floatcircle` is present and importable.
 - `geo/__init__.py` exposes a non-trivial public API.
 - The repository also contains Euclidean, manifold, geometric, and
-  Riemannian-oriented layers.
-- The working tree is not clean: there are existing documentation-related
-  changes in `doc/` and generated images.
+  metric-space-oriented layers.
+- The preferred public terminology is now metric-space-based, while older
+  "Riemannian" names remain as compatibility aliases.
+- The working tree may be dirty during active development; this snapshot does
+  not assume a clean repository.
 
 ## Verification Snapshot
 
@@ -25,7 +27,7 @@ python -m unittest discover -s tests
 Result:
 
 - Passed
-- 112 tests
+- 118 tests
 
 ### Bytecode compilation
 
@@ -44,22 +46,22 @@ Result:
 ### Stable or partially stable
 
 - `geo.floatset` is usable and covered by tests, but its adjacency and
-  normalization semantics still need a sharper written contract.
+  normalization semantics now have an explicit written contract and regression
+  coverage.
 - `geo.floatcircle` is importable and covered by tests.
 - `geo.euclidean`, `geo.manifold`, and parts of `geo.geometric` are implemented
   and exercised by the current test suite.
+- The metric-space layer now uses `distance()` as its primary public contract.
 - The package metadata and README are now populated.
 
 ### Risky or still underspecified
 
-- `FloatSet` input parsing is still too permissive and can fail unsafely on
-  unsupported iterables.
-- The interval/set core still needs a precise contract for adjacency in the
-  representable-float model.
-- Boolean operations on higher-level geometric objects are not yet strict
-  enough about chart compatibility.
-- The current "Riemannian" layer does not yet enforce invariants strong enough
-  to justify the terminology unconditionally.
+- Some compatibility names still use older "Riemannian" terminology even
+  though the actual contract is metric-space-based.
+- The package still needs a clearer stability boundary between core modules and
+  higher experimental geometry layers.
+- The metric-space layer currently focuses on distance, not on a stronger
+  tensor-based differential-metric API.
 
 ## Active Architectural Decision
 
@@ -71,6 +73,7 @@ For the current development stage, the package assumes:
 - endpoint adjustments may use `math.nextafter`;
 - broadening the scalar model is lower priority than stabilizing the current
   `float` contract;
+- the ambient-space abstraction is distance-first rather than tensor-first;
 - higher-level geometry should be constrained by the guarantees of the core,
   not the other way around.
 
@@ -78,7 +81,8 @@ For the current development stage, the package assumes:
 
 1. Stabilize `FloatInterval` and `FloatSet` semantics in the explicit `float`
    model.
-2. Tighten public validation and predictable failure modes.
+2. Keep public validation and failure modes explicit and predictable.
 3. Align `FloatCircle*` behavior with the same interval/set contract.
-4. Fix or restrict chart-based composition of geometric objects.
-5. Clarify or harden the metric layer before extending the Riemannian API.
+4. Continue tightening chart-based composition of geometric objects.
+5. Consolidate the metric-space API and phase older naming into compatibility
+   status only.

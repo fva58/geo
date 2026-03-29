@@ -6,13 +6,18 @@ import unittest
 from geo import (
     Ball,
     EllipsoidSurface,
+    EuclideanCone,
     EuclideanNeighborhood,
+    EuclideanMetricSpace,
     EuclideanPlaneSpace,
     FloatCirclePoint,
     FloatPoint,
     FloatVector,
     Hyperplane,
+    LocalConeModel,
     ManifoldChart,
+    MetricGeometricObject,
+    MetricSpace,
     RealLineSpace,
     RiemannianGeometricObject,
     RiemannianSpace,
@@ -21,53 +26,46 @@ from geo import (
 
 
 class TestRiemannianSpaces(unittest.TestCase):
-    """Test standard Riemannian spaces."""
+    """Test standard metric spaces."""
 
     def test_real_line_space(self):
-        """The real line should satisfy the Riemannian protocol."""
+        """The real line should satisfy the metric-space protocol."""
         space = RealLineSpace()
+        self.assertIsInstance(space, MetricSpace)
         self.assertIsInstance(space, RiemannianSpace)
-        self.assertEqual(space.metric_tensor(0.0), ((1.0,),))
-        self.assertEqual(
-            space.inner_product(0.0, FloatVector(2.0), FloatVector(3.0)),
-            6.0,
-        )
-        self.assertEqual(space.norm(0.0, FloatVector(4.0)), 4.0)
+        self.assertEqual(space.distance(0.0, 4.0), 4.0)
+        self.assertEqual(space.distance(4.0, 0.0), 4.0)
 
     def test_unit_circle_space(self):
-        """The unit circle should use the angular metric."""
+        """The unit circle should use the shortest-arc metric."""
         space = UnitCircleSpace()
         point = FloatCirclePoint(math.pi / 3.0)
-        self.assertIsInstance(space, RiemannianSpace)
-        self.assertEqual(space.metric_tensor(point), ((1.0,),))
-        self.assertEqual(space.norm(point, FloatVector(2.0)), 2.0)
+        self.assertIsInstance(space, MetricSpace)
+        self.assertAlmostEqual(space.distance(point, point), 0.0)
+        self.assertAlmostEqual(
+            space.distance(0.1, 2.0 * math.pi - 0.1),
+            0.2,
+        )
 
     def test_euclidean_plane_space(self):
-        """The Euclidean plane should carry the identity metric."""
+        """The Euclidean plane should use Euclidean distance."""
         space = EuclideanPlaneSpace()
-        point = FloatPoint(1.0, 2.0)
+        self.assertIsInstance(space, MetricSpace)
+        self.assertIsInstance(space, EuclideanMetricSpace)
         self.assertEqual(
-            space.metric_tensor(point),
-            ((1.0, 0.0), (0.0, 1.0)),
+            space.distance(FloatPoint(1.0, 2.0), FloatPoint(4.0, 6.0)),
+            5.0,
         )
-        self.assertEqual(
-            space.inner_product(
-                point,
-                FloatVector(1.0, 2.0),
-                FloatVector(3.0, 4.0),
-            ),
-            11.0,
-        )
-        self.assertEqual(space.norm(point, FloatVector(3.0, 4.0)), 5.0)
 
 
 class TestRiemannianObjects(unittest.TestCase):
-    """Test geometric objects explicitly placed in Riemannian spaces."""
+    """Test metric geometric objects in explicit ambient spaces."""
 
     def test_real_line_subset(self):
         """A real-line subset should keep its local cone models."""
         space = RealLineSpace()
         obj = space.subset((0.0, 2.0), 5.0, name="segment-and-point")
+        self.assertIsInstance(obj, MetricGeometricObject)
         self.assertIsInstance(obj, RiemannianGeometricObject)
         self.assertEqual(obj.space, space)
         self.assertIn(1.0, obj)
@@ -173,10 +171,64 @@ class TestRiemannianObjects(unittest.TestCase):
         with self.assertRaises(ValueError):
             real_line.point(0.0).union(another_real_line.point(0.0))
 
+    def test_set_operations_transport_local_models_across_charts(self):
+        """Equivalent objects in different charts should keep boundary cones."""
+        space = RealLineSpace()
+        chart_identity = ManifoldChart(
+            lambda point: FloatPoint(point),
+            lambda coordinates: coordinates[0],
+            dim=1,
+            domain_contains=space.contains,
+            image=EuclideanNeighborhood.whole(1),
+            name="identity",
+        )
+        chart_reflected = ManifoldChart(
+            lambda point: FloatPoint(-point),
+            lambda coordinates: -coordinates[0],
+            dim=1,
+            domain_contains=space.contains,
+            image=EuclideanNeighborhood.whole(1),
+            name="reflected",
+        )
+        left = MetricGeometricObject(
+            space,
+            contains=lambda point: point >= 0.0,
+            local_model=lambda point: LocalConeModel(
+                chart_identity,
+                EuclideanCone(
+                    1,
+                    contains=lambda coordinates: coordinates[0] >= 0.0,
+                    neighborhood=EuclideanNeighborhood.whole(1),
+                    name="positive-half-line",
+                ),
+            ),
+            name="left",
+        )
+        right = MetricGeometricObject(
+            space,
+            contains=lambda point: point >= 0.0,
+            local_model=lambda point: LocalConeModel(
+                chart_reflected,
+                EuclideanCone(
+                    1,
+                    contains=lambda coordinates: coordinates[0] <= 0.0,
+                    neighborhood=EuclideanNeighborhood.whole(1),
+                    name="reflected-positive-half-line",
+                ),
+            ),
+            name="right",
+        )
+
+        intersection = left.intersection(right)
+        boundary = intersection.local_model_at(0.0)
+
+        self.assertIn(FloatPoint(1.0), boundary.cone)
+        self.assertNotIn(FloatPoint(-1.0), boundary.cone)
+
     def test_parallel_projection_onto_hyperplane(self):
         """Parallel projection should return a new geometric object."""
         space = EuclideanPlaneSpace()
-        source_line = RiemannianGeometricObject.from_charted(
+        source_line = MetricGeometricObject.from_charted(
             space,
             Hyperplane((0.0, 1.0), offset=1.0),
             name="source-line",
@@ -191,7 +243,7 @@ class TestRiemannianObjects(unittest.TestCase):
             name="parallel-projected-half-line",
         )
 
-        self.assertIsInstance(projected, RiemannianGeometricObject)
+        self.assertIsInstance(projected, MetricGeometricObject)
         self.assertIn(FloatPoint(1.0, 0.0), projected)
         self.assertNotIn(FloatPoint(-1.0, 0.0), projected)
         self.assertNotIn(FloatPoint(1.0, 1.0), projected)
@@ -204,7 +256,7 @@ class TestRiemannianObjects(unittest.TestCase):
     def test_central_projection_onto_hyperplane(self):
         """Central projection should return a new geometric object."""
         space = EuclideanPlaneSpace()
-        source_line = RiemannianGeometricObject.from_charted(
+        source_line = MetricGeometricObject.from_charted(
             space,
             Hyperplane((0.0, 1.0), offset=1.0),
             name="source-line",
@@ -262,7 +314,7 @@ class TestRiemannianObjects(unittest.TestCase):
             name="parabola-segment",
         )
 
-        self.assertIsInstance(image, RiemannianGeometricObject)
+        self.assertIsInstance(image, MetricGeometricObject)
         self.assertIn(FloatPoint(1.0, 1.0), image)
         self.assertNotIn(FloatPoint(1.0, 0.0), image)
         self.assertNotIn(FloatPoint(3.0, 9.0), image)
@@ -280,7 +332,7 @@ class TestRiemannianObjects(unittest.TestCase):
     def test_visible_ball_from_direction(self):
         """A ball should expose the visible boundary cap from a direction."""
         space = EuclideanPlaneSpace()
-        ball = RiemannianGeometricObject.from_charted(
+        ball = MetricGeometricObject.from_charted(
             space,
             Ball(FloatPoint(0.0, 0.0), 1.0),
             name="disk",
@@ -288,7 +340,7 @@ class TestRiemannianObjects(unittest.TestCase):
 
         visible = ball.visible_from_direction(FloatVector(0.0, 1.0))
 
-        self.assertIsInstance(visible, RiemannianGeometricObject)
+        self.assertIsInstance(visible, MetricGeometricObject)
         self.assertIn(FloatPoint(0.0, 1.0), visible)
         self.assertIn(FloatPoint(1.0, 0.0), visible)
         self.assertNotIn(FloatPoint(0.0, -1.0), visible)
@@ -301,7 +353,7 @@ class TestRiemannianObjects(unittest.TestCase):
     def test_visible_ellipsoid_surface_from_point(self):
         """An ellipsoid surface should keep only the observer-facing part."""
         space = EuclideanPlaneSpace()
-        surface = RiemannianGeometricObject.from_charted(
+        surface = MetricGeometricObject.from_charted(
             space,
             EllipsoidSurface(
                 FloatPoint(0.0, 0.0),
