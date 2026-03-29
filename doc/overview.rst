@@ -95,6 +95,9 @@ On top of that, ``ObjectMesh`` now provides plain export adapters for generic
 wireframes, Matplotlib-style data, Plotly traces, and Three.js indexed
 geometry.
 
+The current adapter layer also includes ready plotting helpers for Matplotlib
+and Plotly, plus file exporters for OBJ, PLY, and glTF-friendly JSON.
+
 Status
 ------
 

@@ -968,6 +968,42 @@ class ObjectMesh:
 
         return mesh_to_threejs_data(self)
 
+    def obj_text(self) -> str:
+        """Return a Wavefront OBJ representation of the mesh."""
+        from .mesh_io import mesh_to_obj_text
+
+        return mesh_to_obj_text(self)
+
+    def ply_text(self) -> str:
+        """Return an ASCII PLY representation of the mesh."""
+        from .mesh_io import mesh_to_ply_text
+
+        return mesh_to_ply_text(self)
+
+    def gltf_json_data(self) -> dict[str, object]:
+        """Return a glTF-friendly JSON geometry structure."""
+        from .mesh_io import mesh_to_gltf_json_data
+
+        return mesh_to_gltf_json_data(self)
+
+    def write_obj(self, path: str) -> None:
+        """Write the mesh as OBJ."""
+        from .mesh_io import write_obj
+
+        write_obj(self, path)
+
+    def write_ply(self, path: str) -> None:
+        """Write the mesh as ASCII PLY."""
+        from .mesh_io import write_ply
+
+        write_ply(self, path)
+
+    def write_gltf_json(self, path: str) -> None:
+        """Write the mesh as glTF-friendly JSON."""
+        from .mesh_io import write_gltf_json
+
+        write_gltf_json(self, path)
+
 
 def _require_positive_resolution(resolution: int) -> int:
     """Validate a mesh resolution parameter."""

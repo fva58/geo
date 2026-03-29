@@ -98,6 +98,12 @@ for a broader zoo:
 - ``plotly_data()`` for Plotly trace dictionaries;
 - ``threejs_data()`` for indexed Three.js geometry buffers.
 
+On top of that, the package now provides:
+
+- ``plot_mesh_matplotlib()`` and ``plot_mesh_plotly()`` for ready figures;
+- ``obj_text()``, ``ply_text()``, ``gltf_json_data()`` on ``ObjectMesh``;
+- ``write_obj()``, ``write_ply()``, and ``write_gltf_json()`` for file export.
+
 For arcs crossing zero, the internal representation is split into two linear
 intervals: one before zero and one after zero.
 

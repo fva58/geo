@@ -12,6 +12,7 @@ Preferred public terminology:
 - use ``Transform`` and ``PointTransform`` for pointwise transport between
   spaces;
 - use ``ObjectMesh`` export adapters for plotting and frontend integration;
+- use mesh plotting/export helpers for ready figures and file serialization;
 - use ``MetricGeometricObject`` for geometric objects in those spaces;
 - treat the older ``Riemannian*`` names as compatibility aliases.
 

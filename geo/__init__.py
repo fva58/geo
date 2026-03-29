@@ -66,6 +66,15 @@ from .mesh_export import (
     mesh_to_threejs_data,
     mesh_to_wireframe_data,
 )
+from .mesh_io import (
+    mesh_to_gltf_json_data,
+    mesh_to_obj_text,
+    mesh_to_ply_text,
+    write_gltf_json,
+    write_obj,
+    write_ply,
+)
+from .mesh_plot import plot_mesh_matplotlib, plot_mesh_plotly
 from .riemannian import (
     ChartedMetricSpace,
     ChartedRiemannianSpace,
@@ -131,6 +140,14 @@ __all__ = [
     "mesh_to_matplotlib_data",
     "mesh_to_plotly_data",
     "mesh_to_threejs_data",
+    "mesh_to_obj_text",
+    "mesh_to_ply_text",
+    "mesh_to_gltf_json_data",
+    "write_obj",
+    "write_ply",
+    "write_gltf_json",
+    "plot_mesh_matplotlib",
+    "plot_mesh_plotly",
     "ChartedGeometricObject",
     "SmoothImageObject",
     "RealPointObject",

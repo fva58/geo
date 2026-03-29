@@ -31,7 +31,7 @@ python -m unittest discover -s tests
 Result:
 
 - Passed
-- 142 tests
+- 146 tests
 
 ### Bytecode compilation
 
@@ -71,6 +71,8 @@ Result:
   object layer.
 - `ObjectMesh` now exposes plain-data export adapters for wireframe,
   Matplotlib-style, Plotly-style, and Three.js-style consumers.
+- `ObjectMesh` now also exposes ready plotting helpers for Matplotlib and
+  Plotly plus file exporters for `OBJ`, `PLY`, and glTF-friendly JSON.
 - The package metadata and README are now populated.
 
 ### Risky or still underspecified

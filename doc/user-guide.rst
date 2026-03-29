@@ -280,6 +280,25 @@ different rendering layers without a hard dependency on any plotting library.
    print(plotly_data[0]["type"])
    print(len(threejs_data["position"]))
 
+Ready Plot Helpers and File Export
+----------------------------------
+
+When optional plotting dependencies are installed, you can also build figures
+directly or write standard mesh files.
+
+.. code-block:: python
+
+   from pathlib import Path
+
+   from geo import Ball, FloatPoint, plot_mesh_matplotlib, write_obj
+
+   mesh = Ball(FloatPoint(0.0, 0.0), 1.0).mesh(resolution=12)
+
+   figure, axis = plot_mesh_matplotlib(mesh)
+   write_obj(mesh, Path("disk.obj"))
+
+   print(type(figure).__name__)
+
 Visibility From a Direction or an Observer
 ------------------------------------------
 
