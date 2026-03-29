@@ -31,7 +31,7 @@ python -m unittest discover -s tests
 Result:
 
 - Passed
-- 135 tests
+- 137 tests
 
 ### Bytecode compilation
 
@@ -62,6 +62,8 @@ Result:
   3D.
 - `SphereSpace` and `TorusSpace` now expose their first native object
   families: singleton objects, spherical caps, and torus patches.
+- `SphereSpace` and `TorusSpace` now also expose sampling and visualization
+  mesh methods for 3D rendering workflows.
 - The package metadata and README are now populated.
 
 ### Risky or still underspecified

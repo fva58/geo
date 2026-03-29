@@ -72,6 +72,13 @@ The non-Euclidean spaces currently start with small native object families:
 - ``SphereSpace.point_object()`` and ``SphereSpace.cap()``;
 - ``TorusSpace.point_object()`` and ``TorusSpace.patch()``.
 
+They also provide early visualization helpers:
+
+- ``SphereSpace.sample_points()``, ``SphereSpace.mesh()``,
+  ``SphereSpace.cap_mesh()``;
+- ``TorusSpace.sample_points()``, ``TorusSpace.mesh()``,
+  ``TorusSpace.patch_mesh()``.
+
 Status
 ------
 

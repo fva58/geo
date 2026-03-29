@@ -70,6 +70,13 @@ Non-Euclidean object families currently include:
 - ``SphereSpace.point_object()`` and ``SphereSpace.cap()``;
 - ``TorusSpace.point_object()`` and ``TorusSpace.patch()``.
 
+Sampling and meshing currently include:
+
+- ``SphereSpace.sample_points()``, ``SphereSpace.mesh()``,
+  ``SphereSpace.cap_mesh()``;
+- ``TorusSpace.sample_points()``, ``TorusSpace.mesh()``,
+  ``TorusSpace.patch_mesh()``.
+
 For arcs crossing zero, the internal representation is split into two linear
 intervals: one before zero and one after zero.
 

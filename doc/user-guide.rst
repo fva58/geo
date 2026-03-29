@@ -178,6 +178,39 @@ The first non-Euclidean object families are intentionally small but explicit.
    print(sphere.point_from_angles(0.0, -math.pi / 2.0) in hemisphere)
    print(TorusPoint(math.pi / 4.0, math.pi / 4.0) in patch)
 
+Sampling and Meshes for Visualization
+-------------------------------------
+
+For rendering workflows, the new spaces can now provide embedded sample points
+and triangle meshes directly.
+
+.. code-block:: python
+
+   import math
+
+   from geo import SphereSpace, TorusSpace
+
+   sphere = SphereSpace()
+   sphere_mesh = sphere.mesh(resolution=12)
+   cap_mesh = sphere.cap_mesh(
+       sphere.point_from_angles(0.0, math.pi / 2.0),
+       math.pi / 3.0,
+       resolution=12,
+   )
+
+   torus = TorusSpace()
+   torus_mesh = torus.mesh(resolution=16)
+   patch_mesh = torus.patch_mesh(
+       (0.0, math.pi / 2.0),
+       (0.0, math.pi / 2.0),
+       resolution=12,
+   )
+
+   print(len(sphere_mesh.vertices), len(sphere_mesh.cells))
+   print(len(cap_mesh.vertices), len(cap_mesh.cells))
+   print(len(torus_mesh.vertices), len(torus_mesh.cells))
+   print(len(patch_mesh.vertices), len(patch_mesh.cells))
+
 Visibility From a Direction or an Observer
 ------------------------------------------
 

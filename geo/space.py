@@ -10,9 +10,10 @@ from .euclidean import EuclideanNeighborhood, FloatPoint, FloatVector
 from .floatcircle import (
     FloatAngle,
     FloatCirclePoint,
+    FloatCircleInterval,
     FloatCircleSet,
 )
-from .geometric import EuclideanCone, LocalConeModel
+from .geometric import EuclideanCone, LocalConeModel, ObjectMesh, Sphere
 from .manifold import ManifoldChart
 from .riemannian import MetricGeometricObject, MetricSpace
 
@@ -200,6 +201,148 @@ def _product_cone(
         neighborhood=EuclideanNeighborhood.whole(2),
         name=name,
     )
+
+
+def _merge_meshes(meshes: Sequence[ObjectMesh]) -> ObjectMesh:
+    """Return one mesh from several disjoint mesh parts."""
+    vertices: list[FloatPoint] = []
+    cells: list[tuple[int, ...]] = []
+    offset = 0
+    for mesh in meshes:
+        vertices.extend(mesh.vertices)
+        cells.extend(
+            tuple(index + offset for index in cell)
+            for cell in mesh.cells
+        )
+        offset += len(mesh.vertices)
+    return ObjectMesh(tuple(vertices), tuple(cells))
+
+
+def _sphere_point_from_local(
+    center: FloatPoint,
+    distance: float,
+    azimuth: float,
+) -> FloatPoint:
+    """Return a sphere point from polar coordinates around a center."""
+    radius = math.sqrt(sum(coordinate * coordinate for coordinate in center))
+    normal = _normalize_vector(center)
+    first, second = _sphere_tangent_basis(center)
+    angle = distance / radius
+    tangent_direction = (
+        math.cos(azimuth) * first +
+        math.sin(azimuth) * second
+    )
+    embedded = radius * (
+        math.cos(angle) * normal +
+        math.sin(angle) * tangent_direction
+    )
+    return FloatPoint(embedded)
+
+
+def _sample_linear_interval(
+    left: float,
+    right: float,
+    steps: int,
+) -> tuple[float, ...]:
+    """Return evenly sampled values on one closed interval."""
+    steps = max(1, int(steps))
+    if math.isclose(left, right, abs_tol=1e-15):
+        return (left,)
+    if steps == 1:
+        return ((left + right) / 2.0,)
+    return tuple(
+        left + (right - left) * index / (steps - 1)
+        for index in range(steps)
+    )
+
+
+def _sample_circle_set(
+    circle_set: FloatCircleSet,
+    steps: int,
+) -> tuple[float, ...]:
+    """Return evenly sampled angles on a circle set."""
+    intervals = [FloatCircleInterval(interval) for interval in circle_set]
+    if not intervals:
+        return ()
+
+    total_length = sum(float(interval.length()) for interval in intervals)
+    samples: list[float] = []
+    for interval in intervals:
+        interval_length = float(interval.length())
+        if math.isclose(interval_length, 0.0, abs_tol=1e-15):
+            part_steps = 1
+        elif total_length <= 0.0:
+            part_steps = max(2, steps)
+        else:
+            part_steps = max(
+                2,
+                int(round(steps * interval_length / total_length)),
+            )
+        samples.extend(
+            _sample_linear_interval(
+                float(interval.start),
+                float(interval.end),
+                part_steps,
+            )
+        )
+
+    deduplicated: list[float] = []
+    for value in samples:
+        if deduplicated and math.isclose(
+            deduplicated[-1],
+            value,
+            abs_tol=1e-12,
+        ):
+            continue
+        deduplicated.append(value)
+    return tuple(deduplicated)
+
+
+def _grid_torus_mesh(
+    major_values: Sequence[float],
+    minor_values: Sequence[float],
+    major_radius: float,
+    minor_radius: float,
+    wrap_major: bool,
+    wrap_minor: bool,
+) -> ObjectMesh:
+    """Return a torus mesh from angular grids."""
+    if len(major_values) < 2 or len(minor_values) < 2:
+        raise ValueError("Torus mesh grids need at least two samples per axis")
+
+    major_count = len(major_values)
+    minor_count = len(minor_values)
+    vertices = tuple(
+        FloatPoint(
+            (major_radius + minor_radius * math.cos(minor)) * math.cos(major),
+            (major_radius + minor_radius * math.cos(minor)) * math.sin(major),
+            minor_radius * math.sin(minor),
+        )
+        for major in major_values
+        for minor in minor_values
+    )
+
+    def vertex_index(major_index: int, minor_index: int) -> int:
+        return major_index * minor_count + minor_index
+
+    major_limit = major_count if wrap_major else major_count - 1
+    minor_limit = minor_count if wrap_minor else minor_count - 1
+    cells = []
+    for major_index in range(major_limit):
+        next_major = (major_index + 1) % major_count
+        if not wrap_major and next_major == 0:
+            continue
+        for minor_index in range(minor_limit):
+            next_minor = (minor_index + 1) % minor_count
+            if not wrap_minor and next_minor == 0:
+                continue
+            lower_left = vertex_index(major_index, minor_index)
+            lower_right = vertex_index(next_major, minor_index)
+            upper_left = vertex_index(major_index, next_minor)
+            upper_right = vertex_index(next_major, next_minor)
+            cells.append((lower_left, lower_right, upper_left))
+            cells.append((lower_right, upper_right, upper_left))
+    return ObjectMesh(vertices, tuple(cells))
 
 
 @runtime_checkable
@@ -431,6 +574,68 @@ class SphereSpace:
             name=name or "sphere-cap",
         )
 
+    def sample_points(self, resolution: int = 24) -> tuple[FloatPoint, ...]:
+        """Return sample points on the whole sphere."""
+        return self.mesh(resolution=resolution).vertices
+
+    def mesh(self, resolution: int = 24) -> ObjectMesh:
+        """Return a visualization mesh for the whole sphere."""
+        return Sphere(FloatPoint(0.0, 0.0, 0.0), self.radius).mesh(
+            resolution=resolution,
+        )
+
+    def cap_mesh(
+        self,
+        center: object,
+        radius: float,
+        resolution: int = 24,
+    ) -> ObjectMesh:
+        """Return a visualization mesh for a spherical cap."""
+        center_point = self.point(center)
+        cap_radius = float(radius)
+        if cap_radius < 0.0:
+            raise ValueError("Cap radius must be non-negative")
+        if math.isclose(cap_radius, 0.0, abs_tol=1e-12):
+            return ObjectMesh((center_point,), ((0,),))
+        if math.isclose(cap_radius, math.pi * self.radius, abs_tol=1e-12):
+            return self.mesh(resolution=resolution)
+
+        radial_steps = max(2, int(resolution // 2))
+        angular_steps = max(8, int(resolution))
+        vertices = [center_point]
+        cells: list[tuple[int, ...]] = []
+
+        for radial_index in range(1, radial_steps + 1):
+            geodesic_distance = cap_radius * radial_index / radial_steps
+            for angular_index in range(angular_steps):
+                azimuth = 2.0 * math.pi * angular_index / angular_steps
+                vertices.append(
+                    _sphere_point_from_local(
+                        center_point,
+                        geodesic_distance,
+                        azimuth,
+                    )
+                )
+
+        def ring_index(radial_index: int, angular_index: int) -> int:
+            return 1 + (radial_index - 1) * angular_steps + angular_index
+
+        for angular_index in range(angular_steps):
+            next_index = (angular_index + 1) % angular_steps
+            cells.append((0, ring_index(1, next_index), ring_index(1, angular_index)))
+
+        for radial_index in range(1, radial_steps):
+            for angular_index in range(angular_steps):
+                next_index = (angular_index + 1) % angular_steps
+                lower_left = ring_index(radial_index, angular_index)
+                lower_right = ring_index(radial_index, next_index)
+                upper_left = ring_index(radial_index + 1, angular_index)
+                upper_right = ring_index(radial_index + 1, next_index)
+                cells.append((lower_left, lower_right, upper_left))
+                cells.append((lower_right, upper_right, upper_left))
+
+        return ObjectMesh(tuple(vertices), tuple(cells))
+
 
 class TorusPoint(tuple):
     """Point on a torus represented by two angular coordinates."""
@@ -632,6 +837,100 @@ class TorusSpace:
             local_model=local_model,
             name=name or "torus-patch",
         )
+
+    def sample_points(self, resolution: int = 24) -> tuple[TorusPoint, ...]:
+        """Return sample points on the whole torus."""
+        major_steps = max(4, int(resolution))
+        minor_steps = max(4, int(resolution // 2))
+        return tuple(
+            TorusPoint(
+                2.0 * math.pi * major_index / major_steps,
+                2.0 * math.pi * minor_index / minor_steps,
+            )
+            for major_index in range(major_steps)
+            for minor_index in range(minor_steps)
+        )
+
+    def mesh(self, resolution: int = 24) -> ObjectMesh:
+        """Return a visualization mesh for the whole torus."""
+        major_steps = max(8, int(resolution))
+        minor_steps = max(8, int(resolution // 2))
+        major_values = tuple(
+            2.0 * math.pi * index / major_steps
+            for index in range(major_steps)
+        )
+        minor_values = tuple(
+            2.0 * math.pi * index / minor_steps
+            for index in range(minor_steps)
+        )
+        return _grid_torus_mesh(
+            major_values,
+            minor_values,
+            self.major_radius,
+            self.minor_radius,
+            wrap_major=True,
+            wrap_minor=True,
+        )
+
+    def patch_mesh(
+        self,
+        major_set: object,
+        minor_set: object,
+        resolution: int = 24,
+    ) -> ObjectMesh:
+        """Return a visualization mesh for an angular patch."""
+        major_circle_set = FloatCircleSet(major_set)
+        minor_circle_set = FloatCircleSet(minor_set)
+        if major_circle_set.is_full() and minor_circle_set.is_full():
+            return self.mesh(resolution=resolution)
+
+        major_intervals = [
+            FloatCircleInterval(interval)
+            for interval in major_circle_set
+        ]
+        minor_intervals = [
+            FloatCircleInterval(interval)
+            for interval in minor_circle_set
+        ]
+        meshes = []
+        interval_steps = max(4, int(resolution // max(
+            1,
+            len(major_intervals) * len(minor_intervals),
+        )))
+        for major_interval in major_intervals:
+            major_values = _sample_linear_interval(
+                float(major_interval.start),
+                float(major_interval.end),
+                interval_steps,
+            )
+            for minor_interval in minor_intervals:
+                minor_values = _sample_linear_interval(
+                    float(minor_interval.start),
+                    float(minor_interval.end),
+                    interval_steps,
+                )
+                if len(major_values) < 2 or len(minor_values) < 2:
+                    continue
+                meshes.append(
+                    _grid_torus_mesh(
+                        major_values,
+                        minor_values,
+                        self.major_radius,
+                        self.minor_radius,
+                        wrap_major=False,
+                        wrap_minor=False,
+                    )
+                )
+        if not meshes:
+            samples = [
+                self.to_3d(TorusPoint(major, minor))
+                for major in _sample_circle_set(major_circle_set, 1)
+                for minor in _sample_circle_set(minor_circle_set, 1)
+            ]
+            vertices = tuple(FloatPoint(sample) for sample in samples)
+            cells = tuple((index,) for index in range(len(vertices)))
+            return ObjectMesh(vertices, cells)
+        return _merge_meshes(meshes)
 
 
 __all__ = [
