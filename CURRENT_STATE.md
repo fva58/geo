@@ -11,6 +11,7 @@ Date: 2026-03-29
   metric-space-oriented layers.
 - A new `Space` protocol now models spaces with both `distance()` and explicit
   2D/3D visualization transforms.
+- A minimal `Transform` layer now models reusable point maps between spaces.
 - Early standard point spaces now include `SphereSpace` and `TorusSpace`.
 - The preferred public terminology is now metric-space-based, while older
   "Riemannian" names remain as compatibility aliases.
@@ -30,7 +31,7 @@ python -m unittest discover -s tests
 Result:
 
 - Passed
-- 126 tests
+- 133 tests
 
 ### Bytecode compilation
 
@@ -57,6 +58,8 @@ Result:
 - The metric-space layer now uses `distance()` as its primary public contract.
 - The ambient-space layer now also exposes a visualization-aware `Space`
   protocol.
+- The package now has explicit visualization transforms into Euclidean 2D and
+  3D.
 - The package metadata and README are now populated.
 
 ### Risky or still underspecified
@@ -92,5 +95,5 @@ For the current development stage, the package assumes:
 2. Keep public validation and failure modes explicit and predictable.
 3. Align `FloatCircle*` behavior with the same interval/set contract.
 4. Continue tightening chart-based composition of geometric objects.
-5. Grow the `Space` API around explicit standard spaces and visualization
-   transforms.
+5. Grow the `Space` and `Transform` APIs around explicit standard spaces and
+   visualization transforms.

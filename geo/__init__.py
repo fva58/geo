@@ -74,6 +74,13 @@ from .riemannian import (
     UnitCircleSpace,
 )
 from .space import Space, SphereSpace, TorusPoint, TorusSpace
+from .transform import (
+    PointTransform,
+    Transform,
+    identity_transform,
+    visualization_transform_2d,
+    visualization_transform_3d,
+)
 from .real import (
     ALL_REALS_INTERVAL,
     EMPTY_REAL_INTERVAL,
@@ -127,6 +134,8 @@ __all__ = [
     "PlanarAngle",
     "MetricSpace",
     "Space",
+    "Transform",
+    "PointTransform",
     "ChartedMetricSpace",
     "MetricGeometricObject",
     "RiemannianSpace",
@@ -137,6 +146,9 @@ __all__ = [
     "SphereSpace",
     "TorusPoint",
     "TorusSpace",
+    "identity_transform",
+    "visualization_transform_2d",
+    "visualization_transform_3d",
     "EuclideanMetricSpace",
     "EuclideanRiemannianSpace",
     "EuclideanPlaneSpace",

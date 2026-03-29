@@ -138,6 +138,24 @@ rendering, use the ``Space`` layer.
    print(torus.distance((0.0, 0.0), (math.pi, 0.0)))
    print(torus.to_3d((0.0, 0.0)))
 
+Point Transforms Between Spaces
+-------------------------------
+
+Use the transform layer when you want an explicit reusable point map instead of
+calling ``to_2d()`` or ``to_3d()`` directly.
+
+.. code-block:: python
+
+   import math
+
+   from geo import SphereSpace, visualization_transform_3d
+
+   sphere = SphereSpace(radius=2.0)
+   transform = visualization_transform_3d(sphere)
+   point = sphere.point_from_angles(math.pi / 2.0, 0.0)
+
+   print(transform(point))
+
 Visibility From a Direction or an Observer
 ------------------------------------------
 

@@ -62,6 +62,7 @@ Metric-space layer
 
 - ``MetricSpace`` and ``ChartedMetricSpace``: manifolds with distance;
 - ``Space``: metric space with explicit 2D/3D visualization transforms;
+- ``Transform`` and ``PointTransform``: point maps between spaces;
 - ``MetricGeometricObject``: geometric object in a metric space;
 - ``RealLineSpace``, ``UnitCircleSpace``, ``EuclideanPlaneSpace``,
   ``SphereSpace``, ``TorusSpace``: standard spaces with ready-made objects.

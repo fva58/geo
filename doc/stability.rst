@@ -18,6 +18,7 @@ Preferred stable building blocks:
 - ``FloatPoint`` and ``FloatVector``
 - ``MetricSpace`` and ``ChartedMetricSpace``
 - ``Space`` for visualization-aware ambient spaces
+- ``Transform`` and ``PointTransform`` for reusable point maps
 - ``MetricGeometricObject``
 - ``RealLineSpace``, ``UnitCircleSpace``, and ``EuclideanPlaneSpace``
 
