@@ -136,8 +136,12 @@ class TestMeshIoAndPlot(unittest.TestCase):
             figure, axis = plot_mesh_matplotlib(mesh)
 
         self.assertIsNotNone(figure)
-        self.assertTrue(axis.plots)
-        self.assertTrue(axis.scatters)
+        if hasattr(axis, "plots"):
+            self.assertTrue(axis.plots)
+            self.assertTrue(axis.scatters)
+        else:
+            self.assertTrue(axis.lines)
+            self.assertTrue(axis.collections)
 
     def test_plotly_plot_helper_with_fake_backend(self):
         """Plotly helper should add converted traces to a figure."""

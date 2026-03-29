@@ -31,7 +31,7 @@ python -m unittest discover -s tests
 Result:
 
 - Passed
-- 146 tests
+- 149 tests
 
 ### Bytecode compilation
 
@@ -73,6 +73,8 @@ Result:
   Matplotlib-style, Plotly-style, and Three.js-style consumers.
 - `ObjectMesh` now also exposes ready plotting helpers for Matplotlib and
   Plotly plus file exporters for `OBJ`, `PLY`, and glTF-friendly JSON.
+- The `examples/` directory now contains runnable end-to-end Python scripts in
+  addition to notebooks, and those scripts are covered by smoke tests.
 - The package metadata and README are now populated.
 
 ### Risky or still underspecified

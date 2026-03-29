@@ -130,12 +130,21 @@ Examples
 Jupyter notebooks with demonstrations and visualizations live under
 `examples/`.
 
+Runnable Python scripts now live there as well for end-to-end pipelines such
+as:
+
+- `space -> native object -> mesh`
+- `metric object -> sampling/mesh`
+- `mesh -> plot/export`
+
 Typical commands:
 
 .. code-block:: sh
 
    pip install -e ".[docs]"
    pip install -e ".[examples]"
+   python examples/05_space_object_mesh_pipeline.py
+   python examples/07_plot_and_export_pipeline.py
    make -C doc html
    make -C doc doctest
 
