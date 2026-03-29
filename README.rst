@@ -75,6 +75,7 @@ Main pages:
 
 - `doc/index.rst`
 - `doc/overview.rst`
+- `doc/stability.rst`
 - `doc/user-guide.rst`
 - `doc/intervals.rst`
 - `doc/circle.rst`
@@ -105,3 +106,6 @@ The package is still under active development. The current focus is:
 1. stabilize the ``float``-based core;
 2. keep the public API coherent;
 3. extend the geometric model only after the interval foundation is stable.
+
+For the current stability boundary between the tested core and the more
+experimental geometry layers, see `doc/stability.rst`.

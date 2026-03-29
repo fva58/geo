@@ -73,3 +73,6 @@ The package is still under active development. The current focus is:
 1. stabilize the ``float``-based core;
 2. keep the public API coherent;
 3. extend the geometric model only after the interval foundation is stable.
+
+For a practical split between the stable core and the still-experimental
+higher geometry layers, see :doc:`stability`.
