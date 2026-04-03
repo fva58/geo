@@ -1,6 +1,7 @@
 tmp.*
 \.coverage
 *~
+examples/_generated/
 __pycache__/
 .aider*
 coverage.json
