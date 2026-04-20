@@ -7,13 +7,21 @@ public, documentation-oriented form.
 Current Direction
 -----------------
 
-The project is being shaped as a geometry tool that can:
+The project is being reshaped as a framework for constructing geometric
+objects and exploring them computationally without assuming the user's problem
+in advance.
 
-- define spaces;
-- build objects inside those spaces;
-- answer metric and containment questions;
-- transform or embed results into 2D and 3D for visualization;
-- remain practical both in explicit Python code and in notebooks.
+The intended workflow is:
+
+1. construct an object in an explicit ambient space;
+2. apply standard functions, transformations, and set-theoretic operations;
+3. derive new objects when they are easier to study than the original one;
+4. continue the investigation on those derived objects, including empirical
+   exploration in notebooks when needed.
+
+Visualization, meshing, and notebook ergonomics are therefore not side notes:
+they are part of the intended investigative workflow, as long as they remain
+honest about what is exact and what is exploratory.
 
 For the more detailed execution version of this plan, see ``PLAN.md`` in the
 repository root.
@@ -35,40 +43,49 @@ The following items are already done and are no longer active roadmap work:
 Near Term: v0.0.2
 -----------------
 
-Goal: consolidate the current surface rather than add unrelated new geometry.
+Goal: make the object-modeling and exploration story explicit across the docs
+and codebase.
 
 Main deliverables:
 
-- a clear preferred public subset across the docs;
-- reduced use of legacy `Riemannian*` terminology in docs and examples;
-- a notebook workflow that is clearly documented as convenience, not core
-  semantics.
+- a clear description of the package as an object-construction and
+  exploration framework;
+- a split between stable object/modeling layers and more experimental helper
+  layers;
+- explicit documentation that object operations are expression-based and lazy;
+- reduced ambiguity between `Metric*`, object functions, and visualization
+  helpers.
 
 Main work:
 
 - keep the stability split explicit and current;
-- continue migrating docs and notebooks to `Metric*` terminology;
-- keep status and roadmap documents synchronized after feature work;
-- add a few more examples that mix explicit `Space` objects with convenience
-  helpers.
+- migrate project documents away from older package identities that no longer
+  match the goal;
+- identify the minimal interfaces needed for object expressions and derived
+  objects;
+- document the current zoo of functions and object constructors more clearly;
+- keep status and roadmap documents synchronized after feature work.
 
 Next: v0.0.3
 ------------
 
-Goal: grow higher geometry only where guarantees can be stated clearly.
+Goal: expand the zoo of derived-object workflows and object functions without
+pretending to solve the user's task automatically.
 
 Main deliverables:
 
-- one or two additional object-family expansions with explicit guarantees;
-- a clearer story for `Transform` beyond pure visualization helpers;
-- a clearer split between core API and convenience API for plotting/export
-  helpers.
+- a lazy expression layer for set-theoretic and mapped objects;
+- one or two additional derived-object workflows with clear semantics;
+- one or two additional standard functions on objects with clear guarantees;
+- better notebook-oriented workflows for empirical investigation.
 
 Main work:
 
-- expand supported object families only with tests and docs;
-- define the intended scope of `Transform`;
-- continue reducing reliance on compatibility aliases where practical.
+- specify which current classes form the durable object/exploration core;
+- define how lazy expression nodes answer containment, local-model, and
+  derived-object queries;
+- add tests for new derived-object workflows and object functions;
+- document at least one iterative investigation workflow end to end.
 
 Later
 -----
@@ -79,16 +96,17 @@ Main themes:
 
 - release automation;
 - explicit stability promises for the preferred subset;
-- deliberate scope control.
+- deliberate scope control around the object/exploration core;
+- support for richer scalar types beyond Python ``float`` where justified.
 
 Practical Guidance
 ------------------
 
 If you want the safest current subset of the package, stay closest to:
 
-1. the `FloatSet` / `FloatCircleSet` core;
-2. `MetricSpace`, `MetricGeometricObject`, and the basic standard spaces;
-3. `Space` embeddings when deterministic visualization coordinates are needed;
-4. the documented examples and user-guide workflows.
+1. the `FloatSet` / `FloatCircleSet` computational core;
+2. `MetricSpace`, `MetricGeometricObject`, and local-model abstractions;
+3. explicit spaces and objects rather than notebook convenience state;
+4. the documented examples that do not overclaim final architecture.
 
 For the current stable-versus-evolving split, see :doc:`stability`.

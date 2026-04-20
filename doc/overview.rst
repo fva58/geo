@@ -1,8 +1,33 @@
 Overview
 ========
 
-Current model
--------------
+Core idea
+---------
+
+``geo`` is a package for modeling geometric objects and exploring them
+computationally in spaces of various dimensions.
+
+The package is centered on geometric objects rather than on a predefined
+catalog of user problems. It provides ways to construct objects, combine them
+into more complex ones, and apply a zoo of functions and transformations to
+them.
+
+A computation in ``geo`` may return a number, a structure, an approximation,
+or another geometric object. This is essential: users should be able not only
+to ask for direct results, but also to derive more informative or more
+tractable objects through intersections, differences, images, projections,
+visibility operations, and related constructions already supported by the
+package.
+
+When a standard function does not directly solve the user's task on the whole
+object, the package should still help move the investigation forward by
+producing derived objects that are easier to study. This supports an iterative
+workflow in which the user refines the object under study, the region of
+interest, and the line of investigation itself, including empirical
+exploration in environments such as ``Jupyter Notebook``.
+
+Current computational model
+---------------------------
 
 At the current stage, real numbers are modeled by Python ``float``.
 
@@ -18,8 +43,8 @@ Normalization uses the same explicit float-lattice semantics. Two intervals
 are merged when they overlap or when they are adjacent with no representable
 ``float`` between them.
 
-Main layers
------------
+Current layers
+--------------
 
 Real line
 ~~~~~~~~~
@@ -57,8 +82,8 @@ Euclidean and local differential-geometric layer
   coordinates;
 - ``ChartedGeometricObject``: geometric object described by local cone models.
 
-Metric-space layer
-~~~~~~~~~~~~~~~~~~
+Metric-space and object layer
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - ``MetricSpace`` and ``ChartedMetricSpace``: manifolds with distance;
 - ``Space``: metric space with explicit 2D/3D visualization transforms;
@@ -103,9 +128,10 @@ Status
 
 The package is still under active development. The current focus is:
 
-1. keep the stable subset explicit as the surface grows;
-2. keep the public API coherent under the preferred ``Metric*`` vocabulary;
-3. extend higher geometry only where guarantees can be stated clearly.
+1. keep the object-modeling and exploration story explicit in docs and code;
+2. keep the stable computational subset explicit as the surface grows;
+3. extend the zoo of object constructors and functions only where guarantees
+   can be stated clearly.
 
 For a practical split between the stable core and the still-experimental
 higher geometry layers, see :doc:`stability`.

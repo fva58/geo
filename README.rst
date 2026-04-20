@@ -1,11 +1,20 @@
 geo
 ===
 
-``geo`` is an early-stage geometry package built around immutable interval
-sets and a small differential-geometric modeling layer.
+``geo`` is a package for constructing geometric objects in spaces of various
+dimensions and exploring them computationally.
 
-Current model
--------------
+It does not assume the user's problem in advance. Instead, it provides a
+language of objects together with functions, transformations, and derived
+constructions such as intersections, projections, images, and other derived
+objects supported by the current API.
+
+When direct computation is not enough, the package is meant to support
+iterative investigation: derive simpler objects, localize the study, and
+continue the exploration, including empirically in ``Jupyter Notebook``.
+
+Current computational model
+---------------------------
 
 At the current stage, real numbers are modeled by Python ``float``.
 
@@ -22,8 +31,8 @@ they overlap, but also when there is no representable ``float`` between them.
 In particular, ``[a, b]`` and ``[nextafter(b, +inf), c]`` normalize to one
 closed interval.
 
-Main types
-----------
+Current layers
+--------------
 
 Real line:
 
@@ -56,9 +65,9 @@ Local differential-geometric layer:
   coordinates;
 - ``ChartedGeometricObject``: geometric object described by local cone models.
 
-Metric-space layer:
+Metric-space and neighborhood layer:
 
-- ``MetricSpace`` and ``ChartedMetricSpace``: manifolds with distance;
+- ``MetricSpace`` and ``ChartedMetricSpace``: manifolds with local distance;
 - ``Space``: metric space with explicit 2D/3D visualization transforms;
 - ``Transform`` and ``PointTransform``: point maps between spaces;
 - ``MetricGeometricObject``: geometric object in a metric space;
@@ -106,6 +115,23 @@ On top of that, the package now provides:
 
 For arcs crossing zero, the internal representation is split into two linear
 intervals: one before zero and one after zero.
+
+Architectural reading
+---------------------
+
+If you read the repository as both a programmer and a mathematician, the
+preferred model is:
+
+1. construct a geometric object in an explicit ambient space;
+2. apply standard functions or transformations to it;
+3. derive new objects when they are easier to study than the original one;
+4. continue the investigation on those derived objects, including empirical
+   work in notebooks when needed.
+
+In that reading, unions, intersections, differences, images, projections, and
+similar constructions should preferably remain symbolic lazy expressions until
+a specific query asks for containment, a local model, sampling, or a finite
+approximation.
 
 Documentation
 -------------
@@ -160,9 +186,10 @@ Status
 
 The package is still under active development. The current focus is:
 
-1. keep the stable subset explicit as the surface grows;
-2. keep the public API coherent under the preferred ``Metric*`` vocabulary;
-3. extend higher geometry only where guarantees can be stated clearly.
+1. keep the object-modeling and exploration story explicit in docs and code;
+2. keep the stable computational subset explicit as the surface grows;
+3. extend the zoo of object constructors and functions only where guarantees
+   can be stated clearly.
 
 For the current stability boundary between the tested core and the more
 experimental geometry layers, see `doc/stability.rst`.

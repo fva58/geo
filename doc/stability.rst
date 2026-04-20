@@ -24,7 +24,8 @@ What "preferred stable" means here:
 - these names match the intended public terminology;
 - the explicit ``float`` model is documented;
 - boundary and validation behavior are covered by tests;
-- these layers are central to the product direction.
+- these layers are the safest basis for object modeling and exploratory
+  workflows today.
 
 Implemented But Still Evolving
 ------------------------------
@@ -85,7 +86,9 @@ still:
 
 1. create a space;
 2. create an object in that space;
-3. sample, mesh, transform, plot, or export it.
+3. apply functions or derive a new object from it;
+4. sample, mesh, transform, plot, or export when that helps the
+   investigation.
 
 Practical Guidance
 ------------------
@@ -97,8 +100,8 @@ If you want the safest current subset of the package, stay close to:
 3. ``RealLineSpace``, ``UnitCircleSpace``, and ``EuclideanPlaneSpace`` with
    ``distance()`` as the ambient-space contract.
 4. ``Space`` embeddings when you need deterministic 2D/3D coordinates.
-5. Standard object constructors and set-theoretic operations already covered
-   by tests.
+5. Standard object constructors, set-theoretic operations, projections,
+   visibility, and smooth-image workflows already covered by tests.
 
 If you move deeper into visibility, projections, native non-Euclidean object
 families, or notebook convenience state, treat the API as useful but still

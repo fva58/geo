@@ -415,16 +415,6 @@ class MetricGeometricObject(ChartedGeometricObject[PointT]):
             marker_size=marker_size,
         )
 
-    def _require_same_space(
-        self,
-        other: "MetricGeometricObject[PointT]",
-    ) -> None:
-        """Require two objects to live in the same ambient space instance."""
-        if self.space is not other.space:
-            raise ValueError(
-                "Set-theoretic operations require the same ambient space"
-            )
-
     @staticmethod
     def _combine_local_models(
         left_model,
@@ -478,27 +468,7 @@ class MetricGeometricObject(ChartedGeometricObject[PointT]):
         name: str = "",
     ) -> "MetricGeometricObject[PointT]":
         """Return the set-theoretic union of two objects."""
-        self._require_same_space(other)
-
-        def local_model(point: PointT):
-            if point in self and point in other:
-                return self._combine_local_models(
-                    self.local_model_at(point),
-                    other.local_model_at(point),
-                    lambda left, right: left or right,
-                    "union",
-                )
-            if point in self:
-                return self.local_model_at(point)
-            return other.local_model_at(point)
-
-        chosen_name = name or f"({self.name})|({other.name})"
-        return MetricGeometricObject(
-            self.space,
-            contains=lambda point: point in self or point in other,
-            local_model=local_model,
-            name=chosen_name,
-        )
+        return LazyMetricExpressionObject("union", self, other, name=name)
 
     def intersection(
         self,
@@ -506,22 +476,11 @@ class MetricGeometricObject(ChartedGeometricObject[PointT]):
         name: str = "",
     ) -> "MetricGeometricObject[PointT]":
         """Return the set-theoretic intersection of two objects."""
-        self._require_same_space(other)
-
-        def local_model(point: PointT):
-            return self._combine_local_models(
-                self.local_model_at(point),
-                other.local_model_at(point),
-                lambda left, right: left and right,
-                "intersection",
-            )
-
-        chosen_name = name or f"({self.name})&({other.name})"
-        return MetricGeometricObject(
-            self.space,
-            contains=lambda point: point in self and point in other,
-            local_model=local_model,
-            name=chosen_name,
+        return LazyMetricExpressionObject(
+            "intersection",
+            self,
+            other,
+            name=name,
         )
 
     def difference(
@@ -530,24 +489,11 @@ class MetricGeometricObject(ChartedGeometricObject[PointT]):
         name: str = "",
     ) -> "MetricGeometricObject[PointT]":
         """Return the set-theoretic difference ``self \\ other``."""
-        self._require_same_space(other)
-
-        def local_model(point: PointT):
-            if point in other:
-                return self._combine_local_models(
-                    self.local_model_at(point),
-                    other.local_model_at(point),
-                    lambda left, right: left and not right,
-                    "difference",
-                )
-            return self.local_model_at(point)
-
-        chosen_name = name or f"({self.name})-({other.name})"
-        return MetricGeometricObject(
-            self.space,
-            contains=lambda point: point in self and point not in other,
-            local_model=local_model,
-            name=chosen_name,
+        return LazyMetricExpressionObject(
+            "difference",
+            self,
+            other,
+            name=name,
         )
 
     def symmetric_difference(
@@ -556,26 +502,11 @@ class MetricGeometricObject(ChartedGeometricObject[PointT]):
         name: str = "",
     ) -> "MetricGeometricObject[PointT]":
         """Return the symmetric difference of two objects."""
-        self._require_same_space(other)
-
-        def local_model(point: PointT):
-            if point in self and point not in other:
-                return self.local_model_at(point)
-            if point in other and point not in self:
-                return other.local_model_at(point)
-            return self._combine_local_models(
-                self.local_model_at(point),
-                other.local_model_at(point),
-                lambda left, right: left ^ right,
-                "symmetric-difference",
-            )
-
-        chosen_name = name or f"({self.name})^({other.name})"
-        return MetricGeometricObject(
-            self.space,
-            contains=lambda point: (point in self) ^ (point in other),
-            local_model=local_model,
-            name=chosen_name,
+        return LazyMetricExpressionObject(
+            "symmetric-difference",
+            self,
+            other,
+            name=name,
         )
 
     def __or__(
@@ -614,17 +545,14 @@ class MetricGeometricObject(ChartedGeometricObject[PointT]):
         name: str = "",
     ) -> "MetricGeometricObject[PointT]":
         """Project an Euclidean object along a direction onto a hyperplane."""
-        projected = super().project_along_direction_onto(
-            source_hyperplane,
-            target_hyperplane,
-            direction,
-            name=name,
-        )
-        chosen_name = name or getattr(projected, "name", "")
-        return MetricGeometricObject.from_charted(
+        return LazyMetricMappedObject(
             self.space,
-            projected,
-            name=chosen_name,
+            "project-along-direction",
+            self,
+            name=name,
+            source_hyperplane=source_hyperplane,
+            target_hyperplane=target_hyperplane,
+            direction=FloatVector(direction),
         )
 
     def project_from_point_onto(
@@ -635,17 +563,14 @@ class MetricGeometricObject(ChartedGeometricObject[PointT]):
         name: str = "",
     ) -> "MetricGeometricObject[PointT]":
         """Project an Euclidean object from a point onto a hyperplane."""
-        projected = super().project_from_point_onto(
-            source_hyperplane,
-            target_hyperplane,
-            center,
-            name=name,
-        )
-        chosen_name = name or getattr(projected, "name", "")
-        return MetricGeometricObject.from_charted(
+        return LazyMetricMappedObject(
             self.space,
-            projected,
-            name=chosen_name,
+            "project-from-point",
+            self,
+            name=name,
+            source_hyperplane=source_hyperplane,
+            target_hyperplane=target_hyperplane,
+            center=FloatPoint(center),
         )
 
     def visible_from_direction(
@@ -654,13 +579,12 @@ class MetricGeometricObject(ChartedGeometricObject[PointT]):
         name: str = "",
     ) -> "MetricGeometricObject[PointT]":
         """Return the part of an Euclidean object visible from a direction."""
-        source_object = getattr(self, "_charted_source_object", self)
-        visible = source_object.visible_from_direction(direction, name=name)
-        chosen_name = name or getattr(visible, "name", "")
-        return MetricGeometricObject.from_charted(
+        return LazyMetricMappedObject(
             self.space,
-            visible,
-            name=chosen_name,
+            "visible-from-direction",
+            self,
+            name=name,
+            direction=FloatVector(direction),
         )
 
     def visible_from_point(
@@ -669,13 +593,12 @@ class MetricGeometricObject(ChartedGeometricObject[PointT]):
         name: str = "",
     ) -> "MetricGeometricObject[PointT]":
         """Return the part of an Euclidean object visible from a point."""
-        source_object = getattr(self, "_charted_source_object", self)
-        visible = source_object.visible_from_point(point, name=name)
-        chosen_name = name or getattr(visible, "name", "")
-        return MetricGeometricObject.from_charted(
+        return LazyMetricMappedObject(
             self.space,
-            visible,
-            name=chosen_name,
+            "visible-from-point",
+            self,
+            name=name,
+            point=FloatPoint(point),
         )
 
     def image_under_smooth_map(
@@ -688,21 +611,290 @@ class MetricGeometricObject(ChartedGeometricObject[PointT]):
         name: str = "",
     ) -> "MetricGeometricObject[TargetT]":
         """Return the image object under a smooth map into a metric space."""
-        image_object = super().image_under_smooth_map(
-            forward,
-            preimage_on_image,
+        return LazyMetricMappedObject(
             target_space,
-            target_chart,
-            contains_image_point=contains_image_point,
+            "image-under-smooth-map",
+            self,
             name=name,
-        )
-        chosen_name = name or getattr(image_object, "name", "")
-        return MetricGeometricObject.from_charted(
-            target_space,
-            image_object,
-            name=chosen_name,
+            forward=forward,
+            preimage_on_image=preimage_on_image,
+            target_chart=target_chart,
+            contains_image_point=contains_image_point,
         )
 
+
+class LazyMetricObject(MetricGeometricObject[PointT]):
+    """Base class for lazy metric expression-tree nodes."""
+
+    def __init__(
+        self,
+        space: MetricSpace[PointT],
+        operation: str,
+        name: str = "",
+    ) -> None:
+        """Initialize shared lazy-node metadata."""
+        self.operation = operation
+        super().__init__(
+            space,
+            contains=self._contains_lazy,
+            local_model=self._local_model_lazy,
+            name=name or self._default_name(),
+        )
+
+    @property
+    def children(self) -> tuple[MetricGeometricObject, ...]:
+        """Return child nodes of this expression-tree node."""
+        return tuple()
+
+    @property
+    def is_lazy(self) -> bool:
+        """Return whether this object is a lazy expression-tree node."""
+        return True
+
+    @property
+    def node_kind(self) -> str:
+        """Return the expression-tree node kind."""
+        raise NotImplementedError
+
+    def _default_name(self) -> str:
+        """Return the default node name."""
+        raise NotImplementedError
+
+    def _contains_lazy(self, point: PointT) -> bool:
+        """Evaluate point membership for the lazy node."""
+        raise NotImplementedError
+
+    def _local_model_lazy(self, point: PointT):
+        """Evaluate a local model for the lazy node."""
+        raise NotImplementedError
+
+
+class LazyMetricExpressionObject(LazyMetricObject[PointT]):
+    """Lazy set-theoretic expression over metric geometric objects."""
+
+    def __init__(
+        self,
+        operation: str,
+        left: MetricGeometricObject[PointT],
+        right: MetricGeometricObject[PointT],
+        name: str = "",
+    ) -> None:
+        """Initialize a lazy binary expression node."""
+        if left.space is not right.space:
+            raise ValueError(
+                "Set-theoretic operations require the same ambient space"
+            )
+        self.left = left
+        self.right = right
+        super().__init__(
+            left.space,
+            operation,
+            name=name,
+        )
+
+    def __repr__(self) -> str:
+        """Return a debug representation."""
+        return (
+            "LazyMetricExpressionObject("
+            f"operation={self.operation!r}, name={self.name!r})"
+        )
+
+    @property
+    def children(self) -> tuple[MetricGeometricObject[PointT], ...]:
+        """Return the two children of the binary expression node."""
+        return (self.left, self.right)
+
+    @property
+    def node_kind(self) -> str:
+        """Return the expression-tree node kind."""
+        return "binary"
+
+    def _default_name(self) -> str:
+        """Return the default expression name."""
+        symbols = {
+            "union": "|",
+            "intersection": "&",
+            "difference": "-",
+            "symmetric-difference": "^",
+        }
+        symbol = symbols.get(self.operation, "?")
+        return f"({self.left.name}){symbol}({self.right.name})"
+
+    def _contains_lazy(self, point: PointT) -> bool:
+        """Evaluate point membership lazily from the expression tree."""
+        left_contains = point in self.left
+        right_contains = point in self.right
+        if self.operation == "union":
+            return left_contains or right_contains
+        if self.operation == "intersection":
+            return left_contains and right_contains
+        if self.operation == "difference":
+            return left_contains and not right_contains
+        if self.operation == "symmetric-difference":
+            return left_contains ^ right_contains
+        raise ValueError(f"Unsupported lazy operation: {self.operation!r}")
+
+    def _local_model_lazy(self, point: PointT):
+        """Evaluate a local model lazily from the expression tree."""
+        if self.operation == "union":
+            if point in self.left and point in self.right:
+                return MetricGeometricObject._combine_local_models(
+                    self.left.local_model_at(point),
+                    self.right.local_model_at(point),
+                    lambda left, right: left or right,
+                    self.operation,
+                )
+            if point in self.left:
+                return self.left.local_model_at(point)
+            return self.right.local_model_at(point)
+
+        if self.operation == "intersection":
+            return MetricGeometricObject._combine_local_models(
+                self.left.local_model_at(point),
+                self.right.local_model_at(point),
+                lambda left, right: left and right,
+                self.operation,
+            )
+
+        if self.operation == "difference":
+            if point in self.right:
+                return MetricGeometricObject._combine_local_models(
+                    self.left.local_model_at(point),
+                    self.right.local_model_at(point),
+                    lambda left, right: left and not right,
+                    self.operation,
+                )
+            return self.left.local_model_at(point)
+
+        if self.operation == "symmetric-difference":
+            if point in self.left and point not in self.right:
+                return self.left.local_model_at(point)
+            if point in self.right and point not in self.left:
+                return self.right.local_model_at(point)
+            return MetricGeometricObject._combine_local_models(
+                self.left.local_model_at(point),
+                self.right.local_model_at(point),
+                lambda left, right: left ^ right,
+                self.operation,
+            )
+
+        raise ValueError(f"Unsupported lazy operation: {self.operation!r}")
+
+
+class LazyMetricMappedObject(LazyMetricObject):
+    """Lazy unary operation over a metric geometric object."""
+
+    def __init__(
+        self,
+        space: MetricSpace,
+        operation: str,
+        source: MetricGeometricObject,
+        name: str = "",
+        **parameters,
+    ) -> None:
+        """Initialize a lazy mapped-object node."""
+        self.source = source
+        self.parameters = parameters
+        super().__init__(
+            space,
+            operation,
+            name=name,
+        )
+
+    def __repr__(self) -> str:
+        """Return a debug representation."""
+        return (
+            "LazyMetricMappedObject("
+            f"operation={self.operation!r}, name={self.name!r})"
+        )
+
+    @property
+    def children(self) -> tuple[MetricGeometricObject, ...]:
+        """Return the single source child of the mapped node."""
+        return (self.source,)
+
+    @property
+    def node_kind(self) -> str:
+        """Return the expression-tree node kind."""
+        return "unary"
+
+    def _default_name(self) -> str:
+        """Return the default mapped-object name."""
+        return f"{self.operation}({self.source.name})"
+
+    def _materialize_charted_object(self):
+        """Return the charted object represented by this lazy mapped node."""
+        source_object = getattr(self.source, "_charted_source_object", self.source)
+        if self.operation == "project-along-direction":
+            return ChartedGeometricObject.project_along_direction_onto(
+                source_object,
+                self.parameters["source_hyperplane"],
+                self.parameters["target_hyperplane"],
+                self.parameters["direction"],
+                name=self.name,
+            )
+        if self.operation == "project-from-point":
+            return ChartedGeometricObject.project_from_point_onto(
+                source_object,
+                self.parameters["source_hyperplane"],
+                self.parameters["target_hyperplane"],
+                self.parameters["center"],
+                name=self.name,
+            )
+        if self.operation == "visible-from-direction":
+            return ChartedGeometricObject.visible_from_direction(
+                source_object,
+                self.parameters["direction"],
+                name=self.name,
+            )
+        if self.operation == "visible-from-point":
+            return ChartedGeometricObject.visible_from_point(
+                source_object,
+                self.parameters["point"],
+                name=self.name,
+            )
+        if self.operation == "image-under-smooth-map":
+            return ChartedGeometricObject.image_under_smooth_map(
+                source_object,
+                self.parameters["forward"],
+                self.parameters["preimage_on_image"],
+                self.space,
+                self.parameters["target_chart"],
+                contains_image_point=self.parameters["contains_image_point"],
+                name=self.name,
+            )
+        raise ValueError(f"Unsupported lazy mapped operation: {self.operation!r}")
+
+    def _materialize_metric_object(self):
+        """Return the materialized metric object for mesh/sample delegation."""
+        return MetricGeometricObject.from_charted(
+            self.space,
+            self._materialize_charted_object(),
+            name=self.name,
+        )
+
+    def _contains_lazy(self, point):
+        """Evaluate point membership lazily."""
+        return point in self._materialize_charted_object()
+
+    def _local_model_lazy(self, point):
+        """Evaluate a local model lazily."""
+        return self._materialize_charted_object().local_model_at(point)
+
+    def sample_points(self, resolution: int = 24):
+        """Return sampled points from the materialized mapped object."""
+        return self._materialize_metric_object().sample_points(resolution=resolution)
+
+    def mesh(
+        self,
+        resolution: int = 64,
+        bounds=None,
+    ) -> ObjectMesh:
+        """Return a mesh from the materialized mapped object."""
+        return self._materialize_metric_object().mesh(
+            resolution=resolution,
+            bounds=bounds,
+        )
 
 RiemannianGeometricObject = MetricGeometricObject
 

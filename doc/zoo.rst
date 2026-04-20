@@ -153,10 +153,10 @@ smooth map with a local inverse on the image::
     >>> FloatPoint(1.0, 0.0) in parabola
     False
 
-Riemannian spaces with ready-made objects
------------------------------------------
+Metric spaces with ready-made objects
+-------------------------------------
 
-The Riemannian layer exposes standard spaces with object factories::
+The metric-space layer exposes standard spaces with object factories::
 
     >>> import math
     >>> from geo import EuclideanPlaneSpace, FloatPoint, UnitCircleSpace

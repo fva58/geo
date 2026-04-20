@@ -11,16 +11,19 @@ license-files = ["LICEN[CS]E*"]
 authors = [
   { name="Вячеслав Фёдоров", email="fvamail@gmail.com" },
 ]
-description = "Geometry primitives based on immutable float interval sets"
+description = "Computable geometry on manifolds via neighborhoods and local models"
 requires-python = ">=3.11"
 dependencies = [
   "numpy>=2,<3",
 ]
 keywords = [
   "geometry",
+  "computable-geometry",
   "intervals",
   "sets",
   "circle",
+  "manifolds",
+  "metric-spaces",
   "riemannian-geometry",
 ]
 classifiers = [

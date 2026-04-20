@@ -1,14 +1,16 @@
 User Guide
 ==========
 
-This guide collects a few typical workflows that the package already supports
-well.
+This guide collects a few typical workflows for building geometric objects,
+applying standard functions to them, and continuing the investigation through
+derived objects when needed.
 
 1. Build and combine sets on the real line and on the circle.
 2. Use ready-made Euclidean objects from the object zoo.
 3. Compose objects inside a named metric space.
-4. Extract visible parts from convex Euclidean objects.
-5. Transport objects by projection and smooth maps.
+4. Derive new objects through visibility, projection, and smooth maps.
+5. Use notebook-oriented tools when interactive exploration is more useful
+   than one direct computation.
 
 Working With Sets on the Line and Circle
 ----------------------------------------
@@ -110,8 +112,9 @@ set-theoretic operations between objects that live in the same space.
 
 This is the main layer to use when the answer should depend on the ambient
 space rather than on a standalone Euclidean predicate. The resulting objects
-keep the usual object API, so after one construction step you can continue with
-membership checks, Boolean operations, local models, sampling, and meshing.
+keep the usual object API, so after one construction step you can continue
+with membership checks, Boolean operations, local models, sampling, meshing,
+or further derived-object constructions.
 
 Typical use cases are:
 

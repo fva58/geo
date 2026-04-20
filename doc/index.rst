@@ -1,8 +1,8 @@
 geo documentation
 =================
 
-``geo`` is a geometry package built around immutable interval sets and a small
-layer of differential-geometric abstractions.
+``geo`` is a geometry package for constructing geometric objects and exploring
+them computationally in spaces of various dimensions.
 
 .. toctree::
    :maxdepth: 2

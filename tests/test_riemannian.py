@@ -14,6 +14,9 @@ from geo import (
     FloatPoint,
     FloatVector,
     Hyperplane,
+    LazyMetricExpressionObject,
+    LazyMetricObject,
+    LazyMetricMappedObject,
     LocalConeModel,
     ManifoldChart,
     MetricGeometricObject,
@@ -162,6 +165,29 @@ class TestRiemannianObjects(unittest.TestCase):
         self.assertIn(FloatPoint(1.0), boundary.cone)
         self.assertNotIn(FloatPoint(-1.0), boundary.cone)
 
+    def test_set_operations_build_lazy_expression_nodes(self):
+        """Set operations should preserve an explicit lazy expression tree."""
+        space = RealLineSpace()
+        left = space.subset((0.0, 2.0), name="left")
+        right = space.subset((1.0, 3.0), name="right")
+
+        union = left | right
+        difference = left - right
+
+        self.assertIsInstance(union, LazyMetricExpressionObject)
+        self.assertIsInstance(union, LazyMetricObject)
+        self.assertEqual(union.operation, "union")
+        self.assertEqual(union.node_kind, "binary")
+        self.assertTrue(union.is_lazy)
+        self.assertEqual(union.children, (left, right))
+        self.assertIs(union.left, left)
+        self.assertIs(union.right, right)
+
+        self.assertIsInstance(difference, LazyMetricExpressionObject)
+        self.assertEqual(difference.operation, "difference")
+        self.assertIs(difference.left, left)
+        self.assertIs(difference.right, right)
+
     def test_circle_set_operations(self):
         """Set-theoretic operations should work on circle objects."""
         space = UnitCircleSpace()
@@ -279,6 +305,11 @@ class TestRiemannianObjects(unittest.TestCase):
         )
 
         self.assertIsInstance(projected, MetricGeometricObject)
+        self.assertIsInstance(projected, LazyMetricMappedObject)
+        self.assertIsInstance(projected, LazyMetricObject)
+        self.assertEqual(projected.operation, "project-along-direction")
+        self.assertEqual(projected.node_kind, "unary")
+        self.assertEqual(projected.children, (source_half_line,))
         self.assertIn(FloatPoint(1.0, 0.0), projected)
         self.assertNotIn(FloatPoint(-1.0, 0.0), projected)
         self.assertNotIn(FloatPoint(1.0, 1.0), projected)
@@ -306,6 +337,8 @@ class TestRiemannianObjects(unittest.TestCase):
             name="central-projected-half-line",
         )
 
+        self.assertIsInstance(projected, LazyMetricMappedObject)
+        self.assertEqual(projected.operation, "project-from-point")
         self.assertIn(FloatPoint(2.0, 0.0), projected)
         self.assertNotIn(FloatPoint(-1.0, 0.0), projected)
         self.assertNotIn(FloatPoint(0.0, 1.0), projected)
@@ -350,6 +383,8 @@ class TestRiemannianObjects(unittest.TestCase):
         )
 
         self.assertIsInstance(image, MetricGeometricObject)
+        self.assertIsInstance(image, LazyMetricMappedObject)
+        self.assertEqual(image.operation, "image-under-smooth-map")
         self.assertIn(FloatPoint(1.0, 1.0), image)
         self.assertNotIn(FloatPoint(1.0, 0.0), image)
         self.assertNotIn(FloatPoint(3.0, 9.0), image)
@@ -376,6 +411,8 @@ class TestRiemannianObjects(unittest.TestCase):
         visible = ball.visible_from_direction(FloatVector(0.0, 1.0))
 
         self.assertIsInstance(visible, MetricGeometricObject)
+        self.assertIsInstance(visible, LazyMetricMappedObject)
+        self.assertEqual(visible.operation, "visible-from-direction")
         self.assertIn(FloatPoint(0.0, 1.0), visible)
         self.assertIn(FloatPoint(1.0, 0.0), visible)
         self.assertNotIn(FloatPoint(0.0, -1.0), visible)
@@ -399,6 +436,8 @@ class TestRiemannianObjects(unittest.TestCase):
 
         visible = surface.visible_from_point(FloatPoint(0.0, 3.0))
 
+        self.assertIsInstance(visible, LazyMetricMappedObject)
+        self.assertEqual(visible.operation, "visible-from-point")
         self.assertIn(FloatPoint(0.0, 1.0), visible)
         self.assertIn(FloatPoint(1.2, 0.8), visible)
         self.assertNotIn(FloatPoint(0.0, -1.0), visible)
