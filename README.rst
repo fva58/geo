@@ -13,10 +13,10 @@ When direct computation is not enough, the package is meant to support
 iterative investigation: derive simpler objects, localize the study, and
 continue the exploration, including empirically in ``Jupyter Notebook``.
 
-Current computational model
+Computational model
 ---------------------------
 
-At the current stage, real numbers are modeled by Python ``float``.
+Real numbers are modeled by Python ``float``.
 
 This has two direct consequences:
 
@@ -31,7 +31,7 @@ they overlap, but also when there is no representable ``float`` between them.
 In particular, ``[a, b]`` and ``[nextafter(b, +inf), c]`` normalize to one
 closed interval.
 
-Current layers
+Layers
 --------------
 
 Real line:
@@ -74,40 +74,40 @@ Metric-space and neighborhood layer:
 - ``RealLineSpace``, ``UnitCircleSpace``, ``EuclideanPlaneSpace``,
   ``SphereSpace``, ``TorusSpace``: standard spaces with ready-made objects.
 
-Non-Euclidean object families currently include:
+Non-Euclidean object families include:
 
 - ``SphereSpace.point_object()`` and ``SphereSpace.cap()``;
 - ``TorusSpace.point_object()`` and ``TorusSpace.patch()``.
 
-Sampling and meshing currently include:
+Sampling and meshing include:
 
 - ``SphereSpace.sample_points()``, ``SphereSpace.mesh()``,
   ``SphereSpace.cap_mesh()``;
 - ``TorusSpace.sample_points()``, ``TorusSpace.mesh()``,
   ``TorusSpace.patch_mesh()``.
 
-Native sampled objects currently include:
+Native sampled objects include:
 
 - sphere point objects and spherical caps with ``sample_points()`` and
   ``mesh()``;
 - torus point objects and torus patches with ``sample_points()`` and
   ``mesh()``.
 
-The common metric-object layer now also exposes object-level sampling/meshing
+The common metric-object layer also exposes object-level sampling/meshing
 for a broader zoo:
 
 - real-line points and subsets;
 - circle points and arcs/subsets;
 - wrapped Euclidean objects that already have geometric mesh support.
 
-`ObjectMesh` now also has unified export/plot adapters:
+`ObjectMesh` has unified export/plot adapters:
 
 - ``wireframe_data()`` for generic edge/cell export;
 - ``matplotlib_data()`` for Matplotlib-oriented plain data;
 - ``plotly_data()`` for Plotly trace dictionaries;
 - ``threejs_data()`` for indexed Three.js geometry buffers.
 
-On top of that, the package now provides:
+The package also provides:
 
 - ``plot_mesh_matplotlib()`` and ``plot_mesh_plotly()`` for ready figures;
 - ``obj_text()``, ``ply_text()``, ``gltf_json_data()`` on ``ObjectMesh``;
@@ -157,15 +157,15 @@ Examples
 Jupyter notebooks with demonstrations and visualizations live under
 `examples/`.
 
-Runnable Python scripts now live there as well for end-to-end pipelines such
+Runnable Python scripts live there as well for end-to-end pipelines such
 as:
 
 - `space -> native object -> mesh`
 - `metric object -> sampling/mesh`
 - `mesh -> plot/export`
 
-The notebook set has also been updated to the current metric-space terminology
-and now includes a modern pipeline notebook covering:
+The notebook set follows the metric-space terminology and includes a modern
+pipeline notebook covering:
 
 - `space -> native object -> mesh`
 - `mesh -> plotting/export data`
@@ -184,14 +184,14 @@ Typical commands:
 Status
 ------
 
-The package is still under active development. The current focus is:
+The package is under active development. The focus is:
 
 1. keep the object-modeling and exploration story explicit in docs and code;
 2. keep the stable computational subset explicit as the surface grows;
 3. extend the zoo of object constructors and functions only where guarantees
    can be stated clearly.
 
-For the current stability boundary between the tested core and the more
+For the stability boundary between the tested core and the more
 experimental geometry layers, see `doc/stability.rst`.
 
-For the current public roadmap, see `doc/roadmap.rst`.
+For the public roadmap, see `doc/roadmap.rst`.

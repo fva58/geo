@@ -26,10 +26,10 @@ workflow in which the user refines the object under study, the region of
 interest, and the line of investigation itself, including empirical
 exploration in environments such as ``Jupyter Notebook``.
 
-Current computational model
+Computational model
 ---------------------------
 
-At the current stage, real numbers are modeled by Python ``float``.
+Real numbers are modeled by Python ``float``.
 
 This has two direct consequences:
 
@@ -43,7 +43,7 @@ Normalization uses the same explicit float-lattice semantics. Two intervals
 are merged when they overlap or when they are adjacent with no representable
 ``float`` between them.
 
-Current layers
+Layers
 --------------
 
 Real line
@@ -92,7 +92,7 @@ Metric-space and object layer
 - ``RealLineSpace``, ``UnitCircleSpace``, ``EuclideanPlaneSpace``,
   ``SphereSpace``, ``TorusSpace``: standard spaces with ready-made objects.
 
-The non-Euclidean spaces currently start with small native object families:
+The non-Euclidean spaces start with small native object families:
 
 - ``SphereSpace.point_object()`` and ``SphereSpace.cap()``;
 - ``TorusSpace.point_object()`` and ``TorusSpace.patch()``.
@@ -104,29 +104,29 @@ They also provide early visualization helpers:
 - ``TorusSpace.sample_points()``, ``TorusSpace.mesh()``,
   ``TorusSpace.patch_mesh()``.
 
-The native non-Euclidean objects now carry the same idea one level lower:
+The native non-Euclidean objects carry the same idea one level lower:
 
 - sphere point objects and caps expose ``sample_points()`` and ``mesh()``;
 - torus point objects and patches expose ``sample_points()`` and ``mesh()``.
 
-The common metric wrapper now extends object-level sampling and meshing to a
+The common metric wrapper extends object-level sampling and meshing to a
 broader zoo as well:
 
 - real-line points and subsets;
 - circle points and arcs/subsets;
 - wrapped Euclidean objects whose charted source already supports meshing.
 
-On top of that, ``ObjectMesh`` now provides plain export adapters for generic
+On top of that, ``ObjectMesh`` provides plain export adapters for generic
 wireframes, Matplotlib-style data, Plotly traces, and Three.js indexed
 geometry.
 
-The current adapter layer also includes ready plotting helpers for Matplotlib
-and Plotly, plus file exporters for OBJ, PLY, and glTF-friendly JSON.
+The adapter layer also includes ready plotting helpers for Matplotlib and
+Plotly, plus file exporters for OBJ, PLY, and glTF-friendly JSON.
 
 Status
 ------
 
-The package is still under active development. The current focus is:
+The package is under active development. The focus is:
 
 1. keep the object-modeling and exploration story explicit in docs and code;
 2. keep the stable computational subset explicit as the surface grows;
@@ -136,4 +136,4 @@ The package is still under active development. The current focus is:
 For a practical split between the stable core and the still-experimental
 higher geometry layers, see :doc:`stability`.
 
-For the current public roadmap, see :doc:`roadmap`.
+For the roadmap, see :doc:`roadmap`.

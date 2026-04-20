@@ -127,7 +127,7 @@ Interactive Notebook Shortcuts
 ------------------------------
 
 For exploratory notebook work, the package also exposes a tiny convenience
-layer around a current default space. By default this space is an
+layer around a default space. By default this space is an
 ``EuclideanPlaneSpace``.
 
 .. code-block:: python
@@ -260,7 +260,7 @@ sampling, and meshing.
 Sampling and Meshes for Visualization
 -------------------------------------
 
-For rendering workflows, the new spaces can now provide embedded sample points
+For rendering workflows, the spaces provide embedded sample points
 and triangle meshes directly.
 
 .. code-block:: python
@@ -298,7 +298,7 @@ sweeps, and reusable scene setup.
 Object-Level Sampling and Meshes
 --------------------------------
 
-The native objects on sphere and torus now expose their own sampling and mesh
+The native objects on sphere and torus expose their own sampling and mesh
 methods directly.
 
 .. code-block:: python
@@ -332,8 +332,8 @@ unit of work. The usual pattern is:
 Broader Object Zoo Sampling
 ---------------------------
 
-The same object-level API now works for more of the standard zoo, not only for
-the new sphere and torus objects.
+The same object-level API works for more of the standard zoo, not only for
+sphere and torus objects.
 
 .. code-block:: python
 
@@ -351,7 +351,7 @@ the new sphere and torus objects.
    print(len(arc.mesh(resolution=8).cells))
    print(len(disk.sample_points(resolution=8)))
 
-The same mental model now works across several families:
+The same mental model works across several families:
 
 - line subsets and circle arcs;
 - native sphere and torus objects;
@@ -369,7 +369,7 @@ meshing layer.
 Export Adapters for ObjectMesh
 ------------------------------
 
-`ObjectMesh` now exposes plain export adapters, so the same mesh can feed
+`ObjectMesh` exposes plain export adapters, so the same mesh can feed
 different rendering layers without a hard dependency on any plotting library.
 
 .. code-block:: python

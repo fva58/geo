@@ -1,13 +1,13 @@
 Stability Guide
 ===============
 
-This page describes which parts of ``geo`` are currently the safest to build
-on and which parts should still be treated as evolving.
+This page describes which parts of ``geo`` are the safest to build on and
+which parts should be treated as evolving.
 
 Preferred Stable Subset
 -----------------------
 
-The current preferred subset is:
+The preferred subset is:
 
 - ``FloatInterval`` and ``FloatSet``
 - ``FloatAngle``, ``FloatCircleInterval``, and ``FloatCircleSet``
@@ -30,7 +30,7 @@ What "preferred stable" means here:
 Implemented But Still Evolving
 ------------------------------
 
-The package also contains working layers that should still be treated with more
+The package also contains working layers that should be treated with more
 care:
 
 - cone-based local modeling beyond the tested standard cases;
@@ -42,7 +42,7 @@ care:
 - file-export and plotting convenience helpers as public surface;
 - notebook-oriented helpers in ``geo.interactive``.
 
-That includes current features such as:
+That includes features such as:
 
 - ``SphereSpace`` and ``TorusSpace``;
 - ``SphereSpace.point_object()`` / ``SphereSpace.cap()``;
@@ -51,13 +51,13 @@ That includes current features such as:
 - interactive current-space helpers like ``use_space()`` and ``plot()``.
 
 These layers are real and tested, but their long-term public guarantees are
-not yet as stable as the smaller core.
+less stable than the smaller core.
 
 Compatibility Names
 -------------------
 
-Some older names remain available for compatibility, but they are no longer
-the preferred terminology.
+Some older names remain available for compatibility, but they are not the
+preferred terminology.
 
 Examples:
 
@@ -93,7 +93,7 @@ still:
 Practical Guidance
 ------------------
 
-If you want the safest current subset of the package, stay close to:
+If you want the safest subset of the package, stay close to:
 
 1. ``FloatInterval`` and ``FloatSet`` on the line.
 2. ``FloatCircle*`` objects on the circle.
