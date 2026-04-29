@@ -1,7 +1,10 @@
-"""Manifold protocols, local charts, and atlases."""
+"""Manifold protocols, local charts, atlases, and refinement neighborhoods."""
 
 from __future__ import annotations
 
+import math
+import itertools
+from dataclasses import dataclass
 from typing import Callable, Generic, Protocol, TypeVar, runtime_checkable
 
 from .euclidean import EuclideanNeighborhood, FloatPoint
@@ -162,5 +165,241 @@ class Atlas(Generic[PointT]):
             raise ValueError("Both charts must belong to the atlas")
         return ChartTransition(source_chart, target_chart, name=name)
 
+@runtime_checkable
+class Neighborhood(Protocol[PointT]):
+    """Protocol for a local manifold neighborhood used in refinement."""
 
-__all__ = ["Manifold", "ManifoldChart", "ChartTransition", "Atlas"]
+    @property
+    def manifold(self) -> Manifold[PointT]:
+        """Return the ambient manifold."""
+
+    @property
+    def chart(self) -> ManifoldChart[PointT]:
+        """Return chart coordinates for the neighborhood."""
+
+    @property
+    def center(self) -> PointT:
+        """Return a distinguished point in the neighborhood."""
+
+    @property
+    def image(self) -> EuclideanNeighborhood:
+        """Return the coordinate image of the neighborhood."""
+
+    def diameter(self) -> float:
+        """Return an upper bound on the neighborhood diameter."""
+
+    def contains(self, point: PointT) -> bool:
+        """Check whether a point belongs to the neighborhood."""
+
+    def sample_point(self) -> PointT:
+        """Return one point in the neighborhood."""
+
+    def probe_points(self) -> tuple[PointT, ...]:
+        """Return finitely many points used for local classification."""
+
+    def subdivide(self) -> tuple["Neighborhood[PointT]", ...]:
+        """Return a finite refinement cover by smaller neighborhoods."""
+
+
+def _single_interval_bounds(image: EuclideanNeighborhood) -> tuple[tuple[float, float], ...]:
+    """Return one finite interval per coordinate of a box image."""
+    bounds = []
+    for coordinate_set in image:
+        if len(coordinate_set) != 1:
+            raise ValueError("Neighborhood subdivision requires box intervals")
+        interval = coordinate_set[0]
+        left = float(interval[0])
+        right = float(interval[1])
+        if not math.isfinite(left) or not math.isfinite(right):
+            raise ValueError("Neighborhood subdivision requires finite bounds")
+        bounds.append((left, right))
+    return tuple(bounds)
+
+
+@dataclass(frozen=True)
+class ChartNeighborhood(Generic[PointT]):
+    """Neighborhood represented by one chart patch and a box image."""
+
+    manifold: Manifold[PointT]
+    chart: ManifoldChart[PointT]
+    center: PointT
+    image: EuclideanNeighborhood
+    name: str = ""
+
+    def __post_init__(self) -> None:
+        """Validate center and image dimensions."""
+        if self.chart.dim != self.manifold.dim:
+            raise ValueError("Chart dimension must match manifold dimension")
+        if self.image.dim != self.chart.dim:
+            raise ValueError("Image dimension must match chart dimension")
+        center_coordinates = self.chart(self.center)
+        if center_coordinates not in self.image:
+            raise ValueError("Neighborhood center must belong to the image")
+
+    def contains(self, point: PointT) -> bool:
+        """Check whether a point belongs to the neighborhood patch."""
+        if point not in self.manifold:
+            return False
+        try:
+            return self.chart(point) in self.image
+        except ValueError:
+            return False
+
+    def __contains__(self, point: PointT) -> bool:
+        """Check whether a point belongs to the neighborhood patch."""
+        return self.contains(point)
+
+    def sample_point(self) -> PointT:
+        """Return a distinguished point in the neighborhood."""
+        return self.center
+
+    def diameter(self) -> float:
+        """Return the Euclidean diameter of the chart image box."""
+        bounds = _single_interval_bounds(self.image)
+        return math.sqrt(sum((right - left) ** 2 for left, right in bounds))
+
+    def probe_points(self) -> tuple[PointT, ...]:
+        """Return the center and box corners mapped back to the manifold."""
+        bounds = _single_interval_bounds(self.image)
+        coordinate_points = [FloatPoint(
+            [(left + right) / 2.0 for left, right in bounds]
+        )]
+        coordinate_points.extend(
+            FloatPoint(vertex)
+            for vertex in itertools.product(
+                *((left, right) for left, right in bounds)
+            )
+        )
+        probes = []
+        for coordinates in coordinate_points:
+            point = self.chart.inverse(coordinates)
+            if point not in probes:
+                probes.append(point)
+        return tuple(probes)
+
+    def subdivide(self) -> tuple["ChartNeighborhood[PointT]", ...]:
+        """Split the box image into ``2^dim`` smaller box neighborhoods."""
+        bounds = _single_interval_bounds(self.image)
+        split_bounds = []
+        for left, right in bounds:
+            midpoint = (left + right) / 2.0
+            split_bounds.append(((left, midpoint), (midpoint, right)))
+
+        neighborhoods = []
+        for subbox in itertools.product(*split_bounds):
+            image = EuclideanNeighborhood.box(*subbox)
+            center_coordinates = FloatPoint(
+                [(left + right) / 2.0 for left, right in subbox]
+            )
+            neighborhoods.append(
+                ChartNeighborhood(
+                    self.manifold,
+                    self.chart,
+                    self.chart.inverse(center_coordinates),
+                    image,
+                    name=self.name,
+                )
+            )
+        return tuple(neighborhoods)
+
+
+@dataclass(frozen=True)
+class NeighborhoodCover(Generic[PointT]):
+    """Finite cover by neighborhoods."""
+
+    neighborhoods: tuple[Neighborhood[PointT], ...]
+    name: str = ""
+
+    def __post_init__(self) -> None:
+        """Require a non-empty homogeneous cover."""
+        if not self.neighborhoods:
+            raise ValueError("NeighborhoodCover must not be empty")
+        manifold = self.neighborhoods[0].manifold
+        if any(neighborhood.manifold is not manifold for neighborhood in self.neighborhoods):
+            raise ValueError("All neighborhoods in a cover must share a manifold")
+
+    @property
+    def manifold(self) -> Manifold[PointT]:
+        """Return the common ambient manifold."""
+        return self.neighborhoods[0].manifold
+
+    def refine(self) -> "NeighborhoodCover[PointT]":
+        """Refine every neighborhood in the cover."""
+        refined = tuple(
+            child
+            for neighborhood in self.neighborhoods
+            for child in neighborhood.subdivide()
+        )
+        return NeighborhoodCover(refined, name=self.name)
+
+    def max_diameter(self) -> float:
+        """Return the largest neighborhood diameter in the cover."""
+        return max(neighborhood.diameter() for neighborhood in self.neighborhoods)
+
+
+@dataclass(frozen=True)
+class LocalObjectModel(Generic[PointT]):
+    """Classification of one object inside one neighborhood."""
+
+    status: str
+    neighborhood: Neighborhood[PointT]
+    witness_point: PointT | None = None
+    local_model: object | None = None
+
+    def __post_init__(self) -> None:
+        """Require one of the supported statuses."""
+        if self.status not in {"empty", "simple", "complex"}:
+            raise ValueError(f"Unsupported local object status: {self.status!r}")
+
+    @property
+    def is_empty(self) -> bool:
+        """Return whether the object is empty in the neighborhood."""
+        return self.status == "empty"
+
+    @property
+    def is_simple(self) -> bool:
+        """Return whether the object has a simple local model."""
+        return self.status == "simple"
+
+    @property
+    def is_complex(self) -> bool:
+        """Return whether the neighborhood should be refined."""
+        return self.status == "complex"
+
+
+def classify_local_object(
+    obj,
+    neighborhood: Neighborhood[PointT],
+) -> LocalObjectModel[PointT]:
+    """Classify an object inside one neighborhood by finite probing."""
+    center = neighborhood.sample_point()
+    if center in obj:
+        return LocalObjectModel(
+            "simple",
+            neighborhood,
+            witness_point=center,
+            local_model=obj.local_model_at(center),
+        )
+
+    probes = neighborhood.probe_points()
+    inside = [point for point in probes if point in obj]
+    if not inside:
+        return LocalObjectModel("empty", neighborhood)
+    return LocalObjectModel(
+        "complex",
+        neighborhood,
+        witness_point=inside[0],
+    )
+
+
+__all__ = [
+    "Manifold",
+    "ManifoldChart",
+    "ChartTransition",
+    "Atlas",
+    "Neighborhood",
+    "ChartNeighborhood",
+    "NeighborhoodCover",
+    "LocalObjectModel",
+    "classify_local_object",
+]

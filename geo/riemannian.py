@@ -7,7 +7,7 @@ from typing import Callable, Generic, Protocol, TypeVar, runtime_checkable
 
 import numpy as np
 
-from .euclidean import FloatPoint, FloatVector
+from .euclidean import EuclideanNeighborhood, FloatPoint, FloatVector
 from .floatcircle import FloatAngle, FloatCircleInterval, FloatCirclePoint
 from .geometric import (
     Circle,
@@ -27,6 +27,14 @@ from .geometric import (
     WholePlane,
 )
 from .manifold import Manifold
+from .manifold import ChartNeighborhood
+from .operations import (
+    closest_sample_pair as _closest_sample_pair,
+    closest_sample_to_point as _closest_sample_to_point,
+    sample_points as _validated_sample_points,
+    sampled_distance as _sampled_distance,
+    sampled_distance_to_point as _sampled_distance_to_point,
+)
 
 
 PointT = TypeVar("PointT")
@@ -296,6 +304,44 @@ class MetricGeometricObject(ChartedGeometricObject[PointT]):
         """Return a singleton mesh for an Euclidean point source object."""
         source_object = getattr(self, "_charted_source_object")
         return ObjectMesh((FloatPoint(source_object.point),), ((0,),))
+
+    def _validated_samples(self, resolution: int) -> tuple[PointT, ...]:
+        """Return sample points and require at least one sample."""
+        return _validated_sample_points(self, resolution=resolution)
+
+    def closest_sample_to_point(
+        self,
+        point: PointT,
+        resolution: int = 64,
+    ) -> tuple[PointT, float]:
+        """Return the closest sampled object point to one ambient point."""
+        return _closest_sample_to_point(self, point, resolution=resolution)
+
+    def sampled_distance_to_point(
+        self,
+        point: PointT,
+        resolution: int = 64,
+    ) -> float:
+        """Return a sample-based approximation to distance from a point."""
+        return _sampled_distance_to_point(self, point, resolution=resolution)
+
+    def closest_sample_pair(
+        self,
+        other: "MetricGeometricObject[PointT]",
+        resolution: int = 64,
+    ) -> tuple[PointT, PointT, float]:
+        """Return the closest sampled pair between two objects."""
+        return _closest_sample_pair(self, other, resolution=resolution)
+
+    def sampled_distance_to(
+        self,
+        other: "MetricGeometricObject[PointT]",
+        resolution: int = 64,
+    ) -> float:
+        """Return a sample-based approximation to distance between objects."""
+        if self is other:
+            return 0.0
+        return _sampled_distance(self, other, resolution=resolution)
 
     def sample_points(self, resolution: int = 24):
         """Return sample points on the geometric object when supported."""
@@ -953,6 +999,28 @@ class RealLineSpace(ChartedMetricSpace[float]):
             name=name,
         )
 
+    def neighborhood_at(
+        self,
+        point: float,
+        radius: float,
+        name: str = "",
+    ) -> ChartNeighborhood[float]:
+        """Return a centered neighborhood in intrinsic coordinates."""
+        center = float(point)
+        if center not in self:
+            raise ValueError("Point is outside the real line")
+        radius = float(radius)
+        if radius <= 0.0:
+            raise ValueError("Neighborhood radius must be positive")
+        chart = self.point(center).local_model_at(center).chart
+        return ChartNeighborhood(
+            self,
+            chart,
+            center,
+            EuclideanNeighborhood.box((-radius, radius)),
+            name=name or "real-neighborhood",
+        )
+
     def subset(
         self,
         *point_set: object,
@@ -1016,6 +1084,30 @@ class UnitCircleSpace(ChartedMetricSpace[FloatCirclePoint]):
             self,
             CirclePointObject(point, name=name),
             name=name,
+        )
+
+    def neighborhood_at(
+        self,
+        point: FloatCirclePoint,
+        radius: float,
+        name: str = "",
+    ) -> ChartNeighborhood[FloatCirclePoint]:
+        """Return a centered intrinsic neighborhood smaller than a half-circle."""
+        center = FloatCirclePoint(point)
+        if center not in self:
+            raise ValueError("Point is outside the unit circle")
+        radius = float(radius)
+        if radius <= 0.0:
+            raise ValueError("Neighborhood radius must be positive")
+        if radius >= math.pi:
+            raise ValueError("Circle neighborhoods must have radius < pi")
+        chart = self.point(center).local_model_at(center).chart
+        return ChartNeighborhood(
+            self,
+            chart,
+            center,
+            EuclideanNeighborhood.box((-radius, radius)),
+            name=name or "circle-neighborhood",
         )
 
     def subset(
@@ -1103,6 +1195,28 @@ class EuclideanMetricSpace(ChartedMetricSpace[FloatPoint]):
             self,
             EuclideanPointObject(point, name=name),
             name=name,
+        )
+
+    def neighborhood_at(
+        self,
+        point: FloatPoint,
+        radius: float,
+        name: str = "",
+    ) -> ChartNeighborhood[FloatPoint]:
+        """Return an axis-aligned centered neighborhood."""
+        center = FloatPoint(point)
+        if center not in self:
+            raise ValueError("Point is outside the Euclidean space")
+        radius = float(radius)
+        if radius <= 0.0:
+            raise ValueError("Neighborhood radius must be positive")
+        chart = self.point(center).local_model_at(center).chart
+        return ChartNeighborhood(
+            self,
+            chart,
+            center,
+            EuclideanNeighborhood.box(*(((-radius, radius),) * self.dim)),
+            name=name or "euclidean-neighborhood",
         )
 
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import itertools
 from collections.abc import Sequence
 from typing import Callable, Generic, Protocol, TypeVar, runtime_checkable
 
@@ -15,6 +16,7 @@ from .floatcircle import (
 )
 from .geometric import EuclideanCone, LocalConeModel, ObjectMesh, Sphere
 from .manifold import ManifoldChart
+from .manifold import ChartNeighborhood
 from .riemannian import MetricGeometricObject, MetricSpace
 
 
@@ -29,6 +31,22 @@ def _coerce_point3(value: object) -> FloatPoint:
     point = FloatPoint(value)
     if point.dim != 3:
         raise ValueError("Expected a three-dimensional point")
+    return point
+
+
+def _coerce_point_dim(value: object, dim: int) -> FloatPoint:
+    """Return an embedded point of the requested dimension."""
+    point = FloatPoint(value)
+    if point.dim != dim:
+        raise ValueError(f"Expected a {dim}-dimensional point")
+    return point
+
+
+def _coerce_nonzero_point_dim(value: object, dim: int) -> FloatPoint:
+    """Return a nonzero embedded point of the requested dimension."""
+    point = _coerce_point_dim(value, dim)
+    if math.isclose(FloatVector(point).norm(), 0.0, abs_tol=1e-15):
+        raise ValueError("Expected a nonzero vector")
     return point
 
 
@@ -96,52 +114,74 @@ def _cross(left: FloatPoint | FloatVector,
     )
 
 
-def _sphere_tangent_basis(
-    point: FloatPoint,
-) -> tuple[FloatVector, FloatVector]:
+def _orthonormal_basis(vectors: Sequence[FloatVector]) -> tuple[FloatVector, ...]:
+    """Return an orthonormal basis from spanning vectors."""
+    basis: list[FloatVector] = []
+    for vector in vectors:
+        candidate = FloatVector(vector)
+        for basis_vector in basis:
+            candidate = candidate - candidate.dot(basis_vector) * basis_vector
+        if candidate.norm() > 1e-12:
+            basis.append(_normalize_vector(candidate))
+    return tuple(basis)
+
+
+def _sphere_tangent_basis(point: FloatPoint) -> tuple[FloatVector, ...]:
     """Return an orthonormal tangent basis at a sphere point."""
+    point = FloatPoint(point)
+    ambient_dim = point.dim
     normal = _normalize_vector(point)
-    reference = FloatVector(0.0, 0.0, 1.0)
-    if abs(normal.dot(reference)) > 0.9:
-        reference = FloatVector(1.0, 0.0, 0.0)
-    first = _normalize_vector(_cross(reference, normal))
-    second = _normalize_vector(_cross(normal, first))
-    return (first, second)
+    candidates = []
+    for axis in range(ambient_dim):
+        basis_vector = FloatVector([
+            1.0 if index == axis else 0.0
+            for index in range(ambient_dim)
+        ])
+        tangent_candidate = basis_vector - basis_vector.dot(normal) * normal
+        if tangent_candidate.norm() > 1e-12:
+            candidates.append(tangent_candidate)
+    basis = _orthonormal_basis(candidates)
+    if len(basis) != ambient_dim - 1:
+        raise ValueError("Could not build a full tangent basis")
+    return basis
 
 
 def _sphere_chart(base_point: FloatPoint) -> ManifoldChart[FloatPoint]:
     """Return a gnomonic chart centered at a sphere point."""
-    base_point = _coerce_point3(base_point)
+    base_point = FloatPoint(base_point)
+    if base_point.dim < 2:
+        raise ValueError("Sphere ambient dimension must be at least two")
     radius = math.sqrt(sum(coordinate * coordinate for coordinate in base_point))
     normal = _normalize_vector(base_point)
-    first, second = _sphere_tangent_basis(base_point)
+    basis = _sphere_tangent_basis(base_point)
+    dim = base_point.dim - 1
 
     def forward(point: FloatPoint) -> FloatPoint:
-        point = _coerce_point3(point)
+        point = _coerce_point_dim(point, base_point.dim)
         denominator = normal.dot(FloatVector(point))
         if math.isclose(denominator, 0.0, abs_tol=1e-12):
             raise ValueError("Point is outside the local sphere chart")
-        return FloatPoint(
-            radius * FloatVector(point).dot(first) / denominator,
-            radius * FloatVector(point).dot(second) / denominator,
-        )
+        return FloatPoint([
+            radius * FloatVector(point).dot(basis_vector) / denominator
+            for basis_vector in basis
+        ])
 
     def inverse(coordinates: FloatPoint) -> FloatPoint:
         coordinates = FloatPoint(coordinates)
-        if coordinates.dim != 2:
-            raise ValueError("Sphere chart coordinates must be two-dimensional")
-        candidate = (
-            FloatVector(base_point) +
-            coordinates[0] * first +
-            coordinates[1] * second
-        )
+        if coordinates.dim != dim:
+            raise ValueError(
+                f"Sphere chart coordinates must be {dim}-dimensional"
+            )
+        candidate = FloatVector(base_point)
+        for coordinate, basis_vector in zip(coordinates, basis):
+            candidate = candidate + coordinate * basis_vector
         normalized = _normalize_vector(candidate)
-        return FloatPoint(radius * coordinate for coordinate in normalized)
+        return FloatPoint([radius * coordinate for coordinate in normalized])
 
     return ManifoldChart(
         forward,
         inverse,
-        dim=2,
+        dim=dim,
         name="sphere-gnomonic",
     )
 
@@ -149,38 +189,35 @@ def _sphere_chart(base_point: FloatPoint) -> ManifoldChart[FloatPoint]:
 def _torus_chart(base_point: "TorusPoint") -> ManifoldChart["TorusPoint"]:
     """Return a local angular chart centered at a torus point."""
     base_point = TorusPoint(base_point)
+    dim = base_point.dim
 
     def forward(point: TorusPoint) -> FloatPoint:
         point = TorusPoint(point)
-        return FloatPoint(
-            _signed_circle_difference(point.major_angle, base_point.major_angle),
-            _signed_circle_difference(point.minor_angle, base_point.minor_angle),
-        )
+        return FloatPoint([
+            _signed_circle_difference(point[index], base_point[index])
+            for index in range(dim)
+        ])
 
     def inverse(coordinates: FloatPoint) -> TorusPoint:
         coordinates = FloatPoint(coordinates)
-        if coordinates.dim != 2:
-            raise ValueError("Torus chart coordinates must be two-dimensional")
+        if coordinates.dim != dim:
+            raise ValueError(f"Torus chart coordinates must be {dim}-dimensional")
         return TorusPoint(
-            float(base_point.major_angle) + coordinates[0],
-            float(base_point.minor_angle) + coordinates[1],
+            tuple(
+                float(base_point[index]) + coordinates[index]
+                for index in range(dim)
+            )
         )
 
     return ManifoldChart(
         forward,
         inverse,
-        dim=2,
+        dim=dim,
         name="torus-angle",
     )
 
 
-def _product_cone(
-    x_negative: bool,
-    x_positive: bool,
-    y_negative: bool,
-    y_positive: bool,
-    name: str,
-) -> EuclideanCone:
+def _product_cone(axis_flags: Sequence[tuple[bool, bool]], name: str) -> EuclideanCone:
     """Return the product cone from axis-wise membership flags."""
 
     def axis_ok(value: float, left_in: bool, right_in: bool) -> bool:
@@ -192,13 +229,14 @@ def _product_cone(
             return value <= 0.0
         return math.isclose(value, 0.0, abs_tol=1e-12)
 
+    dim = len(axis_flags)
     return EuclideanCone(
-        2,
-        contains=lambda point: (
-            axis_ok(FloatPoint(point)[0], x_negative, x_positive) and
-            axis_ok(FloatPoint(point)[1], y_negative, y_positive)
+        dim,
+        contains=lambda point: all(
+            axis_ok(FloatPoint(point)[index], left_in, right_in)
+            for index, (left_in, right_in) in enumerate(axis_flags)
         ),
-        neighborhood=EuclideanNeighborhood.whole(2),
+        neighborhood=EuclideanNeighborhood.whole(dim),
         name=name,
     )
 
@@ -221,22 +259,78 @@ def _merge_meshes(meshes: Sequence[ObjectMesh]) -> ObjectMesh:
 def _sphere_point_from_local(
     center: FloatPoint,
     distance: float,
-    azimuth: float,
+    direction: FloatVector,
 ) -> FloatPoint:
-    """Return a sphere point from polar coordinates around a center."""
+    """Return a sphere point from local polar data around a center."""
     radius = math.sqrt(sum(coordinate * coordinate for coordinate in center))
     normal = _normalize_vector(center)
-    first, second = _sphere_tangent_basis(center)
+    direction = _normalize_vector(direction)
     angle = distance / radius
-    tangent_direction = (
-        math.cos(azimuth) * first +
-        math.sin(azimuth) * second
-    )
     embedded = radius * (
         math.cos(angle) * normal +
-        math.sin(angle) * tangent_direction
+        math.sin(angle) * direction
     )
     return FloatPoint(embedded)
+
+
+def _sample_sphere_directions(dim: int, steps: int) -> tuple[FloatVector, ...]:
+    """Return deterministic tangent directions on the unit sphere."""
+    dim = max(1, int(dim))
+    steps = max(dim + 1, int(steps))
+    directions = []
+    for axis in range(dim):
+        vector = [0.0] * dim
+        vector[axis] = 1.0
+        directions.append(FloatVector(vector))
+        vector = [0.0] * dim
+        vector[axis] = -1.0
+        directions.append(FloatVector(vector))
+    for index in range(steps - len(directions)):
+        directions.append(
+            _normalize_vector(
+                FloatVector([
+                    math.cos((index + 1) * (axis + 1))
+                    for axis in range(dim)
+                ])
+            )
+        )
+    return tuple(directions)
+
+
+def _sample_torus_axis_sets(
+    angle_sets: Sequence[FloatCircleSet],
+    resolution: int,
+) -> tuple[tuple[float, ...], ...]:
+    """Return sampled angles for each torus axis."""
+    base_resolution = max(2, int(resolution))
+    return tuple(
+        _sample_circle_set(
+            circle_set,
+            max(2, int(base_resolution // (2 if index else 1))),
+        )
+        for index, circle_set in enumerate(angle_sets)
+    )
+
+
+def _torus_embedding(point: "TorusPoint", radii: Sequence[float]) -> FloatPoint:
+    """Return the standard nested torus embedding into ``R^(n+1)``."""
+    point = TorusPoint(point)
+    if len(radii) != point.dim:
+        raise ValueError("Torus radii dimension does not match point dimension")
+    radius = float(radii[-1])
+    coordinates = [0.0] * (point.dim + 1)
+    coordinates[-1] = radius * math.sin(float(point[-1]))
+    radius = float(radii[-2]) + radius * math.cos(float(point[-1])) if point.dim > 1 else radius
+    for axis in range(point.dim - 2, 0, -1):
+        coordinates[axis + 1] = radius * math.sin(float(point[axis]))
+        radius = float(radii[axis - 1]) + radius * math.cos(float(point[axis]))
+    if point.dim == 1:
+        coordinates[0] = radius * math.cos(float(point[0]))
+        coordinates[1] = radius * math.sin(float(point[0]))
+    else:
+        coordinates[0] = radius * math.cos(float(point[0]))
+        coordinates[1] = radius * math.sin(float(point[0]))
+    return FloatPoint(coordinates)
 
 
 def _sample_linear_interval(
@@ -398,22 +492,87 @@ class SampledMetricObject(MetricGeometricObject[PointT], Generic[PointT]):
         return self._mesh(int(resolution))
 
 
-class SphereSpace:
-    """Metric sphere represented by embedded points in ``R^3``.
+class SpherePoint(FloatPoint):
+    """Point on a sphere represented by a nonzero ambient vector.
 
-    Distances use the intrinsic great-circle metric. Visualization can use the
-    embedded 3D coordinates directly or simple 2D projections derived from
-    longitude and latitude.
+    The constructor accepts any nonzero vector in ``R^(n+1)`` and normalizes
+    it to the sphere of the requested radius.
     """
 
-    dim = 2
+    __slots__ = ()
 
-    def __init__(self, radius: float = 1.0, name: str = "") -> None:
+    def __new__(
+        cls,
+        *coordinates: object,
+        dim: int | None = None,
+        radius: float = 1.0,
+    ) -> "SpherePoint":
+        """Create a sphere point from a nonzero ambient vector."""
+        if len(coordinates) == 1:
+            vector = _coerce_nonzero_point_dim(
+                coordinates[0],
+                dim + 1 if dim is not None else FloatPoint(coordinates[0]).dim,
+            )
+        else:
+            if dim is None:
+                dim = len(coordinates) - 1
+            vector = _coerce_nonzero_point_dim(coordinates, dim + 1)
+        radius = float(radius)
+        if radius <= 0.0:
+            raise ValueError("Sphere radius must be positive")
+        normalized = (radius / FloatVector(vector).norm()) * FloatVector(vector)
+        return super().__new__(cls, normalized)
+
+    @property
+    def ambient_dim(self) -> int:
+        """Return the ambient Euclidean dimension."""
+        return super().dim
+
+    @property
+    def sphere_dim(self) -> int:
+        """Return the intrinsic sphere dimension."""
+        return self.ambient_dim - 1
+
+    @property
+    def radius(self) -> float:
+        """Return the sphere radius."""
+        return FloatVector(self).norm()
+
+    def as_float_point(self) -> FloatPoint:
+        """Return the embedded Euclidean representative."""
+        return FloatPoint(self)
+
+    def __repr__(self) -> str:
+        """Return a debug representation."""
+        return (
+            "SpherePoint("
+            f"{tuple(float(value) for value in self)}, "
+            f"dim={self.sphere_dim}, radius={self.radius})"
+        )
+
+
+class SphereSpace:
+    """Metric sphere represented by embedded points in ``R^(n+1)``.
+
+    Distances use the intrinsic great-circle metric. Visualization uses either
+    low-dimensional projections of the embedding or, for ``S^2``, the explicit
+    longitude/latitude formulas.
+    """
+
+    def __init__(
+        self,
+        dim: int = 2,
+        radius: float = 1.0,
+        name: str = "",
+    ) -> None:
         """Initialize the sphere radius."""
+        self.dim = int(dim)
+        if self.dim < 1:
+            raise ValueError("Sphere dimension must be positive")
         self.radius = float(radius)
         if self.radius <= 0.0:
             raise ValueError("Sphere radius must be positive")
-        self.name = name or f"S^2({self.radius})"
+        self.name = name or f"S^{self.dim}({self.radius})"
 
     @property
     def space_kind(self) -> str:
@@ -423,12 +582,12 @@ class SphereSpace:
     def __repr__(self) -> str:
         """Return a debug representation."""
         label = f", name={self.name!r}" if self.name else ""
-        return f"SphereSpace(radius={self.radius}{label})"
+        return f"SphereSpace(dim={self.dim}, radius={self.radius}{label})"
 
     def contains(self, point: object) -> bool:
         """Check whether a point lies on the sphere."""
         try:
-            embedded = _coerce_point3(point)
+            embedded = SpherePoint(point, dim=self.dim, radius=self.radius)
         except (TypeError, ValueError):
             return False
         return math.isclose(
@@ -442,26 +601,42 @@ class SphereSpace:
         """Check whether a point lies on the sphere."""
         return self.contains(point)
 
-    def point(self, point: object) -> FloatPoint:
+    def point(self, point: object) -> "SpherePoint":
         """Return a validated point on the sphere."""
-        embedded = _coerce_point3(point)
-        if embedded not in self:
-            raise ValueError("Point is outside the sphere")
-        return embedded
+        return SpherePoint(point, dim=self.dim, radius=self.radius)
 
     def point_from_angles(
         self,
-        longitude: float,
-        latitude: float,
-    ) -> FloatPoint:
-        """Build a sphere point from longitude and latitude."""
-        lon = float(longitude)
-        lat = float(latitude)
-        cos_lat = math.cos(lat)
-        return FloatPoint(
-            self.radius * cos_lat * math.cos(lon),
-            self.radius * cos_lat * math.sin(lon),
-            self.radius * math.sin(lat),
+        *angles: float,
+    ) -> "SpherePoint":
+        """Build a sphere point from hyperspherical angles."""
+        if self.dim == 2 and len(angles) == 2:
+            longitude = float(angles[0])
+            latitude = float(angles[1])
+            cos_lat = math.cos(latitude)
+            return SpherePoint(
+                self.radius * cos_lat * math.cos(longitude),
+                self.radius * cos_lat * math.sin(longitude),
+                self.radius * math.sin(latitude),
+                dim=self.dim,
+                radius=self.radius,
+            )
+        if len(angles) != self.dim:
+            raise ValueError(f"Expected {self.dim} angles, got {len(angles)}")
+        angles = tuple(float(angle) for angle in angles)
+        coordinates = []
+        prefix = self.radius
+        for index in range(self.dim):
+            if index < self.dim - 1:
+                coordinates.append(prefix * math.cos(angles[index]))
+                prefix *= math.sin(angles[index])
+            else:
+                coordinates.append(prefix * math.cos(angles[index]))
+                coordinates.append(prefix * math.sin(angles[index]))
+        return SpherePoint(
+            coordinates,
+            dim=self.dim,
+            radius=self.radius,
         )
 
     def distance(self, left: object, right: object) -> float:
@@ -477,10 +652,18 @@ class SphereSpace:
     def to_2d(self, point: object, method: str = "default") -> Embedding2D:
         """Return a 2D visualization embedding of a sphere point."""
         embedded = self.point(point)
-        x, y, z = embedded
-        method = "stereographic" if method == "default" else method
+        method = (
+            "stereographic" if method == "default" and self.dim == 2
+            else "orthographic" if method == "default"
+            else method
+        )
 
         if method == "stereographic":
+            if self.dim != 2:
+                raise ValueError(
+                    "Stereographic projection is implemented only for S^2"
+                )
+            x, y, z = embedded
             denominator = self.radius - z
             if math.isclose(denominator, 0.0, abs_tol=1e-12):
                 raise ValueError(
@@ -492,9 +675,21 @@ class SphereSpace:
             )
 
         if method == "equirectangular":
+            if self.dim != 2:
+                raise ValueError(
+                    "Equirectangular projection is implemented only for S^2"
+                )
+            x, y, z = embedded
             longitude = math.atan2(y, x)
             latitude = math.asin(_clamp_unit(z / self.radius))
             return (longitude, latitude)
+
+        if method == "orthographic":
+            values = tuple(embedded)
+            return (
+                values[0],
+                values[1] if len(values) > 1 else 0.0,
+            )
 
         raise ValueError(f"Unknown 2D visualization method: {method!r}")
 
@@ -504,13 +699,15 @@ class SphereSpace:
         method = "embedding" if method == "default" else method
         if method != "embedding":
             raise ValueError(f"Unknown 3D visualization method: {method!r}")
-        return (embedded[0], embedded[1], embedded[2])
+        values = tuple(embedded)
+        padded = values + (0.0, 0.0, 0.0)
+        return (padded[0], padded[1], padded[2])
 
     def point_object(
         self,
         point: object,
         name: str = "",
-    ) -> SampledMetricObject[FloatPoint]:
+    ) -> SampledMetricObject["SpherePoint"]:
         """Return a singleton object on the sphere."""
         sphere_point = self.point(point)
         return SampledMetricObject(
@@ -518,26 +715,39 @@ class SphereSpace:
             contains=lambda candidate: self.point(candidate) == sphere_point,
             local_model=lambda candidate: LocalConeModel(
                 _sphere_chart(sphere_point),
-                _point_cone(2),
+                _point_cone(self.dim),
             ),
             sample_points=lambda resolution: (sphere_point,),
             mesh=lambda resolution: ObjectMesh((sphere_point,), ((0,),)),
             name=name or "sphere-point",
         )
 
-    def point(self, point: object) -> FloatPoint:
-        """Return a validated point on the sphere."""
-        embedded = _coerce_point3(point)
-        if embedded not in self:
-            raise ValueError("Point is outside the sphere")
-        return embedded
+    def neighborhood_at(
+        self,
+        point: object,
+        radius: float,
+        name: str = "",
+    ) -> ChartNeighborhood["SpherePoint"]:
+        """Return a centered intrinsic neighborhood on the sphere."""
+        center = self.point(point)
+        radius = float(radius)
+        if radius <= 0.0:
+            raise ValueError("Neighborhood radius must be positive")
+        chart = _sphere_chart(center)
+        return ChartNeighborhood(
+            self,
+            chart,
+            center,
+            EuclideanNeighborhood.box(*(((-radius, radius),) * self.dim)),
+            name=name or "sphere-neighborhood",
+        )
 
     def cap(
         self,
         center: object,
         radius: float,
         name: str = "",
-    ) -> SampledMetricObject[FloatPoint]:
+    ) -> SampledMetricObject["SpherePoint"]:
         """Return the closed geodesic cap around a center point."""
         center_point = self.point(center)
         cap_radius = float(radius)
@@ -558,7 +768,7 @@ class SphereSpace:
                 contains=lambda point: point in self,
                 local_model=lambda point: LocalConeModel(
                     _sphere_chart(self.point(point)),
-                    EuclideanCone.whole(2),
+                    EuclideanCone.whole(self.dim),
                 ),
                 sample_points=lambda resolution: self.sample_points(resolution),
                 mesh=lambda resolution: self.mesh(resolution),
@@ -579,20 +789,20 @@ class SphereSpace:
             if score > threshold + 1e-10:
                 cone = EuclideanCone.whole(2)
             else:
-                first, second = _sphere_tangent_basis(sphere_point)
-                gradient = FloatVector(
-                    FloatVector(center_point).dot(first),
-                    FloatVector(center_point).dot(second),
-                )
+                tangent_basis = _sphere_tangent_basis(sphere_point)
+                gradient = FloatVector([
+                    FloatVector(center_point).dot(basis_vector)
+                    for basis_vector in tangent_basis
+                ])
                 if gradient.norm() < 1e-12:
-                    cone = EuclideanCone.whole(2)
+                    cone = EuclideanCone.whole(self.dim)
                 else:
                     cone = EuclideanCone(
-                        2,
+                        self.dim,
                         contains=lambda coordinates: (
                             gradient.dot(FloatVector(coordinates)) >= -1e-12
                         ),
-                        neighborhood=EuclideanNeighborhood.whole(2),
+                        neighborhood=EuclideanNeighborhood.whole(self.dim),
                         name="sphere-cap-boundary",
                     )
             return LocalConeModel(chart, cone)
@@ -614,10 +824,24 @@ class SphereSpace:
 
     def sample_points(self, resolution: int = 24) -> tuple[FloatPoint, ...]:
         """Return sample points on the whole sphere."""
+        if self.dim != 2:
+            directions = _sample_sphere_directions(self.dim + 1, resolution * 2)
+            return tuple(
+                FloatPoint([
+                    self.radius * coordinate for coordinate in direction
+                ])
+                for direction in directions
+            )
         return self.mesh(resolution=resolution).vertices
 
     def mesh(self, resolution: int = 24) -> ObjectMesh:
         """Return a visualization mesh for the whole sphere."""
+        if self.dim != 2:
+            vertices = self.sample_points(resolution=resolution)
+            return ObjectMesh(
+                tuple(FloatPoint(self.to_3d(vertex)) for vertex in vertices),
+                tuple((index,) for index in range(len(vertices))),
+            )
         return Sphere(FloatPoint(0.0, 0.0, 0.0), self.radius).mesh(
             resolution=resolution,
         )
@@ -637,9 +861,38 @@ class SphereSpace:
             return ObjectMesh((center_point,), ((0,),))
         if math.isclose(cap_radius, math.pi * self.radius, abs_tol=1e-12):
             return self.mesh(resolution=resolution)
+        if self.dim != 2:
+            local_radius = max(2, int(resolution))
+            directions = _sample_sphere_directions(self.dim, local_radius * 2)
+            tangent_basis = _sphere_tangent_basis(center_point)
+            vertices = [center_point]
+            for radial_index in range(1, local_radius + 1):
+                geodesic_distance = cap_radius * radial_index / local_radius
+                for direction in directions:
+                    tangent_direction = FloatVector(
+                        [
+                            sum(
+                            direction[basis_index] * basis_vector[axis]
+                            for basis_index, basis_vector in enumerate(tangent_basis)
+                            )
+                            for axis in range(self.dim + 1)
+                        ]
+                    )
+                    vertices.append(
+                        _sphere_point_from_local(
+                            center_point,
+                            geodesic_distance,
+                            tangent_direction,
+                        )
+                    )
+            return ObjectMesh(
+                tuple(FloatPoint(self.to_3d(vertex)) for vertex in vertices),
+                tuple((index,) for index in range(len(vertices))),
+            )
 
         radial_steps = max(2, int(resolution // 2))
         angular_steps = max(8, int(resolution))
+        first_basis, second_basis = _sphere_tangent_basis(center_point)
         vertices = [center_point]
         cells: list[tuple[int, ...]] = []
 
@@ -651,7 +904,8 @@ class SphereSpace:
                     _sphere_point_from_local(
                         center_point,
                         geodesic_distance,
-                        azimuth,
+                        math.cos(azimuth) * first_basis +
+                        math.sin(azimuth) * second_basis,
                     )
                 )
 
@@ -676,84 +930,103 @@ class SphereSpace:
 
 
 class TorusPoint(tuple):
-    """Point on a torus represented by two angular coordinates."""
+    """Point on a torus represented by angular coordinates."""
 
     __slots__ = ()
 
     def __new__(
         cls,
-        major_angle: object = 0.0,
-        minor_angle: object = _MISSING,
+        *angles: object,
     ) -> "TorusPoint":
-        """Create a torus point from two angles or one pair."""
-        if isinstance(major_angle, cls) and minor_angle is _MISSING:
-            return major_angle
-        if (
-            minor_angle is _MISSING and
-            isinstance(major_angle, Sequence) and
-            not isinstance(major_angle, (str, bytes)) and
-            len(major_angle) == 2
-        ):
-            major_angle, minor_angle = major_angle
-        elif minor_angle is _MISSING:
-            if major_angle == 0.0:
-                minor_angle = 0.0
+        """Create a torus point from angles or one sequence of angles."""
+        if len(angles) == 1 and isinstance(angles[0], cls):
+            return angles[0]
+        if len(angles) == 1:
+            point = angles[0]
+            if (
+                isinstance(point, Sequence) and
+                not isinstance(point, (str, bytes)) and
+                len(point) >= 1
+            ):
+                return super().__new__(
+                    cls,
+                    tuple(FloatCirclePoint(angle) for angle in point),
+                )
+            if point == 0.0:
+                angles = (0.0, 0.0)
             else:
                 raise TypeError(
-                    "TorusPoint requires two angles or one pair of angles"
+                    "TorusPoint requires at least two angles or one angle tuple"
                 )
         return super().__new__(
             cls,
-            (
-                FloatCirclePoint(major_angle),
-                FloatCirclePoint(minor_angle),
-            ),
+            tuple(FloatCirclePoint(angle) for angle in angles),
         )
+
+    @property
+    def dim(self) -> int:
+        """Return the torus dimension."""
+        return len(self)
 
     @property
     def major_angle(self) -> FloatCirclePoint:
         """Return the angle around the main circle."""
+        if self.dim < 1:
+            raise ValueError("TorusPoint has no angles")
         return self[0]
 
     @property
     def minor_angle(self) -> FloatCirclePoint:
         """Return the angle around the tube circle."""
+        if self.dim < 2:
+            raise ValueError("TorusPoint has no minor angle")
         return self[1]
 
-    def to_tuple(self) -> tuple[float, float]:
+    def to_tuple(self) -> tuple[float, ...]:
         """Return angular coordinates as plain floats."""
-        return (float(self.major_angle), float(self.minor_angle))
+        return tuple(float(angle) for angle in self)
 
     def __repr__(self) -> str:
         """Return a debug representation."""
-        return (
-            "TorusPoint("
-            f"{float(self.major_angle)}, {float(self.minor_angle)})"
-        )
+        return f"TorusPoint{self.to_tuple()}"
 
 
 class TorusSpace:
-    """Flat torus modeled as a product of two circles.
+    """Flat torus modeled as a product of circles.
 
-    The intrinsic metric is the product metric of two circle distances. The
-    3D embedding is a visualization of the torus with chosen major and minor
-    radii; it is not used for the distance.
+    The intrinsic metric is the product metric of circle distances. The 3D
+    embedding is a visualization of the torus; it is not used for distance.
     """
-
-    dim = 2
 
     def __init__(
         self,
+        dim: int = 2,
         major_radius: float = 2.0,
         minor_radius: float = 0.5,
+        radii: Sequence[float] | None = None,
         name: str = "",
     ) -> None:
         """Initialize the torus visualization radii."""
-        self.major_radius = float(major_radius)
-        self.minor_radius = float(minor_radius)
-        if self.major_radius <= 0.0 or self.minor_radius <= 0.0:
+        self.dim = int(dim)
+        if self.dim < 1:
+            raise ValueError("Torus dimension must be positive")
+        if radii is None:
+            if self.dim == 1:
+                radii = (float(major_radius),)
+            elif self.dim == 2:
+                radii = (float(major_radius), float(minor_radius))
+            else:
+                base = float(major_radius)
+                step = float(minor_radius)
+                radii = tuple(base - step * index for index in range(self.dim))
+        self.radii = tuple(float(radius) for radius in radii)
+        if len(self.radii) != self.dim:
+            raise ValueError("Torus radii length must match the torus dimension")
+        if any(radius <= 0.0 for radius in self.radii):
             raise ValueError("Torus radii must be positive")
-        self.name = name or "T^2"
+        self.major_radius = self.radii[0]
+        self.minor_radius = self.radii[1] if self.dim > 1 else self.radii[0]
+        self.name = name or f"T^{self.dim}"
 
     @property
     def space_kind(self) -> str:
@@ -765,17 +1038,15 @@ class TorusSpace:
         label = f", name={self.name!r}" if self.name else ""
         return (
             "TorusSpace("
-            f"major_radius={self.major_radius}, "
-            f"minor_radius={self.minor_radius}{label})"
+            f"dim={self.dim}, radii={self.radii}{label})"
         )
 
     def contains(self, point: object) -> bool:
         """Check whether a point can be interpreted on the torus."""
         try:
-            TorusPoint(point)
+            return TorusPoint(point).dim == self.dim
         except (TypeError, ValueError):
             return False
-        return True
 
     def __contains__(self, point: object) -> bool:
         """Check whether a point can be interpreted on the torus."""
@@ -783,15 +1054,22 @@ class TorusSpace:
 
     def point(self, point: object) -> TorusPoint:
         """Return a validated point on the torus."""
-        return TorusPoint(point)
+        torus_point = TorusPoint(point)
+        if torus_point.dim != self.dim:
+            raise ValueError(
+                f"Expected a {self.dim}-dimensional torus point"
+            )
+        return torus_point
 
     def distance(self, left: object, right: object) -> float:
         """Return the flat-torus product distance."""
         left_point = self.point(left)
         right_point = self.point(right)
-        first = float(left_point.major_angle.distance_to(right_point.major_angle))
-        second = float(left_point.minor_angle.distance_to(right_point.minor_angle))
-        return math.sqrt(first * first + second * second)
+        squared = 0.0
+        for index in range(self.dim):
+            diff = float(left_point[index].distance_to(right_point[index]))
+            squared += diff * diff
+        return math.sqrt(squared)
 
     def to_2d(self, point: object, method: str = "default") -> Embedding2D:
         """Return a 2D visualization embedding of a torus point."""
@@ -799,7 +1077,9 @@ class TorusSpace:
         method = "flat" if method == "default" else method
         if method != "flat":
             raise ValueError(f"Unknown 2D visualization method: {method!r}")
-        return torus_point.to_tuple()
+        values = torus_point.to_tuple()
+        padded = values + (0.0, 0.0)
+        return (padded[0], padded[1])
 
     def to_3d(self, point: object, method: str = "default") -> Embedding3D:
         """Return a 3D donut embedding of a torus point."""
@@ -808,14 +1088,9 @@ class TorusSpace:
         if method != "embedding":
             raise ValueError(f"Unknown 3D visualization method: {method!r}")
 
-        major = float(torus_point.major_angle)
-        minor = float(torus_point.minor_angle)
-        ring_radius = self.major_radius + self.minor_radius * math.cos(minor)
-        return (
-            ring_radius * math.cos(major),
-            ring_radius * math.sin(major),
-            self.minor_radius * math.sin(minor),
-        )
+        embedded = tuple(_torus_embedding(torus_point, self.radii))
+        padded = embedded + (0.0, 0.0, 0.0)
+        return (padded[0], padded[1], padded[2])
 
     def point_object(
         self,
@@ -829,7 +1104,7 @@ class TorusSpace:
             contains=lambda candidate: self.point(candidate) == torus_point,
             local_model=lambda candidate: LocalConeModel(
                 _torus_chart(torus_point),
-                _point_cone(2),
+                _point_cone(self.dim),
             ),
             sample_points=lambda resolution: (torus_point,),
             mesh=lambda resolution: ObjectMesh(
@@ -839,37 +1114,59 @@ class TorusSpace:
             name=name or "torus-point",
         )
 
+    def neighborhood_at(
+        self,
+        point: object,
+        radius: float,
+        name: str = "",
+    ) -> ChartNeighborhood[TorusPoint]:
+        """Return a centered intrinsic neighborhood on the torus."""
+        center = self.point(point)
+        radius = float(radius)
+        if radius <= 0.0:
+            raise ValueError("Neighborhood radius must be positive")
+        if radius >= math.pi:
+            raise ValueError("Torus angular neighborhoods must have radius < pi")
+        chart = _torus_chart(center)
+        return ChartNeighborhood(
+            self,
+            chart,
+            center,
+            EuclideanNeighborhood.box(*(((-radius, radius),) * self.dim)),
+            name=name or "torus-neighborhood",
+        )
+
     def patch(
         self,
-        major_set: object,
-        minor_set: object,
+        *angle_sets: object,
         name: str = "",
     ) -> SampledMetricObject[TorusPoint]:
-        """Return a rectangular angular patch on the torus."""
-        major_circle_set = FloatCircleSet(major_set)
-        minor_circle_set = FloatCircleSet(minor_set)
+        """Return an axis-aligned angular patch on the torus."""
+        if len(angle_sets) != self.dim:
+            raise ValueError(
+                f"Expected {self.dim} angular sets, got {len(angle_sets)}"
+            )
+        circle_sets = tuple(FloatCircleSet(angle_set) for angle_set in angle_sets)
 
         def contains(point: TorusPoint) -> bool:
             torus_point = self.point(point)
-            return (
-                torus_point.major_angle in major_circle_set and
-                torus_point.minor_angle in minor_circle_set
+            return all(
+                torus_point[index] in circle_sets[index]
+                for index in range(self.dim)
             )
 
         def local_model(point: TorusPoint) -> LocalConeModel[TorusPoint]:
             torus_point = self.point(point)
             chart = _torus_chart(torus_point)
-
-            major_previous = _previous_circle_point(torus_point.major_angle)
-            major_following = _following_circle_point(torus_point.major_angle)
-            minor_previous = _previous_circle_point(torus_point.minor_angle)
-            minor_following = _following_circle_point(torus_point.minor_angle)
-
+            axis_flags = [
+                (
+                    _previous_circle_point(torus_point[index]) in circle_sets[index],
+                    _following_circle_point(torus_point[index]) in circle_sets[index],
+                )
+                for index in range(self.dim)
+            ]
             cone = _product_cone(
-                major_previous in major_circle_set,
-                major_following in major_circle_set,
-                minor_previous in minor_circle_set,
-                minor_following in minor_circle_set,
+                axis_flags,
                 "torus-patch",
             )
             return LocalConeModel(chart, cone)
@@ -879,39 +1176,43 @@ class TorusSpace:
             contains=contains,
             local_model=local_model,
             sample_points=lambda resolution: tuple(
-                TorusPoint(major, minor)
-                for major in _sample_circle_set(
-                    major_circle_set,
-                    max(2, int(resolution)),
-                )
-                for minor in _sample_circle_set(
-                    minor_circle_set,
-                    max(2, int(resolution // 2)),
+                TorusPoint(point)
+                for point in itertools.product(
+                    *_sample_torus_axis_sets(circle_sets, resolution)
                 )
             ),
             mesh=lambda resolution: self.patch_mesh(
-                major_circle_set,
-                minor_circle_set,
-                resolution,
+                *circle_sets,
+                resolution=resolution,
             ),
             name=name or "torus-patch",
         )
 
     def sample_points(self, resolution: int = 24) -> tuple[TorusPoint, ...]:
         """Return sample points on the whole torus."""
-        major_steps = max(4, int(resolution))
-        minor_steps = max(4, int(resolution // 2))
+        axis_steps = tuple(
+            max(4, int(resolution // (2 if index else 1)))
+            for index in range(self.dim)
+        )
+        import itertools
         return tuple(
             TorusPoint(
-                2.0 * math.pi * major_index / major_steps,
-                2.0 * math.pi * minor_index / minor_steps,
+                tuple(
+                    2.0 * math.pi * axis_index / steps
+                    for axis_index, steps in zip(indices, axis_steps)
+                )
             )
-            for major_index in range(major_steps)
-            for minor_index in range(minor_steps)
+            for indices in itertools.product(*(range(steps) for steps in axis_steps))
         )
 
     def mesh(self, resolution: int = 24) -> ObjectMesh:
         """Return a visualization mesh for the whole torus."""
+        if self.dim != 2:
+            vertices = tuple(
+                FloatPoint(self.to_3d(point))
+                for point in self.sample_points(resolution=resolution)
+            )
+            return ObjectMesh(vertices, tuple((index,) for index in range(len(vertices))))
         major_steps = max(8, int(resolution))
         minor_steps = max(8, int(resolution // 2))
         major_values = tuple(
@@ -933,13 +1234,26 @@ class TorusSpace:
 
     def patch_mesh(
         self,
-        major_set: object,
-        minor_set: object,
+        *angle_sets: object,
         resolution: int = 24,
     ) -> ObjectMesh:
         """Return a visualization mesh for an angular patch."""
-        major_circle_set = FloatCircleSet(major_set)
-        minor_circle_set = FloatCircleSet(minor_set)
+        if len(angle_sets) != self.dim:
+            raise ValueError(
+                f"Expected {self.dim} angular sets, got {len(angle_sets)}"
+            )
+        circle_sets = tuple(FloatCircleSet(angle_set) for angle_set in angle_sets)
+        if self.dim != 2:
+            patch = self.patch(*circle_sets)
+            vertices = tuple(
+                FloatPoint(self.to_3d(point))
+                for point in patch.sample_points(resolution=resolution)
+            )
+            return ObjectMesh(
+                vertices,
+                tuple((index,) for index in range(len(vertices))),
+            )
+        major_circle_set, minor_circle_set = circle_sets
         if major_circle_set.is_full() and minor_circle_set.is_full():
             return self.mesh(resolution=resolution)
 
@@ -996,6 +1310,7 @@ __all__ = [
     "Embedding2D",
     "Embedding3D",
     "Space",
+    "SpherePoint",
     "SphereSpace",
     "TorusPoint",
     "TorusSpace",

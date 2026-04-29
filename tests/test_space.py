@@ -4,16 +4,17 @@ import math
 import unittest
 
 from geo import (
+    CircleSpace,
     EuclideanPlaneSpace,
     FloatCirclePoint,
     FloatPoint,
     ObjectMesh,
     RealLineSpace,
+    SpherePoint,
     Space,
     SphereSpace,
     TorusPoint,
     TorusSpace,
-    UnitCircleSpace,
 )
 
 
@@ -23,7 +24,7 @@ class TestSpaceProtocol(unittest.TestCase):
     def test_standard_spaces_satisfy_space_protocol(self):
         """Standard spaces should satisfy the ``Space`` protocol."""
         self.assertIsInstance(RealLineSpace(), Space)
-        self.assertIsInstance(UnitCircleSpace(), Space)
+        self.assertIsInstance(CircleSpace(), Space)
         self.assertIsInstance(EuclideanPlaneSpace(), Space)
         self.assertIsInstance(SphereSpace(), Space)
         self.assertIsInstance(TorusSpace(), Space)
@@ -37,7 +38,7 @@ class TestSpaceProtocol(unittest.TestCase):
 
     def test_unit_circle_visualization(self):
         """The unit circle should use its standard Euclidean embedding."""
-        space = UnitCircleSpace()
+        space = CircleSpace()
         point = FloatCirclePoint(math.pi / 2.0)
         self.assertEqual(space.space_kind, "unit-circle")
         self.assertAlmostEqual(space.to_2d(point)[0], 0.0)
@@ -75,6 +76,18 @@ class TestSpaceProtocol(unittest.TestCase):
         )
         self.assertAlmostEqual(longitude, math.pi / 2.0)
         self.assertAlmostEqual(latitude, 0.0)
+
+    def test_sphere_point_normalizes_any_nonzero_ambient_vector(self):
+        """Sphere points should be represented by nonzero ambient vectors."""
+        space = SphereSpace(radius=2.0)
+        point = space.point((10.0, 0.0, 0.0))
+
+        self.assertIsInstance(point, SpherePoint)
+        self.assertEqual(point, SpherePoint(1.0, 0.0, 0.0, dim=2, radius=2.0))
+        self.assertEqual(point.sphere_dim, 2)
+        self.assertAlmostEqual(point.radius, 2.0)
+        self.assertIn((3.0, 0.0, 0.0), space)
+        self.assertNotIn((0.0, 0.0, 0.0), space)
 
     def test_sphere_stereographic_projection_rejects_north_pole(self):
         """Stereographic projection should reject the north pole."""
@@ -139,6 +152,24 @@ class TestSpaceProtocol(unittest.TestCase):
         self.assertTrue(all(sample in cap for sample in cap_samples))
         self.assertIsInstance(cap_mesh, ObjectMesh)
         self.assertTrue(all(vertex in cap for vertex in cap_mesh.vertices))
+
+    def test_higher_dimensional_sphere_uses_embedded_coordinates(self):
+        """Higher-dimensional spheres should accept an explicit dimension."""
+        space = SphereSpace(dim=3, radius=2.0)
+        first = SpherePoint(2.0, 0.0, 0.0, 0.0, dim=3, radius=2.0)
+        second = SpherePoint(0.0, 2.0, 0.0, 0.0, dim=3, radius=2.0)
+
+        self.assertIn(first, space)
+        self.assertIn((3.0, 0.0, 0.0, 0.0), space)
+        self.assertNotIn(FloatPoint(2.0, 0.0, 0.0), space)
+        self.assertAlmostEqual(space.distance(first, second), math.pi)
+        self.assertEqual(space.to_2d(first), (2.0, 0.0))
+        self.assertEqual(space.to_3d(FloatPoint(0.0, 0.0, 2.0, 0.0)), (0.0, 0.0, 2.0))
+
+        mesh = space.mesh(resolution=8)
+        self.assertIsInstance(mesh, ObjectMesh)
+        self.assertEqual(mesh.dim, 3)
+        self.assertTrue(mesh.vertices)
 
     def test_torus_distance_and_visualization(self):
         """The torus should use the flat product metric."""
@@ -224,3 +255,36 @@ class TestSpaceProtocol(unittest.TestCase):
         self.assertIsInstance(patch_mesh, ObjectMesh)
         self.assertEqual(patch_mesh.dim, 3)
         self.assertTrue(patch_mesh.cells)
+
+    def test_higher_dimensional_torus_uses_all_angular_axes(self):
+        """Higher-dimensional tori should use one circle factor per axis."""
+        space = TorusSpace(dim=3, radii=(3.0, 2.0, 1.0))
+        first = TorusPoint(0.0, 0.0, 0.0)
+        second = TorusPoint(math.pi, 0.0, 0.0)
+        patch = space.patch(
+            (0.0, math.pi / 2.0),
+            (0.0, math.pi),
+            (0.0, math.pi / 2.0),
+        )
+
+        self.assertIn(first, space)
+        self.assertNotIn(TorusPoint(0.0, 0.0), space)
+        self.assertAlmostEqual(space.distance(first, second), math.pi)
+        self.assertEqual(space.to_2d(first), (0.0, 0.0))
+        self.assertEqual(space.to_3d(first), (6.0, 0.0, 0.0))
+        self.assertIn(TorusPoint(math.pi / 4.0, math.pi / 2.0, math.pi / 4.0), patch)
+        self.assertNotIn(TorusPoint(math.pi, math.pi / 2.0, math.pi / 4.0), patch)
+
+        boundary = patch.local_model_at(TorusPoint(0.0, 0.0, 0.0))
+        self.assertIn(FloatPoint(1.0, 1.0, 1.0), boundary.cone)
+        self.assertNotIn(FloatPoint(-1.0, 1.0, 1.0), boundary.cone)
+
+        patch_mesh = space.patch_mesh(
+            (0.0, math.pi / 2.0),
+            (0.0, math.pi),
+            (0.0, math.pi / 2.0),
+            resolution=8,
+        )
+        self.assertIsInstance(patch_mesh, ObjectMesh)
+        self.assertEqual(patch_mesh.dim, 3)
+        self.assertTrue(patch_mesh.vertices)

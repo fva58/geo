@@ -4,12 +4,12 @@ import math
 import unittest
 
 from geo import (
+    CircleSpace,
     FloatPoint,
     RealLineSpace,
     SphereSpace,
     TorusSpace,
     Transform,
-    UnitCircleSpace,
     identity_transform,
     visualization_transform_2d,
     visualization_transform_3d,
@@ -30,7 +30,7 @@ class TestTransforms(unittest.TestCase):
 
     def test_visualization_transform_2d_for_circle(self):
         """A 2D visualization transform should map into Euclidean points."""
-        circle = UnitCircleSpace()
+        circle = CircleSpace()
         transform = visualization_transform_2d(circle)
         image_point = transform(math.pi / 2.0)
 

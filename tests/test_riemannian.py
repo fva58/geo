@@ -1,10 +1,11 @@
-"""Tests for Riemannian spaces and geometric objects."""
+"""Tests for metric spaces and geometric objects."""
 
 import math
 import unittest
 
 from geo import (
     Ball,
+    CircleSpace,
     EllipsoidSurface,
     EuclideanCone,
     EuclideanNeighborhood,
@@ -23,26 +24,28 @@ from geo import (
     MetricSpace,
     ObjectMesh,
     RealLineSpace,
-    RiemannianGeometricObject,
-    RiemannianSpace,
-    UnitCircleSpace,
+    closest_sample_pair,
+    closest_sample_to_point,
+    sampled_diameter,
+    sampled_distance,
+    sampled_distance_to_point,
+    sampled_hausdorff_distance,
 )
 
 
-class TestRiemannianSpaces(unittest.TestCase):
+class TestMetricSpaces(unittest.TestCase):
     """Test standard metric spaces."""
 
     def test_real_line_space(self):
         """The real line should satisfy the metric-space protocol."""
         space = RealLineSpace()
         self.assertIsInstance(space, MetricSpace)
-        self.assertIsInstance(space, RiemannianSpace)
         self.assertEqual(space.distance(0.0, 4.0), 4.0)
         self.assertEqual(space.distance(4.0, 0.0), 4.0)
 
     def test_unit_circle_space(self):
         """The unit circle should use the shortest-arc metric."""
-        space = UnitCircleSpace()
+        space = CircleSpace()
         point = FloatCirclePoint(math.pi / 3.0)
         self.assertIsInstance(space, MetricSpace)
         self.assertAlmostEqual(space.distance(point, point), 0.0)
@@ -62,7 +65,7 @@ class TestRiemannianSpaces(unittest.TestCase):
         )
 
 
-class TestRiemannianObjects(unittest.TestCase):
+class TestMetricObjects(unittest.TestCase):
     """Test metric geometric objects in explicit ambient spaces."""
 
     def test_real_line_subset(self):
@@ -70,7 +73,6 @@ class TestRiemannianObjects(unittest.TestCase):
         space = RealLineSpace()
         obj = space.subset((0.0, 2.0), 5.0, name="segment-and-point")
         self.assertIsInstance(obj, MetricGeometricObject)
-        self.assertIsInstance(obj, RiemannianGeometricObject)
         self.assertEqual(obj.space, space)
         self.assertIn(1.0, obj)
         self.assertIn(5.0, obj)
@@ -90,7 +92,7 @@ class TestRiemannianObjects(unittest.TestCase):
 
     def test_circle_arc(self):
         """An arc should be a geometric object in the unit circle space."""
-        space = UnitCircleSpace()
+        space = CircleSpace()
         obj = space.arc(0.0, math.pi / 2.0, name="quarter-arc")
         self.assertIn(FloatCirclePoint(math.pi / 4.0), obj)
         self.assertNotIn(FloatCirclePoint(math.pi), obj)
@@ -190,7 +192,7 @@ class TestRiemannianObjects(unittest.TestCase):
 
     def test_circle_set_operations(self):
         """Set-theoretic operations should work on circle objects."""
-        space = UnitCircleSpace()
+        space = CircleSpace()
         left = space.arc(0.0, math.pi / 2.0, name="left")
         right = space.arc(math.pi / 4.0, math.pi, name="right")
 
@@ -204,6 +206,101 @@ class TestRiemannianObjects(unittest.TestCase):
         self.assertNotIn(FloatCirclePoint(0.0), intersection)
         self.assertIn(FloatCirclePoint(0.0), difference)
         self.assertNotIn(FloatCirclePoint(math.pi / 3.0), difference)
+
+    def test_sampled_distance_from_point_to_real_subset(self):
+        """Objects should expose sample-based point distance queries."""
+        space = RealLineSpace()
+        segment = space.subset((0.0, 2.0), name="segment")
+
+        self.assertEqual(
+            segment.sampled_distance_to_point(1.0, resolution=8),
+            0.0,
+        )
+        self.assertAlmostEqual(
+            segment.sampled_distance_to_point(3.0, resolution=8),
+            1.0,
+        )
+        closest, distance = segment.closest_sample_to_point(3.0, resolution=8)
+        self.assertAlmostEqual(closest, 2.0)
+        self.assertAlmostEqual(distance, 1.0)
+
+    def test_sampled_distance_between_real_subsets(self):
+        """Objects should expose sample-based object distance queries."""
+        space = RealLineSpace()
+        left = space.subset((0.0, 1.0), name="left")
+        right = space.subset((3.0, 4.0), name="right")
+        touching = space.subset((1.0, 2.0), name="touching")
+
+        self.assertAlmostEqual(left.sampled_distance_to(right, resolution=8), 2.0)
+        self.assertEqual(left.sampled_distance_to(touching, resolution=8), 0.0)
+
+        left_point, right_point, distance = left.closest_sample_pair(
+            right,
+            resolution=8,
+        )
+        self.assertAlmostEqual(left_point, 1.0)
+        self.assertAlmostEqual(right_point, 3.0)
+        self.assertAlmostEqual(distance, 2.0)
+
+    def test_sampled_distance_between_circle_arcs(self):
+        """Sample-based distances should use the intrinsic circle metric."""
+        space = CircleSpace()
+        left = space.arc(0.0, math.pi / 4.0, name="left")
+        right = space.arc(math.pi / 2.0, 3.0 * math.pi / 4.0, name="right")
+
+        distance = left.sampled_distance_to(right, resolution=32)
+        self.assertAlmostEqual(distance, math.pi / 4.0, places=2)
+
+    def test_sampled_distance_between_planar_objects(self):
+        """Sample-based distances should work for Euclidean objects."""
+        space = EuclideanPlaneSpace()
+        left = MetricGeometricObject.from_charted(
+            space,
+            Ball(FloatPoint(0.0, 0.0), 1.0),
+            name="left-disk",
+        )
+        right = MetricGeometricObject.from_charted(
+            space,
+            Ball(FloatPoint(3.0, 0.0), 1.0),
+            name="right-disk",
+        )
+
+        distance = left.sampled_distance_to(right, resolution=32)
+        self.assertAlmostEqual(distance, 1.0, places=1)
+
+    def test_functional_operations_api(self):
+        """Core operations should also exist as standalone functionals."""
+        space = RealLineSpace()
+        left = space.subset((0.0, 1.0), name="left")
+        right = space.subset((3.0, 4.0), name="right")
+
+        point, point_distance = closest_sample_to_point(
+            left,
+            2.0,
+            resolution=8,
+        )
+        self.assertAlmostEqual(point, 1.0)
+        self.assertAlmostEqual(point_distance, 1.0)
+
+        left_point, right_point, object_distance = closest_sample_pair(
+            left,
+            right,
+            resolution=8,
+        )
+        self.assertAlmostEqual(left_point, 1.0)
+        self.assertAlmostEqual(right_point, 3.0)
+        self.assertAlmostEqual(object_distance, 2.0)
+
+        self.assertAlmostEqual(
+            sampled_distance_to_point(left, 2.0, resolution=8),
+            1.0,
+        )
+        self.assertAlmostEqual(sampled_distance(left, right, resolution=8), 2.0)
+        self.assertAlmostEqual(sampled_diameter(left, resolution=8), 1.0)
+        self.assertAlmostEqual(
+            sampled_hausdorff_distance(left, right, resolution=8),
+            3.0,
+        )
 
     def test_plane_set_operations(self):
         """Set-theoretic operations should work on planar objects."""

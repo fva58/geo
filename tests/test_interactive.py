@@ -1,4 +1,4 @@
-"""Tests for notebook-friendly interactive helpers."""
+"""Tests for optional interactive helpers."""
 
 import math
 import types
@@ -7,6 +7,7 @@ from unittest import mock
 
 from geo import (
     Ball,
+    CircleSpace,
     EuclideanPlaneSpace,
     FloatCirclePoint,
     FloatPoint,
@@ -15,7 +16,8 @@ from geo import (
     SphereSpace,
     TorusPoint,
     TorusSpace,
-    UnitCircleSpace,
+)
+from geo.interactive import (
     angle,
     arc,
     ball,
@@ -130,7 +132,7 @@ class TestInteractiveHelpers(unittest.TestCase):
 
     def test_circle_and_arc_helpers(self):
         """Circle-specific helpers should route through the unit circle."""
-        set_default_space(UnitCircleSpace())
+        set_default_space(CircleSpace())
         quarter = arc(0.0, math.pi / 2.0)
         singleton = point(math.pi / 4.0)
 

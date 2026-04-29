@@ -2,7 +2,11 @@
 
 import unittest
 import math
-from geo.floatset import FloatInterval, FloatSet
+from geo.floatset import (
+    FloatInterval,
+    FloatSet,
+    FULL_FLOAT_INTERVAL,
+)
 from geo.real import ALL_REALS_INTERVAL, EMPTY_REAL_INTERVAL, real, realset
 
 
@@ -148,6 +152,12 @@ class TestFloatInterval(unittest.TestCase):
         self.assertEqual(sym_diff[0].right, math.nextafter(2.0, -math.inf))
         self.assertEqual(sym_diff[1].left, math.nextafter(3.0, math.inf))
         self.assertEqual(sym_diff[1].right, 5.0)
+
+    def test_complement_of_empty_interval_is_full(self):
+        """The complement of the empty interval should be the whole line."""
+        empty = FloatInterval(1.0, 0.0)
+        self.assertEqual(empty.complement(), (FULL_FLOAT_INTERVAL,))
+        self.assertEqual(~empty, (FULL_FLOAT_INTERVAL,))
 
     def test_operators(self):
         """Test operator overloads."""

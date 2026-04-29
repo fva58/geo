@@ -276,6 +276,8 @@ class FloatInterval ( tuple ) :
         Returns:
             Complement intervals (0, 1 or 2) of the set.
         """
+        if self.is_empty():
+            return (FULL_FLOAT_INTERVAL,)
         res = []
         if not math.isinf ( self[0] ) :
             res.append(
