@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import itertools
 from typing import Callable, Generic, Protocol, TypeVar, runtime_checkable
 
 import numpy as np
@@ -26,8 +27,9 @@ from .geometric import (
     Sphere,
     WholePlane,
 )
-from .manifold import Manifold
 from .manifold import ChartNeighborhood
+from .manifold import Manifold
+from .manifold import refine_neighborhoods as _refine_neighborhoods
 from .operations import (
     closest_sample_pair as _closest_sample_pair,
     closest_sample_to_point as _closest_sample_to_point,
@@ -1021,6 +1023,31 @@ class RealLineSpace(ChartedMetricSpace[float]):
             name=name or "real-neighborhood",
         )
 
+    def full_cover(self, radius: float):
+        """Return a countable canonical cover of the real line."""
+        radius = float(radius)
+        if radius <= 0.0:
+            raise ValueError("Cover radius must be positive")
+
+        def generator():
+            yield self.neighborhood_at(0.0, radius)
+            step = 2.0 * radius
+            index = 1
+            while True:
+                yield self.neighborhood_at(index * step, radius)
+                yield self.neighborhood_at(-index * step, radius)
+                index += 1
+
+        return generator()
+
+    def refine_cover(
+        self,
+        neighborhoods,
+        factor: int = 2,
+    ) -> tuple[ChartNeighborhood[float], ...]:
+        """Return a refinement of a real-line neighborhood cover."""
+        return _refine_neighborhoods(tuple(neighborhoods), factor=factor)
+
     def subset(
         self,
         *point_set: object,
@@ -1109,6 +1136,30 @@ class UnitCircleSpace(ChartedMetricSpace[FloatCirclePoint]):
             EuclideanNeighborhood.box((-radius, radius)),
             name=name or "circle-neighborhood",
         )
+
+    def full_cover(
+        self,
+        radius: float,
+    ) -> tuple[ChartNeighborhood[FloatCirclePoint], ...]:
+        """Return a finite full cover of the circle."""
+        radius = float(radius)
+        if radius <= 0.0:
+            raise ValueError("Cover radius must be positive")
+        if radius >= math.pi:
+            raise ValueError("Circle cover radius must be < pi")
+        steps = max(3, int(math.ceil((2.0 * math.pi) / (2.0 * radius))))
+        return tuple(
+            self.neighborhood_at(2.0 * math.pi * index / steps, radius)
+            for index in range(steps)
+        )
+
+    def refine_cover(
+        self,
+        neighborhoods,
+        factor: int = 2,
+    ) -> tuple[ChartNeighborhood[FloatCirclePoint], ...]:
+        """Return a refinement of a circle neighborhood cover."""
+        return _refine_neighborhoods(tuple(neighborhoods), factor=factor)
 
     def subset(
         self,
@@ -1218,6 +1269,46 @@ class EuclideanMetricSpace(ChartedMetricSpace[FloatPoint]):
             EuclideanNeighborhood.box(*(((-radius, radius),) * self.dim)),
             name=name or "euclidean-neighborhood",
         )
+
+    def full_cover(self, radius: float):
+        """Return a countable canonical cover of Euclidean space."""
+        radius = float(radius)
+        if radius <= 0.0:
+            raise ValueError("Cover radius must be positive")
+
+        def shell_indices(shell: int):
+            if self.dim == 1:
+                if shell == 0:
+                    yield (0,)
+                else:
+                    yield (shell,)
+                    yield (-shell,)
+                return
+            ranges = [range(-shell, shell + 1) for _ in range(self.dim)]
+            for index in itertools.product(*ranges):
+                if max(abs(value) for value in index) == shell:
+                    yield index
+
+        def generator():
+            step = 2.0 * radius
+            shell = 0
+            while True:
+                for index in shell_indices(shell):
+                    yield self.neighborhood_at(
+                        FloatPoint([step * value for value in index]),
+                        radius,
+                    )
+                shell += 1
+
+        return generator()
+
+    def refine_cover(
+        self,
+        neighborhoods,
+        factor: int = 2,
+    ) -> tuple[ChartNeighborhood[FloatPoint], ...]:
+        """Return a refinement of a Euclidean neighborhood cover."""
+        return _refine_neighborhoods(tuple(neighborhoods), factor=factor)
 
 
 class EuclideanRiemannianSpace(EuclideanMetricSpace):

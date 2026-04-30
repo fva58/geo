@@ -185,6 +185,12 @@ class Neighborhood(Protocol[PointT]):
     def image(self) -> EuclideanNeighborhood:
         """Return the coordinate image of the neighborhood."""
 
+    def inner_radius(self) -> float:
+        """Return a guaranteed included ball radius around the center."""
+
+    def outer_radius(self) -> float:
+        """Return a guaranteed containing ball radius around the center."""
+
     def diameter(self) -> float:
         """Return an upper bound on the neighborhood diameter."""
 
@@ -253,10 +259,33 @@ class ChartNeighborhood(Generic[PointT]):
         """Return a distinguished point in the neighborhood."""
         return self.center
 
-    def diameter(self) -> float:
-        """Return the Euclidean diameter of the chart image box."""
+    def inner_radius(self) -> float:
+        """Return the largest centered Euclidean ball inside the box image."""
+        center_coordinates = self.chart(self.center)
         bounds = _single_interval_bounds(self.image)
-        return math.sqrt(sum((right - left) ** 2 for left, right in bounds))
+        return min(
+            min(
+                center_coordinates[index] - left,
+                right - center_coordinates[index],
+            )
+            for index, (left, right) in enumerate(bounds)
+        )
+
+    def outer_radius(self) -> float:
+        """Return the farthest box-corner distance from the center."""
+        center_coordinates = self.chart(self.center)
+        bounds = _single_interval_bounds(self.image)
+        squared = 0.0
+        for index, (left, right) in enumerate(bounds):
+            squared += max(
+                abs(center_coordinates[index] - left),
+                abs(right - center_coordinates[index]),
+            ) ** 2
+        return math.sqrt(squared)
+
+    def diameter(self) -> float:
+        """Return an upper bound on neighborhood diameter."""
+        return 2.0 * self.outer_radius()
 
     def probe_points(self) -> tuple[PointT, ...]:
         """Return the center and box corners mapped back to the manifold."""
@@ -336,6 +365,29 @@ class NeighborhoodCover(Generic[PointT]):
         """Return the largest neighborhood diameter in the cover."""
         return max(neighborhood.diameter() for neighborhood in self.neighborhoods)
 
+    def max_outer_radius(self) -> float:
+        """Return the largest outer radius in the cover."""
+        return max(neighborhood.outer_radius() for neighborhood in self.neighborhoods)
+
+
+def refine_neighborhoods(
+    neighborhoods: tuple[Neighborhood[PointT], ...],
+    factor: int = 2,
+) -> tuple[Neighborhood[PointT], ...]:
+    """Return a cover with diameter reduced by at least ``factor``."""
+    factor = int(factor)
+    if factor < 2:
+        raise ValueError("Refinement factor must be at least 2")
+    depth = math.ceil(math.log2(factor))
+    current = tuple(neighborhoods)
+    for _ in range(depth):
+        current = tuple(
+            child
+            for neighborhood in current
+            for child in neighborhood.subdivide()
+        )
+    return current
+
 
 @dataclass(frozen=True)
 class LocalObjectModel(Generic[PointT]):
@@ -348,7 +400,7 @@ class LocalObjectModel(Generic[PointT]):
 
     def __post_init__(self) -> None:
         """Require one of the supported statuses."""
-        if self.status not in {"empty", "simple", "complex"}:
+        if self.status not in {"empty", "cone", "complex"}:
             raise ValueError(f"Unsupported local object status: {self.status!r}")
 
     @property
@@ -357,14 +409,45 @@ class LocalObjectModel(Generic[PointT]):
         return self.status == "empty"
 
     @property
-    def is_simple(self) -> bool:
-        """Return whether the object has a simple local model."""
-        return self.status == "simple"
+    def is_cone(self) -> bool:
+        """Return whether the object is conic in the neighborhood."""
+        return self.status == "cone"
 
     @property
     def is_complex(self) -> bool:
         """Return whether the neighborhood should be refined."""
         return self.status == "complex"
+
+
+@dataclass(frozen=True)
+class NeighborhoodMarking(Generic[PointT]):
+    """Object marking on a finite neighborhood family."""
+
+    entries: tuple[LocalObjectModel[PointT], ...]
+    name: str = ""
+
+    def __iter__(self):
+        """Iterate over marked neighborhoods."""
+        return iter(self.entries)
+
+    def __len__(self) -> int:
+        """Return the number of marked neighborhoods."""
+        return len(self.entries)
+
+    @property
+    def empty(self) -> tuple[LocalObjectModel[PointT], ...]:
+        """Return neighborhoods marked empty."""
+        return tuple(entry for entry in self.entries if entry.is_empty)
+
+    @property
+    def cone(self) -> tuple[LocalObjectModel[PointT], ...]:
+        """Return neighborhoods marked cone."""
+        return tuple(entry for entry in self.entries if entry.is_cone)
+
+    @property
+    def complex(self) -> tuple[LocalObjectModel[PointT], ...]:
+        """Return neighborhoods marked complex."""
+        return tuple(entry for entry in self.entries if entry.is_complex)
 
 
 def classify_local_object(
@@ -375,7 +458,7 @@ def classify_local_object(
     center = neighborhood.sample_point()
     if center in obj:
         return LocalObjectModel(
-            "simple",
+            "cone",
             neighborhood,
             witness_point=center,
             local_model=obj.local_model_at(center),
@@ -392,6 +475,21 @@ def classify_local_object(
     )
 
 
+def classify_neighborhoods(
+    obj,
+    neighborhoods,
+    name: str = "",
+) -> NeighborhoodMarking[PointT]:
+    """Return the object marking on a finite neighborhood family."""
+    return NeighborhoodMarking(
+        tuple(
+            classify_local_object(obj, neighborhood)
+            for neighborhood in neighborhoods
+        ),
+        name=name,
+    )
+
+
 __all__ = [
     "Manifold",
     "ManifoldChart",
@@ -400,6 +498,9 @@ __all__ = [
     "Neighborhood",
     "ChartNeighborhood",
     "NeighborhoodCover",
+    "refine_neighborhoods",
     "LocalObjectModel",
+    "NeighborhoodMarking",
     "classify_local_object",
+    "classify_neighborhoods",
 ]

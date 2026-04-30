@@ -17,6 +17,7 @@ from .floatcircle import (
 from .geometric import EuclideanCone, LocalConeModel, ObjectMesh, Sphere
 from .manifold import ManifoldChart
 from .manifold import ChartNeighborhood
+from .manifold import refine_neighborhoods as _refine_neighborhoods
 from .riemannian import MetricGeometricObject, MetricSpace
 
 
@@ -465,6 +466,16 @@ class Space(MetricSpace[PointT], Protocol[PointT]):
     ) -> Embedding3D:
         """Return a 3D visualization embedding of a point."""
 
+    def full_cover(self, radius: float):
+        """Return a full cover of the space by neighborhoods."""
+
+    def refine_cover(
+        self,
+        neighborhoods,
+        factor: int = 2,
+    ):
+        """Return a covering refinement with smaller diameters."""
+
 
 class SampledMetricObject(MetricGeometricObject[PointT], Generic[PointT]):
     """Metric object with explicit sampling and mesh hooks."""
@@ -741,6 +752,30 @@ class SphereSpace:
             EuclideanNeighborhood.box(*(((-radius, radius),) * self.dim)),
             name=name or "sphere-neighborhood",
         )
+
+    def full_cover(
+        self,
+        radius: float,
+        resolution: int | None = None,
+    ) -> tuple[ChartNeighborhood["SpherePoint"], ...]:
+        """Return a finite full cover of the sphere by local neighborhoods."""
+        radius = float(radius)
+        if radius <= 0.0:
+            raise ValueError("Cover radius must be positive")
+        if resolution is None:
+            resolution = max(8, int(math.ceil((math.pi * self.radius) / radius)))
+        return tuple(
+            self.neighborhood_at(point, radius)
+            for point in self.sample_points(resolution=resolution)
+        )
+
+    def refine_cover(
+        self,
+        neighborhoods,
+        factor: int = 2,
+    ) -> tuple[ChartNeighborhood["SpherePoint"], ...]:
+        """Return a refinement of a sphere neighborhood cover."""
+        return _refine_neighborhoods(tuple(neighborhoods), factor=factor)
 
     def cap(
         self,
@@ -1135,6 +1170,34 @@ class TorusSpace:
             EuclideanNeighborhood.box(*(((-radius, radius),) * self.dim)),
             name=name or "torus-neighborhood",
         )
+
+    def full_cover(
+        self,
+        radius: float,
+    ) -> tuple[ChartNeighborhood[TorusPoint], ...]:
+        """Return a finite full cover of the torus by local neighborhoods."""
+        radius = float(radius)
+        if radius <= 0.0:
+            raise ValueError("Cover radius must be positive")
+        if radius >= math.pi:
+            raise ValueError("Torus cover radius must be < pi")
+        steps = max(2, int(math.ceil((2.0 * math.pi) / (2.0 * radius))))
+        axis_values = tuple(
+            tuple(2.0 * math.pi * index / steps for index in range(steps))
+            for _ in range(self.dim)
+        )
+        return tuple(
+            self.neighborhood_at(TorusPoint(point), radius)
+            for point in itertools.product(*axis_values)
+        )
+
+    def refine_cover(
+        self,
+        neighborhoods,
+        factor: int = 2,
+    ) -> tuple[ChartNeighborhood[TorusPoint], ...]:
+        """Return a refinement of a torus neighborhood cover."""
+        return _refine_neighborhoods(tuple(neighborhoods), factor=factor)
 
     def patch(
         self,

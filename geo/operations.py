@@ -10,9 +10,9 @@ from .euclidean import EuclideanNeighborhood, FloatPoint
 from .manifold import (
     ChartNeighborhood,
     LocalObjectModel,
+    NeighborhoodMarking,
     Neighborhood,
     NeighborhoodCover,
-    classify_local_object,
 )
 
 
@@ -194,14 +194,14 @@ class RefinedObjectCover(Generic[PointT]):
     """Refinement state for one object over a neighborhood cover."""
 
     obj: SampledMetricObjectProtocol[PointT]
-    simple_parts: tuple[LocalObjectModel[PointT], ...]
+    cone_parts: tuple[LocalObjectModel[PointT], ...]
     complex_parts: tuple[LocalObjectModel[PointT], ...]
     empty_parts: tuple[LocalObjectModel[PointT], ...]
 
     @property
     def active_parts(self) -> tuple[LocalObjectModel[PointT], ...]:
         """Return the non-empty parts of the current refinement."""
-        return self.simple_parts + self.complex_parts
+        return self.cone_parts + self.complex_parts
 
     def max_diameter(self) -> float:
         """Return the largest diameter among active parts."""
@@ -209,28 +209,27 @@ class RefinedObjectCover(Generic[PointT]):
             return 0.0
         return max(part.neighborhood.diameter() for part in self.active_parts)
 
+    def max_outer_radius(self) -> float:
+        """Return the largest outer radius among active parts."""
+        if not self.active_parts:
+            return 0.0
+        return max(part.neighborhood.outer_radius() for part in self.active_parts)
+
 
 def classify_cover(
     obj: SampledMetricObjectProtocol[PointT],
     cover: NeighborhoodCover[PointT],
 ) -> RefinedObjectCover[PointT]:
     """Classify one object over all neighborhoods in a cover."""
-    simple = []
-    complex_parts = []
-    empty = []
-    for neighborhood in cover.neighborhoods:
-        local = classify_local_object(obj, neighborhood)
-        if local.is_simple:
-            simple.append(local)
-        elif local.is_complex:
-            complex_parts.append(local)
-        else:
-            empty.append(local)
+    marking: NeighborhoodMarking[PointT] = obj.classify_neighborhoods(
+        cover.neighborhoods,
+        name=cover.name,
+    )
     return RefinedObjectCover(
         obj,
-        tuple(simple),
-        tuple(complex_parts),
-        tuple(empty),
+        marking.cone,
+        marking.complex,
+        marking.empty,
     )
 
 
@@ -238,29 +237,32 @@ def refine_until(
     obj: SampledMetricObjectProtocol[PointT],
     cover: NeighborhoodCover[PointT],
     *,
-    max_diameter: float,
+    max_outer_radius: float,
     max_steps: int = 8,
 ) -> RefinedObjectCover[PointT]:
     """Refine a cover until non-empty parts are small enough or steps end."""
-    if max_diameter <= 0.0:
-        raise ValueError("max_diameter must be positive")
+    if max_outer_radius <= 0.0:
+        raise ValueError("max_outer_radius must be positive")
     current_cover = cover
     current = classify_cover(obj, current_cover)
     for _ in range(max_steps):
-        if not current.complex_parts and current.max_diameter() <= max_diameter:
+        if (
+            not current.complex_parts and
+            current.max_outer_radius() <= max_outer_radius
+        ):
             return current
-        to_keep = [part.neighborhood for part in current.simple_parts]
+        to_keep = [part.neighborhood for part in current.cone_parts]
         to_refine = [part.neighborhood for part in current.complex_parts]
-        if current.max_diameter() > max_diameter:
+        if current.max_outer_radius() > max_outer_radius:
             to_refine.extend(
                 part.neighborhood
-                for part in current.simple_parts
-                if part.neighborhood.diameter() > max_diameter
+                for part in current.cone_parts
+                if part.neighborhood.outer_radius() > max_outer_radius
             )
             to_keep = [
                 part.neighborhood
-                for part in current.simple_parts
-                if part.neighborhood.diameter() <= max_diameter
+                for part in current.cone_parts
+                if part.neighborhood.outer_radius() <= max_outer_radius
             ]
         refined = tuple(
             child
@@ -306,8 +308,8 @@ def _distance_lower_bound(left_part, right_part) -> float:
     return max(
         0.0,
         center_distance -
-        left_part.neighborhood.diameter() -
-        right_part.neighborhood.diameter(),
+        left_part.neighborhood.outer_radius() -
+        right_part.neighborhood.outer_radius(),
     )
 
 
@@ -317,7 +319,7 @@ def adaptive_distance(
     *,
     neighborhood_radius: float,
     sample_resolution: int = 16,
-    target_diameter: float = 0.25,
+    target_outer_radius: float = 0.125,
     max_refinement_steps: int = 8,
 ) -> AdaptiveDistanceResult[PointT]:
     """Approximate distance via adaptive refinement of local neighborhoods."""
@@ -332,7 +334,7 @@ def adaptive_distance(
             resolution=sample_resolution,
             name="left-cover",
         ),
-        max_diameter=target_diameter,
+        max_outer_radius=target_outer_radius,
         max_steps=max_refinement_steps,
     )
     right_cover = refine_until(
@@ -343,7 +345,7 @@ def adaptive_distance(
             resolution=sample_resolution,
             name="right-cover",
         ),
-        max_diameter=target_diameter,
+        max_outer_radius=target_outer_radius,
         max_steps=max_refinement_steps,
     )
 

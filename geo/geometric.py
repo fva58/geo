@@ -18,7 +18,16 @@ from .floatcircle import (
     FloatCircleSet,
 )
 from .floatset import FloatInterval, FloatSet
-from .manifold import LocalPointT, Manifold, ManifoldChart
+from .manifold import (
+    LocalObjectModel,
+    NeighborhoodMarking,
+    LocalPointT,
+    Manifold,
+    ManifoldChart,
+    Neighborhood,
+    classify_local_object,
+    classify_neighborhoods,
+)
 
 
 PointT = TypeVar("PointT")
@@ -1400,6 +1409,25 @@ class ChartedGeometricObject(Generic[PointT]):
                 "Local model chart dimension does not match manifold dimension"
             )
         return model
+
+    def classify_neighborhood(
+        self,
+        neighborhood: Neighborhood[PointT],
+    ) -> LocalObjectModel[PointT]:
+        """Return the local classification of the object in one neighborhood."""
+        return classify_local_object(self, neighborhood)
+
+    def classify_neighborhoods(
+        self,
+        neighborhoods: Sequence[Neighborhood[PointT]],
+        name: str = "",
+    ) -> NeighborhoodMarking[PointT]:
+        """Return the local classification on a list of neighborhoods."""
+        return classify_neighborhoods(
+            self,
+            neighborhoods,
+            name=name or self.name,
+        )
 
     def mesh(
         self,

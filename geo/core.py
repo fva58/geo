@@ -71,7 +71,10 @@ from .manifold import (
     ManifoldChart,
     Neighborhood,
     NeighborhoodCover,
+    NeighborhoodMarking,
     classify_local_object,
+    classify_neighborhoods,
+    refine_neighborhoods,
 )
 from .mesh_export import (
     mesh_to_matplotlib_data,
@@ -140,8 +143,11 @@ __all__ = [
     "Neighborhood",
     "ChartNeighborhood",
     "NeighborhoodCover",
+    "NeighborhoodMarking",
+    "refine_neighborhoods",
     "LocalObjectModel",
     "classify_local_object",
+    "classify_neighborhoods",
     "Cone",
     "SphereObject",
     "GeometricObject",
