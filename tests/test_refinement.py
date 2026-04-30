@@ -4,25 +4,19 @@ import itertools
 import unittest
 
 from geo import (
-    Ball,
-    AdaptiveDistanceResult,
     CircleSpace,
-    ChartNeighborhood,
-    EuclideanNeighborhood,
     EuclideanPlaneSpace,
     FloatPoint,
     LocalObjectModel,
-    MetricGeometricObject,
     Neighborhood,
     NeighborhoodCover,
     NeighborhoodMarking,
     RealLineSpace,
     SphereSpace,
     TorusSpace,
-    adaptive_distance,
     classify_local_object,
     classify_cover,
-    local_chart_cover_from_samples,
+    local_chart_cover_from_points,
     refine_until,
 )
 
@@ -41,7 +35,7 @@ class TestNeighborhoodRefinement(unittest.TestCase):
         self.assertAlmostEqual(neighborhood.inner_radius(), 0.5)
         self.assertAlmostEqual(neighborhood.outer_radius(), 0.5)
         self.assertAlmostEqual(neighborhood.diameter(), 1.0)
-        self.assertEqual(neighborhood.sample_point(), 0.5)
+        self.assertEqual(neighborhood.center_point(), 0.5)
         self.assertEqual(neighborhood.probe_points(), (0.5, 0.0, 1.0))
 
     def test_neighborhood_cover_refines(self):
@@ -155,10 +149,10 @@ class TestNeighborhoodRefinement(unittest.TestCase):
         """Refinement should reduce the outer radius of active parts."""
         space = RealLineSpace()
         segment = space.subset((0.0, 1.0), name="segment")
-        cover = local_chart_cover_from_samples(
-            segment,
+        cover = local_chart_cover_from_points(
+            space,
+            (0.0, 1.0),
             radius=0.5,
-            resolution=2,
         )
 
         initial = classify_cover(segment, cover)
@@ -172,52 +166,6 @@ class TestNeighborhoodRefinement(unittest.TestCase):
         self.assertGreater(initial.max_outer_radius(), 0.1)
         self.assertLessEqual(refined.max_outer_radius(), 0.1)
 
-    def test_adaptive_distance_on_real_segments(self):
-        """Adaptive distance should bound the distance between segments."""
-        space = RealLineSpace()
-        left = space.subset((0.0, 1.0), name="left")
-        right = space.subset((3.0, 4.0), name="right")
-
-        result = adaptive_distance(
-            left,
-            right,
-            neighborhood_radius=0.5,
-            sample_resolution=4,
-            target_outer_radius=0.1,
-            max_refinement_steps=4,
-        )
-
-        self.assertIsInstance(result, AdaptiveDistanceResult)
-        self.assertLessEqual(result.lower_bound, 2.0)
-        self.assertGreaterEqual(result.upper_bound, 2.0)
-        self.assertLessEqual(result.error, 0.5)
-
-    def test_adaptive_distance_on_planar_disks(self):
-        """Adaptive distance should work on Euclidean planar objects."""
-        space = EuclideanPlaneSpace()
-        left = MetricGeometricObject.from_charted(
-            space,
-            Ball(FloatPoint(0.0, 0.0), 1.0),
-            name="left-disk",
-        )
-        right = MetricGeometricObject.from_charted(
-            space,
-            Ball(FloatPoint(3.0, 0.0), 1.0),
-            name="right-disk",
-        )
-
-        result = adaptive_distance(
-            left,
-            right,
-            neighborhood_radius=0.4,
-            sample_resolution=12,
-            target_outer_radius=0.15,
-            max_refinement_steps=4,
-        )
-
-        self.assertLessEqual(result.lower_bound, 1.0)
-        self.assertGreaterEqual(result.upper_bound, 1.0)
-        self.assertLessEqual(result.error, 1.0)
 
 
 if __name__ == "__main__":

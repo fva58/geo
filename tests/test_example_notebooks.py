@@ -37,9 +37,3 @@ class TestExampleNotebooks(unittest.TestCase):
         )
         self.assertIn("MetricGeometricObject", text)
         self.assertNotIn("RiemannianGeometricObject", text)
-
-    def test_modern_pipeline_notebook_exists(self):
-        """The new modern pipeline notebook should be present and valid JSON."""
-        notebook = self._load_notebook("08_modern_space_object_mesh_pipeline.ipynb")
-        self.assertEqual(notebook["nbformat"], 4)
-        self.assertTrue(notebook["cells"])

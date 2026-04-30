@@ -8,7 +8,6 @@ from geo import (
     EuclideanPlaneSpace,
     FloatCirclePoint,
     FloatPoint,
-    ObjectMesh,
     RealLineSpace,
     SpherePoint,
     Space,
@@ -116,43 +115,6 @@ class TestSpaceProtocol(unittest.TestCase):
         self.assertIn(FloatPoint(0.0, 1.0), boundary.cone)
         self.assertNotIn(FloatPoint(0.0, -1.0), boundary.cone)
 
-    def test_sphere_mesh_and_cap_mesh(self):
-        """Sphere meshes should provide embedded vertices and cells."""
-        space = SphereSpace(radius=2.0)
-        north = space.point_from_angles(0.0, math.pi / 2.0)
-        mesh = space.mesh(resolution=12)
-        cap_mesh = space.cap_mesh(north, math.pi / 3.0, resolution=12)
-        cap = space.cap(north, math.pi / 3.0)
-
-        self.assertIsInstance(mesh, ObjectMesh)
-        self.assertEqual(mesh.dim, 3)
-        self.assertTrue(mesh.cells)
-        self.assertTrue(all(space.contains(vertex) for vertex in mesh.vertices))
-
-        self.assertIsInstance(cap_mesh, ObjectMesh)
-        self.assertEqual(cap_mesh.dim, 3)
-        self.assertTrue(cap_mesh.cells)
-        self.assertTrue(all(vertex in cap for vertex in cap_mesh.vertices))
-
-    def test_sphere_native_objects_expose_sampling_and_mesh(self):
-        """Sphere native objects should expose their own mesh API."""
-        space = SphereSpace()
-        north = space.point_from_angles(0.0, math.pi / 2.0)
-        point_object = space.point_object(north)
-        cap = space.cap(north, math.pi / 3.0)
-
-        point_samples = point_object.sample_points()
-        point_mesh = point_object.mesh()
-        cap_samples = cap.sample_points(resolution=12)
-        cap_mesh = cap.mesh(resolution=12)
-
-        self.assertEqual(point_samples, (north,))
-        self.assertEqual(point_mesh.vertices, (north,))
-        self.assertTrue(cap_samples)
-        self.assertTrue(all(sample in cap for sample in cap_samples))
-        self.assertIsInstance(cap_mesh, ObjectMesh)
-        self.assertTrue(all(vertex in cap for vertex in cap_mesh.vertices))
-
     def test_higher_dimensional_sphere_uses_embedded_coordinates(self):
         """Higher-dimensional spheres should accept an explicit dimension."""
         space = SphereSpace(dim=3, radius=2.0)
@@ -165,11 +127,6 @@ class TestSpaceProtocol(unittest.TestCase):
         self.assertAlmostEqual(space.distance(first, second), math.pi)
         self.assertEqual(space.to_2d(first), (2.0, 0.0))
         self.assertEqual(space.to_3d(FloatPoint(0.0, 0.0, 2.0, 0.0)), (0.0, 0.0, 2.0))
-
-        mesh = space.mesh(resolution=8)
-        self.assertIsInstance(mesh, ObjectMesh)
-        self.assertEqual(mesh.dim, 3)
-        self.assertTrue(mesh.vertices)
 
     def test_torus_distance_and_visualization(self):
         """The torus should use the flat product metric."""
@@ -200,62 +157,6 @@ class TestSpaceProtocol(unittest.TestCase):
         self.assertNotIn(FloatPoint(-1.0, 1.0), boundary.cone)
         self.assertNotIn(FloatPoint(1.0, -1.0), boundary.cone)
 
-    def test_torus_sampling_and_mesh(self):
-        """Torus spaces should expose sample points and meshes."""
-        space = TorusSpace()
-        patch = space.patch((0.0, math.pi / 2.0), (0.0, math.pi / 2.0))
-        samples = space.sample_points(resolution=10)
-        mesh = space.mesh(resolution=12)
-        patch_mesh = space.patch_mesh(
-            (0.0, math.pi / 2.0),
-            (0.0, math.pi / 2.0),
-            resolution=12,
-        )
-
-        self.assertTrue(samples)
-        self.assertTrue(all(sample in space for sample in samples))
-
-        self.assertIsInstance(mesh, ObjectMesh)
-        self.assertEqual(mesh.dim, 3)
-        self.assertTrue(mesh.cells)
-
-        self.assertIsInstance(patch_mesh, ObjectMesh)
-        self.assertEqual(patch_mesh.dim, 3)
-        self.assertTrue(patch_mesh.cells)
-        self.assertTrue(
-            all(
-                TorusPoint(
-                    math.atan2(vertex[1], vertex[0]),
-                    math.atan2(
-                        vertex[2],
-                        math.hypot(vertex[0], vertex[1]) - space.major_radius,
-                    ),
-                ) in patch
-                for vertex in patch_mesh.vertices
-            )
-        )
-
-    def test_torus_native_objects_expose_sampling_and_mesh(self):
-        """Torus native objects should expose their own mesh API."""
-        space = TorusSpace()
-        point_object = space.point_object((0.0, 0.0))
-        patch = space.patch((0.0, math.pi / 2.0), (0.0, math.pi / 2.0))
-
-        point_samples = point_object.sample_points()
-        point_mesh = point_object.mesh()
-        patch_samples = patch.sample_points(resolution=12)
-        patch_mesh = patch.mesh(resolution=12)
-
-        self.assertEqual(point_samples, (TorusPoint(0.0, 0.0),))
-        self.assertIsInstance(point_mesh, ObjectMesh)
-        self.assertEqual(point_mesh.dim, 3)
-        self.assertEqual(len(point_mesh.vertices), 1)
-        self.assertTrue(patch_samples)
-        self.assertTrue(all(sample in patch for sample in patch_samples))
-        self.assertIsInstance(patch_mesh, ObjectMesh)
-        self.assertEqual(patch_mesh.dim, 3)
-        self.assertTrue(patch_mesh.cells)
-
     def test_higher_dimensional_torus_uses_all_angular_axes(self):
         """Higher-dimensional tori should use one circle factor per axis."""
         space = TorusSpace(dim=3, radii=(3.0, 2.0, 1.0))
@@ -278,13 +179,3 @@ class TestSpaceProtocol(unittest.TestCase):
         boundary = patch.local_model_at(TorusPoint(0.0, 0.0, 0.0))
         self.assertIn(FloatPoint(1.0, 1.0, 1.0), boundary.cone)
         self.assertNotIn(FloatPoint(-1.0, 1.0, 1.0), boundary.cone)
-
-        patch_mesh = space.patch_mesh(
-            (0.0, math.pi / 2.0),
-            (0.0, math.pi),
-            (0.0, math.pi / 2.0),
-            resolution=8,
-        )
-        self.assertIsInstance(patch_mesh, ObjectMesh)
-        self.assertEqual(patch_mesh.dim, 3)
-        self.assertTrue(patch_mesh.vertices)

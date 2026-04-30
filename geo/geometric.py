@@ -5,7 +5,6 @@ from __future__ import annotations
 import math
 from collections.abc import Sequence
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Callable, Generic, Protocol, TypeVar, runtime_checkable
 
 import numpy as np
@@ -852,524 +851,6 @@ class LocalConeModel(Generic[PointT]):
             )
 
 
-@dataclass(frozen=True)
-class ObjectMesh:
-    """Finite mesh approximation of a geometric object."""
-
-    vertices: tuple[FloatPoint, ...]
-    cells: tuple[tuple[int, ...], ...]
-
-    def __post_init__(self) -> None:
-        """Require consistent vertex dimensions and cell indices."""
-        if not self.vertices:
-            if self.cells:
-                raise ValueError("Mesh cells require at least one vertex")
-            return
-
-        dim = self.vertices[0].dim
-        for vertex in self.vertices:
-            if vertex.dim != dim:
-                raise ValueError("Mesh vertices must have a common dimension")
-
-        vertex_count = len(self.vertices)
-        for cell in self.cells:
-            if not cell:
-                raise ValueError("Mesh cells must not be empty")
-            for index in cell:
-                if index < 0 or index >= vertex_count:
-                    raise ValueError("Mesh cell index out of range")
-
-    @property
-    def dim(self) -> int:
-        """Return the ambient dimension of the mesh vertices."""
-        if not self.vertices:
-            raise ValueError("Empty meshes do not have an ambient dimension")
-        return self.vertices[0].dim
-
-    def edge_indices(self) -> tuple[tuple[int, int], ...]:
-        """Return unique mesh edges derived from cell connectivity."""
-        if not self.cells:
-            return ()
-
-        edges: set[tuple[int, int]] = set()
-        for cell in self.cells:
-            if len(cell) == 1:
-                continue
-            if len(cell) == 2:
-                start, end = cell
-                edges.add(tuple(sorted((start, end))))
-                continue
-            if len(cell) == 3:
-                for start, end in (
-                    (cell[0], cell[1]),
-                    (cell[1], cell[2]),
-                    (cell[2], cell[0]),
-                ):
-                    edges.add(tuple(sorted((start, end))))
-                continue
-
-            local_vertex_count = len(cell)
-            if local_vertex_count & (local_vertex_count - 1) == 0:
-                cube_dim = int(round(math.log2(local_vertex_count)))
-                if 2 ** cube_dim == local_vertex_count:
-                    for local_index in range(local_vertex_count):
-                        for bit in range(cube_dim):
-                            neighbor = local_index ^ (1 << bit)
-                            if local_index < neighbor:
-                                start = cell[local_index]
-                                end = cell[neighbor]
-                                edges.add(tuple(sorted((start, end))))
-                    continue
-
-            for index, start in enumerate(cell):
-                end = cell[(index + 1) % len(cell)]
-                edges.add(tuple(sorted((start, end))))
-
-        return tuple(sorted(edges))
-
-    def projected(self, axes: Sequence[int]) -> "ObjectMesh":
-        """Return the mesh projected to the selected coordinate axes."""
-        axes = tuple(int(axis) for axis in axes)
-        if not axes:
-            raise ValueError("Need at least one projection axis")
-        if len(set(axes)) != len(axes):
-            raise ValueError("Projection axes must be distinct")
-        dim = self.dim
-        if any(axis < 0 or axis >= dim for axis in axes):
-            raise ValueError("Projection axis out of range")
-
-        projected_vertices = tuple(
-            FloatPoint(tuple(vertex[axis] for axis in axes))
-            for vertex in self.vertices
-        )
-        return ObjectMesh(projected_vertices, self.cells)
-
-    def wireframe_data(
-        self,
-        axes: Sequence[int] | None = None,
-    ) -> dict[str, object]:
-        """Return generic wireframe export data."""
-        from .mesh_export import mesh_to_wireframe_data
-
-        return mesh_to_wireframe_data(self, axes=axes)
-
-    def matplotlib_data(
-        self,
-        axes: Sequence[int] | None = None,
-    ) -> dict[str, object]:
-        """Return Matplotlib-style plotting data."""
-        from .mesh_export import mesh_to_matplotlib_data
-
-        return mesh_to_matplotlib_data(self, axes=axes)
-
-    def plotly_data(
-        self,
-        axes: Sequence[int] | None = None,
-        name: str = "mesh",
-    ) -> list[dict[str, object]]:
-        """Return Plotly-compatible trace dictionaries."""
-        from .mesh_export import mesh_to_plotly_data
-
-        return mesh_to_plotly_data(self, axes=axes, name=name)
-
-    def threejs_data(self) -> dict[str, object]:
-        """Return Three.js-style indexed geometry data."""
-        from .mesh_export import mesh_to_threejs_data
-
-        return mesh_to_threejs_data(self)
-
-    def plot_matplotlib(
-        self,
-        axes: Sequence[int] | None = None,
-        ax=None,
-        *,
-        color: str = "#1f1f1f",
-        linewidth: float = 1.5,
-        marker_size: float = 20.0,
-    ):
-        """Plot the mesh with the Matplotlib helper."""
-        from .mesh_plot import plot_mesh_matplotlib
-
-        return plot_mesh_matplotlib(
-            self,
-            axes=axes,
-            ax=ax,
-            color=color,
-            linewidth=linewidth,
-            marker_size=marker_size,
-        )
-
-    def plot_plotly(
-        self,
-        axes: Sequence[int] | None = None,
-        figure=None,
-        *,
-        name: str = "mesh",
-    ):
-        """Plot the mesh with the Plotly helper."""
-        from .mesh_plot import plot_mesh_plotly
-
-        return plot_mesh_plotly(
-            self,
-            axes=axes,
-            figure=figure,
-            name=name,
-        )
-
-    def obj_text(self) -> str:
-        """Return a Wavefront OBJ representation of the mesh."""
-        from .mesh_io import mesh_to_obj_text
-
-        return mesh_to_obj_text(self)
-
-    def ply_text(self) -> str:
-        """Return an ASCII PLY representation of the mesh."""
-        from .mesh_io import mesh_to_ply_text
-
-        return mesh_to_ply_text(self)
-
-    def gltf_json_data(self) -> dict[str, object]:
-        """Return a glTF-friendly JSON geometry structure."""
-        from .mesh_io import mesh_to_gltf_json_data
-
-        return mesh_to_gltf_json_data(self)
-
-    def write_obj(self, path: str | Path) -> Path:
-        """Write the mesh as OBJ."""
-        from .mesh_io import write_obj
-
-        return write_obj(self, path)
-
-    def write_ply(self, path: str | Path) -> Path:
-        """Write the mesh as ASCII PLY."""
-        from .mesh_io import write_ply
-
-        return write_ply(self, path)
-
-    def write_gltf_json(self, path: str | Path) -> Path:
-        """Write the mesh as glTF-friendly JSON."""
-        from .mesh_io import write_gltf_json
-
-        return write_gltf_json(self, path)
-
-
-def _require_positive_resolution(resolution: int) -> int:
-    """Validate a mesh resolution parameter."""
-    resolution = int(resolution)
-    if resolution <= 0:
-        raise ValueError("Mesh resolution must be positive")
-    return resolution
-
-
-def _affine_mesh_vertices(
-    center: FloatPoint,
-    matrix: np.ndarray,
-    local_vertices: Sequence[Sequence[float]],
-) -> tuple[FloatPoint, ...]:
-    """Return affine-image vertices from local coordinates."""
-    center_array = _point_array(center)
-    return tuple(
-        FloatPoint(center_array + matrix @ np.asarray(vertex, dtype=float))
-        for vertex in local_vertices
-    )
-
-
-def _normalize_mesh_bounds(
-    bounds: Sequence[Sequence[float]] | None,
-    dim: int,
-) -> tuple[tuple[float, float], ...] | None:
-    """Normalize mesh bounds to a tuple of finite coordinate intervals."""
-    if bounds is None:
-        return None
-
-    normalized = []
-    for bound in bounds:
-        if len(bound) != 2:
-            raise ValueError("Each mesh bound must have two endpoints")
-        left = float(bound[0])
-        right = float(bound[1])
-        if not math.isfinite(left) or not math.isfinite(right):
-            raise ValueError("Mesh bounds must be finite")
-        if right <= left:
-            raise ValueError("Mesh bounds must satisfy left < right")
-        normalized.append((left, right))
-
-    if len(normalized) != dim:
-        raise ValueError(f"Mesh bounds dimension mismatch: {len(normalized)} != {dim}")
-    return tuple(normalized)
-
-
-def _default_mesh_bounds(
-    obj: "ChartedGeometricObject[FloatPoint]",
-) -> tuple[tuple[float, float], ...] | None:
-    """Return default finite bounds when the object exposes them."""
-    if isinstance(obj, WholeSpace):
-        return None
-
-    if isinstance(obj, Sphere):
-        return tuple(
-            (
-                center_coordinate - obj.radius,
-                center_coordinate + obj.radius,
-            )
-            for center_coordinate in obj.center
-        )
-
-    if isinstance(obj, Ball):
-        return tuple(
-            (
-                center_coordinate - obj.radius,
-                center_coordinate + obj.radius,
-            )
-            for center_coordinate in obj.center
-        )
-
-    if isinstance(obj, EllipsoidSurface):
-        row_norms = np.linalg.norm(obj.matrix, axis=1)
-        return tuple(
-            (
-                center_coordinate - float(extent),
-                center_coordinate + float(extent),
-            )
-            for center_coordinate, extent in zip(obj.center, row_norms)
-        )
-
-    if isinstance(obj, Ellipsoid):
-        return _default_mesh_bounds(obj.surface)
-
-    if isinstance(obj, ParallelepipedSurface):
-        row_extents = np.sum(np.abs(obj.matrix), axis=1)
-        return tuple(
-            (
-                center_coordinate - float(extent),
-                center_coordinate + float(extent),
-            )
-            for center_coordinate, extent in zip(obj.center, row_extents)
-        )
-
-    if isinstance(obj, Parallelepiped):
-        return _default_mesh_bounds(obj.surface)
-
-    return None
-
-
-def _cells_per_axis(resolution: int, dim: int) -> int:
-    """Return a practical axis resolution for a generic cubical mesh."""
-    resolution = _require_positive_resolution(resolution)
-    target_cell_budget = max(16, resolution * resolution)
-    cells = max(2, int(round(target_cell_budget ** (1.0 / dim))))
-    return cells
-
-
-def _grid_corner_offsets(dim: int) -> tuple[tuple[int, ...], ...]:
-    """Return binary corner offsets for a unit hypercube."""
-    return tuple(
-        tuple((mask >> axis) & 1 for axis in range(dim))
-        for mask in range(2 ** dim)
-    )
-
-
-def _generic_euclidean_mesh(
-    obj: "ChartedGeometricObject[FloatPoint]",
-    *,
-    resolution: int,
-    bounds: Sequence[Sequence[float]] | None,
-) -> ObjectMesh:
-    """Return a cubical mesh from cell-center membership sampling."""
-    manifold = getattr(obj.manifold, "manifold", obj.manifold)
-    if not isinstance(manifold, EuclideanSpace):
-        raise ValueError("Generic mesh generation requires a Euclidean ambient")
-
-    normalized_bounds = _normalize_mesh_bounds(bounds, manifold.dim)
-    if normalized_bounds is None:
-        normalized_bounds = _default_mesh_bounds(obj)
-    if normalized_bounds is None:
-        raise ValueError(
-            "Mesh generation requires explicit finite bounds for this object"
-        )
-
-    dim = manifold.dim
-    cells_per_axis = _cells_per_axis(resolution, dim)
-    lower = np.asarray([bound[0] for bound in normalized_bounds], dtype=float)
-    upper = np.asarray([bound[1] for bound in normalized_bounds], dtype=float)
-    step = (upper - lower) / cells_per_axis
-    corner_offsets = _grid_corner_offsets(dim)
-
-    vertex_indices: dict[tuple[int, ...], int] = {}
-    vertices: list[FloatPoint] = []
-    cells: list[tuple[int, ...]] = []
-
-    for cell_index in np.ndindex(*(cells_per_axis,) * dim):
-        center = lower + (np.asarray(cell_index, dtype=float) + 0.5) * step
-        if FloatPoint(center) not in obj:
-            continue
-
-        cell_vertices = []
-        for offset in corner_offsets:
-            vertex_key = tuple(
-                cell_index[axis] + offset[axis]
-                for axis in range(dim)
-            )
-            vertex_index = vertex_indices.get(vertex_key)
-            if vertex_index is None:
-                coordinates = lower + np.asarray(vertex_key, dtype=float) * step
-                vertex_index = len(vertices)
-                vertex_indices[vertex_key] = vertex_index
-                vertices.append(FloatPoint(coordinates))
-            cell_vertices.append(vertex_index)
-        cells.append(tuple(cell_vertices))
-
-    return ObjectMesh(tuple(vertices), tuple(cells))
-
-
-def _ellipsoid_surface_mesh(
-    center: FloatPoint,
-    matrix: np.ndarray,
-    resolution: int,
-) -> ObjectMesh:
-    """Return a mesh approximation of an ellipsoid surface."""
-    resolution = _require_positive_resolution(resolution)
-    dim = center.dim
-
-    if dim == 2:
-        angular_steps = max(resolution, 8)
-        angles = np.linspace(0.0, 2.0 * math.pi, angular_steps, endpoint=False)
-        local_vertices = tuple(
-            (math.cos(angle), math.sin(angle))
-            for angle in angles
-        )
-        vertices = _affine_mesh_vertices(center, matrix, local_vertices)
-        cells = tuple(
-            (index, (index + 1) % angular_steps)
-            for index in range(angular_steps)
-        )
-        return ObjectMesh(vertices, cells)
-
-    if dim == 3:
-        longitude_steps = max(resolution, 8)
-        latitude_steps = max(resolution // 2, 4)
-        local_vertices: list[tuple[float, float, float]] = [
-            (0.0, 0.0, 1.0)
-        ]
-        cells: list[tuple[int, int, int]] = []
-
-        for latitude_index in range(1, latitude_steps):
-            polar = math.pi * latitude_index / latitude_steps
-            sin_polar = math.sin(polar)
-            cos_polar = math.cos(polar)
-            for longitude_index in range(longitude_steps):
-                azimuth = (
-                    2.0 * math.pi * longitude_index / longitude_steps
-                )
-                local_vertices.append(
-                    (
-                        sin_polar * math.cos(azimuth),
-                        sin_polar * math.sin(azimuth),
-                        cos_polar,
-                    )
-                )
-
-        south_pole_index = len(local_vertices)
-        local_vertices.append((0.0, 0.0, -1.0))
-
-        first_ring_offset = 1
-        for longitude_index in range(longitude_steps):
-            next_index = (longitude_index + 1) % longitude_steps
-            cells.append(
-                (
-                    0,
-                    first_ring_offset + next_index,
-                    first_ring_offset + longitude_index,
-                )
-            )
-
-        for latitude_index in range(latitude_steps - 2):
-            ring_offset = 1 + latitude_index * longitude_steps
-            next_ring_offset = ring_offset + longitude_steps
-            for longitude_index in range(longitude_steps):
-                next_index = (longitude_index + 1) % longitude_steps
-                current = ring_offset + longitude_index
-                current_next = ring_offset + next_index
-                lower = next_ring_offset + longitude_index
-                lower_next = next_ring_offset + next_index
-                cells.append((current, current_next, lower))
-                cells.append((current_next, lower_next, lower))
-
-        last_ring_offset = 1 + (latitude_steps - 2) * longitude_steps
-        for longitude_index in range(longitude_steps):
-            next_index = (longitude_index + 1) % longitude_steps
-            cells.append(
-                (
-                    last_ring_offset + longitude_index,
-                    last_ring_offset + next_index,
-                    south_pole_index,
-                )
-            )
-
-        vertices = _affine_mesh_vertices(center, matrix, local_vertices)
-        return ObjectMesh(vertices, tuple(cells))
-
-    raise NotImplementedError(
-        "Ellipsoid meshes are implemented only in dimensions 2 and 3"
-    )
-
-
-def _parallelepiped_surface_mesh(
-    center: FloatPoint,
-    matrix: np.ndarray,
-) -> ObjectMesh:
-    """Return a mesh approximation of a parallelepiped surface."""
-    dim = center.dim
-
-    if dim == 2:
-        local_vertices = (
-            (-1.0, -1.0),
-            (1.0, -1.0),
-            (1.0, 1.0),
-            (-1.0, 1.0),
-        )
-        vertices = _affine_mesh_vertices(center, matrix, local_vertices)
-        cells = (
-            (0, 1),
-            (1, 2),
-            (2, 3),
-            (3, 0),
-        )
-        return ObjectMesh(vertices, cells)
-
-    if dim == 3:
-        local_vertices = (
-            (-1.0, -1.0, -1.0),
-            (1.0, -1.0, -1.0),
-            (1.0, 1.0, -1.0),
-            (-1.0, 1.0, -1.0),
-            (-1.0, -1.0, 1.0),
-            (1.0, -1.0, 1.0),
-            (1.0, 1.0, 1.0),
-            (-1.0, 1.0, 1.0),
-        )
-        vertices = _affine_mesh_vertices(center, matrix, local_vertices)
-        cells = (
-            (0, 1, 2),
-            (0, 2, 3),
-            (4, 6, 5),
-            (4, 7, 6),
-            (0, 5, 1),
-            (0, 4, 5),
-            (1, 6, 2),
-            (1, 5, 6),
-            (2, 7, 3),
-            (2, 6, 7),
-            (3, 4, 0),
-            (3, 7, 4),
-        )
-        return ObjectMesh(vertices, cells)
-
-    raise NotImplementedError(
-        "Parallelepiped meshes are implemented only in dimensions 2 and 3"
-    )
-
-
 class ChartedGeometricObject(Generic[PointT]):
     """Geometric object with local cone models on an ambient manifold."""
 
@@ -1427,18 +908,6 @@ class ChartedGeometricObject(Generic[PointT]):
             self,
             neighborhoods,
             name=name or self.name,
-        )
-
-    def mesh(
-        self,
-        resolution: int = 64,
-        bounds: Sequence[Sequence[float]] | None = None,
-    ) -> ObjectMesh:
-        """Return a finite Euclidean mesh approximation."""
-        return _generic_euclidean_mesh(
-            self,
-            resolution=resolution,
-            bounds=bounds,
         )
 
     def visible_from_direction(
@@ -1914,17 +1383,6 @@ class Sphere(ChartedGeometricObject[FloatPoint]):
         cone = _hyperplane_cone(normal, name="sphere-tangent")
         return LocalConeModel(_euclidean_chart(FloatPoint(point)), cone)
 
-    def mesh(
-        self,
-        resolution: int = 64,
-        bounds: Sequence[Sequence[float]] | None = None,
-    ) -> ObjectMesh:
-        """Return a mesh approximation of the sphere surface."""
-        del bounds
-        matrix = self.radius * np.eye(self.center.dim, dtype=float)
-        return _ellipsoid_surface_mesh(self.center, matrix, resolution)
-
-
 class Ball(ChartedGeometricObject[FloatPoint]):
     """Closed Euclidean ball ``{x : ||x - c|| <= r}``."""
 
@@ -1968,18 +1426,6 @@ class Ball(ChartedGeometricObject[FloatPoint]):
                 name="ball-boundary",
             )
         return LocalConeModel(_euclidean_chart(point), cone)
-
-    def mesh(
-        self,
-        resolution: int = 64,
-        bounds: Sequence[Sequence[float]] | None = None,
-    ) -> ObjectMesh:
-        """Return a mesh approximation of the ball boundary."""
-        return Sphere(self.center, self.radius, name=self.name).mesh(
-            resolution,
-            bounds=bounds,
-        )
-
 
 class EllipsoidSurface(ChartedGeometricObject[FloatPoint]):
     """Affine image of the unit sphere."""
@@ -2026,16 +1472,6 @@ class EllipsoidSurface(ChartedGeometricObject[FloatPoint]):
         cone = _hyperplane_cone(normal, name="ellipsoid-tangent")
         return LocalConeModel(_euclidean_chart(FloatPoint(point)), cone)
 
-    def mesh(
-        self,
-        resolution: int = 64,
-        bounds: Sequence[Sequence[float]] | None = None,
-    ) -> ObjectMesh:
-        """Return a mesh approximation of the ellipsoid surface."""
-        del bounds
-        return _ellipsoid_surface_mesh(self.center, self.matrix, resolution)
-
-
 class Ellipsoid(ChartedGeometricObject[FloatPoint]):
     """Affine image of the closed unit ball."""
 
@@ -2074,15 +1510,6 @@ class Ellipsoid(ChartedGeometricObject[FloatPoint]):
                 name="ellipsoid-boundary",
             )
         return LocalConeModel(_euclidean_chart(point), cone)
-
-    def mesh(
-        self,
-        resolution: int = 64,
-        bounds: Sequence[Sequence[float]] | None = None,
-    ) -> ObjectMesh:
-        """Return a mesh approximation of the ellipsoid boundary."""
-        return self.surface.mesh(resolution, bounds=bounds)
-
 
 class ParallelepipedSurface(ChartedGeometricObject[FloatPoint]):
     """Affine image of the boundary of the unit cube."""
@@ -2153,16 +1580,6 @@ class ParallelepipedSurface(ChartedGeometricObject[FloatPoint]):
         cone = self._surface_cone(local)
         return LocalConeModel(_euclidean_chart(point), cone)
 
-    def mesh(
-        self,
-        resolution: int = 64,
-        bounds: Sequence[Sequence[float]] | None = None,
-    ) -> ObjectMesh:
-        """Return a mesh approximation of the parallelepiped surface."""
-        del resolution, bounds
-        return _parallelepiped_surface_mesh(self.center, self.matrix)
-
-
 class Parallelepiped(ChartedGeometricObject[FloatPoint]):
     """Affine image of the closed unit cube."""
 
@@ -2224,15 +1641,6 @@ class Parallelepiped(ChartedGeometricObject[FloatPoint]):
         else:
             cone = self._solid_cone(local)
         return LocalConeModel(_euclidean_chart(point), cone)
-
-    def mesh(
-        self,
-        resolution: int = 64,
-        bounds: Sequence[Sequence[float]] | None = None,
-    ) -> ObjectMesh:
-        """Return a mesh approximation of the parallelepiped boundary."""
-        return self.surface.mesh(resolution, bounds=bounds)
-
 
 class CubeSurface(ParallelepipedSurface):
     """Boundary of an axis-aligned cube centered at a point."""
@@ -2553,7 +1961,6 @@ __all__ = [
     "RadialCone",
     "SphericalCone",
     "LocalConeModel",
-    "ObjectMesh",
     "ChartedGeometricObject",
     "SmoothImageObject",
     "RealPointObject",

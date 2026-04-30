@@ -19,7 +19,6 @@ from geo import (
     HalfSpace,
     HalfPlane,
     Hyperplane,
-    ObjectMesh,
     Parallelepiped,
     ParallelepipedSurface,
     PlanarAngle,
@@ -190,44 +189,6 @@ class TestHigherDimensionalEuclideanObjects(unittest.TestCase):
         self.assertIn(FloatPoint(0.0, 0.0, 1.0), boundary_model.cone)
         self.assertNotIn(FloatPoint(0.0, 0.0, -1.0), boundary_model.cone)
 
-    def test_half_space_generic_mesh_requires_bounds(self):
-        """Unbounded generic meshes should require explicit finite bounds."""
-        half_space = HalfSpace((0.0, 0.0, 1.0), offset=0.0)
-
-        with self.assertRaises(ValueError):
-            half_space.mesh()
-
-        mesh = half_space.mesh(
-            resolution=12,
-            bounds=((-1.0, 1.0), (-1.0, 1.0), (-1.0, 1.0)),
-        )
-
-        self.assertIsInstance(mesh, ObjectMesh)
-        self.assertEqual(mesh.dim, 3)
-        self.assertTrue(mesh.vertices)
-        self.assertTrue(mesh.cells)
-        self.assertTrue(all(len(cell) == 8 for cell in mesh.cells))
-
-    def test_planar_angle_generic_mesh(self):
-        """Generic planar meshes should approximate bounded angle slices."""
-        angle = PlanarAngle(FloatPoint(0.0, 0.0), 0.0, math.pi / 2.0)
-
-        mesh = angle.mesh(
-            resolution=24,
-            bounds=((-0.5, 2.0), (-0.5, 2.0)),
-        )
-
-        self.assertIsInstance(mesh, ObjectMesh)
-        self.assertEqual(mesh.dim, 2)
-        self.assertTrue(mesh.vertices)
-        self.assertTrue(mesh.cells)
-        self.assertTrue(all(len(cell) == 4 for cell in mesh.cells))
-
-        projected = mesh.projected((0, 1))
-        self.assertEqual(projected.dim, 2)
-        self.assertEqual(projected.cells, mesh.cells)
-        self.assertTrue(projected.edge_indices())
-
     def test_sphere_and_ball(self):
         """Spheres and balls should separate surface from interior."""
         sphere = Sphere(FloatPoint(0.0, 0.0, 0.0), 1.0)
@@ -271,35 +232,6 @@ class TestHigherDimensionalEuclideanObjects(unittest.TestCase):
         self.assertIn(FloatPoint(-1.0, 0.0), body_model.cone)
         self.assertNotIn(FloatPoint(1.0, 0.0), body_model.cone)
 
-    def test_ellipsoid_surface_mesh_in_plane(self):
-        """Planar ellipsoid meshes should provide a closed boundary polyline."""
-        surface = EllipsoidSurface(
-            FloatPoint(0.0, 0.0),
-            ((2.0, 0.0), (0.0, 3.0)),
-        )
-
-        mesh = surface.mesh(resolution=24)
-
-        self.assertIsInstance(mesh, ObjectMesh)
-        self.assertEqual(mesh.dim, 2)
-        self.assertEqual(len(mesh.vertices), 24)
-        self.assertEqual(len(mesh.cells), 24)
-        self.assertTrue(all(len(cell) == 2 for cell in mesh.cells))
-        self.assertTrue(all(vertex in surface for vertex in mesh.vertices))
-
-    def test_sphere_mesh_in_three_dimensions(self):
-        """Three-dimensional spheres should provide a triangle mesh."""
-        sphere = Sphere(FloatPoint(0.0, 0.0, 0.0), 1.0)
-
-        mesh = sphere.mesh(resolution=12)
-
-        self.assertIsInstance(mesh, ObjectMesh)
-        self.assertEqual(mesh.dim, 3)
-        self.assertTrue(mesh.vertices)
-        self.assertTrue(mesh.cells)
-        self.assertTrue(all(len(cell) == 3 for cell in mesh.cells))
-        self.assertTrue(all(vertex in sphere for vertex in mesh.vertices))
-
     def test_cube_and_cube_surface(self):
         """Cubes should distinguish body and surface."""
         surface = CubeSurface(FloatPoint(0.0, 0.0, 0.0), 1.0)
@@ -341,37 +273,6 @@ class TestHigherDimensionalEuclideanObjects(unittest.TestCase):
         body_model = body.local_model_at(FloatPoint(2.0, 0.0))
         self.assertIn(FloatPoint(-1.0, 0.0), body_model.cone)
         self.assertNotIn(FloatPoint(1.0, 0.0), body_model.cone)
-
-    def test_parallelepiped_surface_mesh(self):
-        """Parallelepiped surfaces should expose a boundary mesh."""
-        surface = ParallelepipedSurface(
-            FloatPoint(0.0, 0.0),
-            ((2.0, 0.0), (1.0, 1.0)),
-        )
-
-        mesh = surface.mesh()
-
-        self.assertIsInstance(mesh, ObjectMesh)
-        self.assertEqual(mesh.dim, 2)
-        self.assertEqual(len(mesh.vertices), 4)
-        self.assertEqual(len(mesh.cells), 4)
-        self.assertTrue(all(vertex in surface for vertex in mesh.vertices))
-
-    def test_cube_mesh_projection_to_plane(self):
-        """Meshes should project to lower-dimensional coordinate views."""
-        cube = Cube(FloatPoint(0.0, 0.0, 0.0), 1.0)
-
-        mesh = cube.mesh(
-            resolution=12,
-            bounds=((-1.0, 1.0), (-1.0, 1.0), (-1.0, 1.0)),
-        )
-        projected = mesh.projected((0, 1))
-
-        self.assertEqual(mesh.dim, 3)
-        self.assertEqual(projected.dim, 2)
-        self.assertEqual(projected.cells, mesh.cells)
-        self.assertTrue(projected.edge_indices())
-
 
 if __name__ == "__main__":
     unittest.main()

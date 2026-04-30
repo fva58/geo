@@ -9,14 +9,9 @@ the project:
   operations, projections, and smooth images
 - `04_set_operations_2d.ipynb`: 2D set-theoretic operations with plotted
   unions, intersections, differences, and symmetric differences
-- `08_modern_space_object_mesh_pipeline.ipynb`: current end-to-end pipeline
-  from spaces and objects to meshes, plots, export data, and notebook helpers
 
 It also contains runnable Python scripts for the newer end-to-end workflows:
 
-- `05_space_object_mesh_pipeline.py`: `space -> native object -> mesh`
-- `06_metric_object_zoo_pipeline.py`: broader metric-object zoo sampling/mesh
-- `07_plot_and_export_pipeline.py`: `mesh -> matplotlib/plotly -> OBJ/PLY/glTF`
 
 Recommended setup:
 
@@ -28,9 +23,6 @@ jupyter lab
 Runnable scripts:
 
 ```sh
-python examples/05_space_object_mesh_pipeline.py
-python examples/06_metric_object_zoo_pipeline.py
-python examples/07_plot_and_export_pipeline.py
 ```
 
 The notebooks also prepend the repository root to `sys.path`

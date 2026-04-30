@@ -1,9 +1,7 @@
 """Tests for optional interactive helpers."""
 
 import math
-import types
 import unittest
-from unittest import mock
 
 from geo import (
     Ball,
@@ -11,7 +9,6 @@ from geo import (
     EuclideanPlaneSpace,
     FloatCirclePoint,
     FloatPoint,
-    ObjectMesh,
     RealLineSpace,
     SphereSpace,
     TorusPoint,
@@ -26,9 +23,7 @@ from geo.interactive import (
     current_space,
     disk,
     half_plane,
-    mesh,
     patch,
-    plot,
     point,
     reset_default_space,
     set_default_space,
@@ -36,47 +31,6 @@ from geo.interactive import (
     using_space,
     wrap,
 )
-
-
-class _DummyAxes:
-    def __init__(self, figure):
-        self.figure = figure
-        self.plots = []
-        self.scatters = []
-
-    def plot(self, *args, **kwargs):
-        self.plots.append((args, kwargs))
-
-    def scatter(self, *args, **kwargs):
-        self.scatters.append((args, kwargs))
-
-
-class _DummyFigure:
-    def __init__(self):
-        self.axes = []
-
-    def add_subplot(self, *args, **kwargs):
-        axis = _DummyAxes(self)
-        self.axes.append(axis)
-        return axis
-
-
-class _DummyPyplot(types.SimpleNamespace):
-    def __init__(self):
-        super().__init__()
-        self.created = []
-
-    def subplots(self):
-        figure = _DummyFigure()
-        axis = _DummyAxes(figure)
-        figure.axes.append(axis)
-        self.created.append((figure, axis))
-        return figure, axis
-
-    def figure(self):
-        figure = _DummyFigure()
-        self.created.append((figure, None))
-        return figure
 
 
 class TestInteractiveHelpers(unittest.TestCase):
@@ -157,33 +111,3 @@ class TestInteractiveHelpers(unittest.TestCase):
 
         self.assertIn(TorusPoint(math.pi / 4.0, math.pi / 4.0), patch_object)
         self.assertIn(TorusPoint(0.0, 0.0), torus_point)
-
-    def test_mesh_and_plot_helpers_support_objects_and_meshes(self):
-        """Notebook helpers should mesh and plot with little boilerplate."""
-        pyplot = _DummyPyplot()
-        disk_object = disk((0.0, 0.0), 1.0)
-        disk_mesh = mesh(disk_object, resolution=8)
-
-        self.assertIsInstance(disk_mesh, ObjectMesh)
-
-        with mock.patch.dict(
-            "sys.modules",
-            {"matplotlib.pyplot": pyplot},
-        ):
-            figure, axis = plot(disk_object, resolution=8)
-            mesh_figure, mesh_axis = disk_mesh.plot_matplotlib()
-            object_figure, object_axis = disk_object.plot_matplotlib(
-                resolution=8,
-            )
-
-        self.assertIsNotNone(figure)
-        if hasattr(axis, "plots"):
-            self.assertTrue(axis.plots)
-            self.assertTrue(mesh_axis.plots)
-            self.assertTrue(object_axis.plots)
-        else:
-            self.assertTrue(axis.lines)
-            self.assertTrue(mesh_axis.lines)
-            self.assertTrue(object_axis.lines)
-        self.assertIs(mesh_figure, mesh_axis.figure)
-        self.assertIs(object_figure, object_axis.figure)

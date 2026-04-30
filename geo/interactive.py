@@ -5,7 +5,7 @@ from __future__ import annotations
 from contextlib import contextmanager
 from typing import Iterator
 
-from .geometric import Ball, ObjectMesh, Sphere
+from .geometric import Ball, Sphere
 from .riemannian import EuclideanPlaneSpace
 
 
@@ -164,56 +164,6 @@ def patch(major_set, minor_set, *, space=None, name: str = ""):
     return patch_method(major_set, minor_set, name=name)
 
 
-def mesh(obj, resolution: int = 64, bounds=None) -> ObjectMesh:
-    """Return a mesh from an object or pass one through unchanged."""
-    if isinstance(obj, ObjectMesh):
-        return obj
-    mesh_method = getattr(obj, "mesh", None)
-    if mesh_method is None:
-        raise TypeError(f"Object {obj!r} does not support mesh()")
-    if bounds is None:
-        return mesh_method(resolution=resolution)
-    try:
-        return mesh_method(resolution=resolution, bounds=bounds)
-    except TypeError as exc:
-        if "bounds" not in str(exc):
-            raise
-        return mesh_method(resolution=resolution)
-
-
-def plot(
-    obj,
-    *,
-    backend: str = "matplotlib",
-    resolution: int = 64,
-    bounds=None,
-    axes=None,
-    figure=None,
-    ax=None,
-    name: str | None = None,
-    color: str = "#1f1f1f",
-    linewidth: float = 1.5,
-    marker_size: float = 20.0,
-):
-    """Plot an object or mesh with a selected notebook-friendly backend."""
-    plotted_mesh = mesh(obj, resolution=resolution, bounds=bounds)
-    if backend == "matplotlib":
-        return plotted_mesh.plot_matplotlib(
-            axes=axes,
-            ax=ax,
-            color=color,
-            linewidth=linewidth,
-            marker_size=marker_size,
-        )
-    if backend == "plotly":
-        return plotted_mesh.plot_plotly(
-            axes=axes,
-            figure=figure,
-            name=name or getattr(obj, "name", "mesh"),
-        )
-    raise ValueError(f"Unknown plotting backend: {backend!r}")
-
-
 __all__ = [
     "arc",
     "angle",
@@ -223,9 +173,7 @@ __all__ = [
     "current_space",
     "disk",
     "half_plane",
-    "mesh",
     "patch",
-    "plot",
     "point",
     "reset_default_space",
     "set_default_space",

@@ -197,8 +197,8 @@ class Neighborhood(Protocol[PointT]):
     def contains(self, point: PointT) -> bool:
         """Check whether a point belongs to the neighborhood."""
 
-    def sample_point(self) -> PointT:
-        """Return one point in the neighborhood."""
+    def center_point(self) -> PointT:
+        """Return the distinguished center point of the neighborhood."""
 
     def probe_points(self) -> tuple[PointT, ...]:
         """Return finitely many points used for local classification."""
@@ -255,8 +255,8 @@ class ChartNeighborhood(Generic[PointT]):
         """Check whether a point belongs to the neighborhood patch."""
         return self.contains(point)
 
-    def sample_point(self) -> PointT:
-        """Return a distinguished point in the neighborhood."""
+    def center_point(self) -> PointT:
+        """Return the distinguished center point of the neighborhood."""
         return self.center
 
     def inner_radius(self) -> float:
@@ -455,7 +455,7 @@ def classify_local_object(
     neighborhood: Neighborhood[PointT],
 ) -> LocalObjectModel[PointT]:
     """Classify an object inside one neighborhood by finite probing."""
-    center = neighborhood.sample_point()
+    center = neighborhood.center_point()
     if center in obj:
         return LocalObjectModel(
             "cone",
