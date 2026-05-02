@@ -8,8 +8,12 @@ from collections.abc import Sequence
 from ..cone import EuclideanCone, LocalConeModel
 from ..euclidean import EuclideanNeighborhood, FloatPoint, FloatVector
 from ..gobject import GeometricObject
-from ..manifold import ChartNeighborhood, ManifoldChart
-from .base import refine_neighborhoods as _refine_neighborhoods
+from ..manifold import ManifoldChart
+from .base import BoxNeighborhood, refine_neighborhoods as _refine_neighborhoods
+
+
+class Neighborhood(BoxNeighborhood["SpherePoint"]):
+    """Neighborhood on a sphere."""
 
 
 def _coerce_point_dim(value: object, dim: int) -> FloatPoint:
@@ -165,7 +169,7 @@ class SpherePoint(FloatPoint):
         )
 
 
-class Sphere:
+class Space:
     """Sphere represented by embedded points in ``R^(n+1)``."""
 
     def __init__(
@@ -184,7 +188,7 @@ class Sphere:
 
     def __repr__(self) -> str:
         label = f", name={self.name!r}" if self.name else ""
-        return f"Sphere(dim={self.dim}, radius={self.radius}{label})"
+        return f"Space(dim={self.dim}, radius={self.radius}{label})"
 
     def contains(self, point: object) -> bool:
         try:
@@ -271,13 +275,13 @@ class Sphere:
         point: object,
         radius: float,
         name: str = "",
-    ) -> ChartNeighborhood[SpherePoint]:
+    ) -> Neighborhood:
         center = self.point(point)
         radius = float(radius)
         if radius <= 0.0:
             raise ValueError("Neighborhood radius must be positive")
         chart = _sphere_chart(center)
-        return ChartNeighborhood(
+        return Neighborhood(
             self,
             chart,
             center,
@@ -289,7 +293,7 @@ class Sphere:
         self,
         radius: float,
         resolution: int | None = None,
-    ) -> tuple[ChartNeighborhood[SpherePoint], ...]:
+    ) -> tuple[Neighborhood, ...]:
         radius = float(radius)
         if radius <= 0.0:
             raise ValueError("Cover radius must be positive")
@@ -335,7 +339,7 @@ class Sphere:
         self,
         neighborhoods,
         factor: int = 2,
-    ) -> tuple[ChartNeighborhood[SpherePoint], ...]:
+    ) -> tuple[Neighborhood, ...]:
         return _refine_neighborhoods(tuple(neighborhoods), factor=factor)
 
     def cap(
@@ -407,4 +411,4 @@ class Sphere:
         )
 
 
-__all__ = ["Sphere", "SpherePoint"]
+__all__ = ["Neighborhood", "Space", "SpherePoint"]

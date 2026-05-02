@@ -8,8 +8,16 @@ from ..cone import EuclideanCone, LocalConeModel, negative_half_line_cone, point
 from ..circle import Angle, FULL_INTERVAL, FULL_SET, Interval, Point, Set
 from ..euclidean import EuclideanNeighborhood, FloatPoint
 from ..gobject import GeometricObject
-from ..manifold import ChartNeighborhood, ManifoldChart
-from .base import ChartedSpace, refine_neighborhoods as _refine_neighborhoods
+from ..manifold import ManifoldChart
+from .base import (
+    BoxNeighborhood,
+    ChartedSpace,
+    refine_neighborhoods as _refine_neighborhoods,
+)
+
+
+class Neighborhood(BoxNeighborhood[Point]):
+    """Neighborhood in the unit circle."""
 
 
 class _CircleManifold:
@@ -46,7 +54,7 @@ def _circle_chart(center: Point) -> ManifoldChart[Point]:
     )
 
 
-class Circle(ChartedSpace[Point]):
+class Space(ChartedSpace[Point]):
     """The unit circle with its standard arc-length metric."""
 
     def __init__(self, name: str = "") -> None:
@@ -77,7 +85,7 @@ class Circle(ChartedSpace[Point]):
         point: object,
         radius: float,
         name: str = "",
-    ) -> ChartNeighborhood[Point]:
+    ) -> Neighborhood:
         center = Point(point)
         if center not in self:
             raise ValueError("Point is outside the unit circle")
@@ -87,7 +95,7 @@ class Circle(ChartedSpace[Point]):
         if radius >= math.pi:
             raise ValueError("Circle neighborhoods must have radius < pi")
         chart = self.point(center).local_model_at(center).chart
-        return ChartNeighborhood(
+        return Neighborhood(
             self,
             chart,
             center,
@@ -95,7 +103,7 @@ class Circle(ChartedSpace[Point]):
             name=name or "circle-neighborhood",
         )
 
-    def full_cover(self, radius: float) -> tuple[ChartNeighborhood[Point], ...]:
+    def full_cover(self, radius: float) -> tuple[Neighborhood, ...]:
         radius = float(radius)
         if radius <= 0.0:
             raise ValueError("Cover radius must be positive")
@@ -111,7 +119,7 @@ class Circle(ChartedSpace[Point]):
         self,
         neighborhoods,
         factor: int = 2,
-    ) -> tuple[ChartNeighborhood[Point], ...]:
+    ) -> tuple[Neighborhood, ...]:
         return _refine_neighborhoods(tuple(neighborhoods), factor=factor)
 
     def subset(
@@ -163,5 +171,6 @@ __all__ = [
     "Set",
     "FULL_INTERVAL",
     "FULL_SET",
-    "Circle",
+    "Neighborhood",
+    "Space",
 ]

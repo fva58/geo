@@ -5,15 +5,15 @@ from __future__ import annotations
 from contextlib import contextmanager
 from typing import Iterator
 
-from .space import Euclidean
+from .space import euclidean
 
 
 _DEFAULT_SPACE = None
 
 
-def _make_default_space() -> Euclidean:
+def _make_default_space() -> euclidean.Space:
     """Return the package-wide default space for interactive work."""
-    return Euclidean(2, name="default-plane")
+    return euclidean.Space(2, name="default-plane")
 
 
 def current_space():

@@ -15,8 +15,16 @@ from ..line import (
     Set,
 )
 from ..gobject import GeometricObject
-from ..manifold import ChartNeighborhood, ManifoldChart
-from .base import ChartedSpace, refine_neighborhoods as _refine_neighborhoods
+from ..manifold import ManifoldChart
+from .base import (
+    BoxNeighborhood,
+    ChartedSpace,
+    refine_neighborhoods as _refine_neighborhoods,
+)
+
+
+class Neighborhood(BoxNeighborhood[float]):
+    """Neighborhood in the real line."""
 
 
 class _RealLineManifold:
@@ -40,7 +48,7 @@ def _real_chart(center: float) -> ManifoldChart[float]:
     )
 
 
-class RealLine(ChartedSpace[float]):
+class Space(ChartedSpace[float]):
     """The real line with its standard metric."""
 
     def __init__(self, name: str = "") -> None:
@@ -71,7 +79,7 @@ class RealLine(ChartedSpace[float]):
         point: object,
         radius: float,
         name: str = "",
-    ) -> ChartNeighborhood[float]:
+    ) -> Neighborhood:
         center = float(Point(point))
         if center not in self:
             raise ValueError("Point is outside the real line")
@@ -79,7 +87,7 @@ class RealLine(ChartedSpace[float]):
         if radius <= 0.0:
             raise ValueError("Neighborhood radius must be positive")
         chart = self.point(center).local_model_at(center).chart
-        return ChartNeighborhood(
+        return Neighborhood(
             self,
             chart,
             center,
@@ -107,7 +115,7 @@ class RealLine(ChartedSpace[float]):
         self,
         neighborhoods,
         factor: int = 2,
-    ) -> tuple[ChartNeighborhood[float], ...]:
+    ) -> tuple[Neighborhood, ...]:
         return _refine_neighborhoods(tuple(neighborhoods), factor=factor)
 
     def subset(
@@ -148,5 +156,6 @@ __all__ = [
     "EMPTY_INTERVAL",
     "FULL_INTERVAL",
     "ALL_REALS_INTERVAL",
-    "RealLine",
+    "Neighborhood",
+    "Space",
 ]

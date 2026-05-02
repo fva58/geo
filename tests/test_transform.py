@@ -3,7 +3,7 @@
 import unittest
 
 from geo.transform import Transform, identity_transform
-from geo.space import RealLine
+from geo import space as space_pkg
 
 
 class TestTransforms(unittest.TestCase):
@@ -11,7 +11,7 @@ class TestTransforms(unittest.TestCase):
 
     def test_identity_transform_keeps_points(self):
         """The identity transform should keep points unchanged."""
-        space = RealLine()
+        space = space_pkg.line.Space()
         transform = identity_transform(space)
         self.assertIsInstance(transform, Transform)
         self.assertEqual(transform(2.5), 2.5)
@@ -20,8 +20,8 @@ class TestTransforms(unittest.TestCase):
 
     def test_transform_composition_requires_same_intermediate_space(self):
         """Composition should reject different intermediate space instances."""
-        first = identity_transform(RealLine())
-        second = identity_transform(RealLine())
+        first = identity_transform(space_pkg.line.Space())
+        second = identity_transform(space_pkg.line.Space())
 
         with self.assertRaises(ValueError):
             first.then(second)

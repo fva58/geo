@@ -1,11 +1,6 @@
-"""Space package for intrinsic spaces."""
+"""Space namespace package."""
 
-from .circle import Circle
-from .euclidean import Euclidean
-from .line import RealLine
-from .point import Point
-from .sphere import Sphere
-from .torus import Torus
+from . import base, circle, euclidean, line, point, sphere, torus
 
 
 def make_euclidean(dim: int, name: str = ""):
@@ -14,10 +9,10 @@ def make_euclidean(dim: int, name: str = ""):
     if dim < 0:
         raise ValueError("Dimension must be non-negative")
     if dim == 0:
-        return Point(name=name or "Point")
+        return point.Space(name=name or "Point")
     if dim == 1:
-        return RealLine(name=name or "R")
-    return Euclidean(dim, name=name)
+        return line.Space(name=name or "R")
+    return euclidean.Space(dim, name=name)
 
 
 def make_torus(dim: int, **kwargs):
@@ -26,23 +21,25 @@ def make_torus(dim: int, **kwargs):
     if dim < 0:
         raise ValueError("Dimension must be non-negative")
     if dim == 0:
-        return Point(name=kwargs.pop("name", "") or "Point")
+        return point.Space(name=kwargs.pop("name", "") or "Point")
     if dim == 1:
-        return Circle(name=kwargs.pop("name", "") or "S1")
-    return Torus(dim=dim, **kwargs)
+        return circle.Space(name=kwargs.pop("name", "") or "S1")
+    return torus.Space(dim=dim, **kwargs)
 
 
 def make_sphere(dim: int = 2, **kwargs):
     """Return the sphere of the requested intrinsic dimension."""
-    return Sphere(dim=int(dim), **kwargs)
+    return sphere.Space(dim=int(dim), **kwargs)
+
 
 __all__ = [
-    "Point",
-    "RealLine",
-    "Circle",
-    "Euclidean",
-    "Sphere",
-    "Torus",
+    "base",
+    "point",
+    "line",
+    "circle",
+    "euclidean",
+    "sphere",
+    "torus",
     "make_euclidean",
     "make_torus",
     "make_sphere",

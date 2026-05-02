@@ -6,13 +6,13 @@ import unittest
 from geo.euclidean import FloatPoint
 from geo.manifold import (
     LocalObjectModel,
-    Neighborhood,
     NeighborhoodCover,
     NeighborhoodMarking,
     classify_local_object,
 )
 from geo.operations import classify_cover, local_chart_cover_from_points, refine_until
-from geo.space import Circle, Euclidean, RealLine, Sphere, Torus
+from geo import space as space_pkg
+from geo.space.base import Neighborhood
 
 
 class TestNeighborhoodRefinement(unittest.TestCase):
@@ -20,7 +20,7 @@ class TestNeighborhoodRefinement(unittest.TestCase):
 
     def test_chart_neighborhood_on_real_line(self):
         """A chart neighborhood should expose radial bounds and probes."""
-        space = RealLine()
+        space = space_pkg.line.Space()
         neighborhood = space.neighborhood_at(0.5, 0.5, name="unit-interval")
 
         self.assertIsInstance(neighborhood, Neighborhood)
@@ -34,7 +34,7 @@ class TestNeighborhoodRefinement(unittest.TestCase):
 
     def test_neighborhood_cover_refines(self):
         """A cover should refine into smaller neighborhoods."""
-        space = RealLine()
+        space = space_pkg.line.Space()
         neighborhood = space.neighborhood_at(0.5, 0.5)
         cover = NeighborhoodCover((neighborhood,))
         refined = cover.refine()
@@ -46,7 +46,7 @@ class TestNeighborhoodRefinement(unittest.TestCase):
 
     def test_local_object_classification_on_real_line(self):
         """Local classification should distinguish empty and cone patches."""
-        space = RealLine()
+        space = space_pkg.line.Space()
         segment = space.subset((0.0, 1.0), name="segment")
 
         conic = classify_local_object(
@@ -67,7 +67,7 @@ class TestNeighborhoodRefinement(unittest.TestCase):
 
     def test_object_marks_list_of_neighborhoods(self):
         """An object should classify a whole neighborhood list at once."""
-        space = RealLine()
+        space = space_pkg.line.Space()
         segment = space.subset((0.0, 1.0), name="segment")
         neighborhoods = (
             space.neighborhood_at(0.5, 0.25),
@@ -86,7 +86,7 @@ class TestNeighborhoodRefinement(unittest.TestCase):
 
     def test_local_object_classification_can_request_refinement(self):
         """Mixed neighborhoods should be marked complex for refinement."""
-        space = Euclidean(2)
+        space = space_pkg.euclidean.Space(2)
         upper = space.half_plane((0.0, 1.0), offset=0.0, name="upper")
         neighborhood = space.neighborhood_at(FloatPoint(0.0, -0.5), 1.0)
 
@@ -98,11 +98,11 @@ class TestNeighborhoodRefinement(unittest.TestCase):
 
     def test_standard_spaces_expose_intrinsic_neighborhoods(self):
         """Standard spaces should provide centered intrinsic neighborhoods."""
-        line = RealLine()
-        circle = Circle()
-        plane = Euclidean(2)
-        sphere = Sphere()
-        torus = Torus()
+        line = space_pkg.line.Space()
+        circle = space_pkg.circle.Space()
+        plane = space_pkg.euclidean.Space(2)
+        sphere = space_pkg.sphere.Space()
+        torus = space_pkg.torus.Space()
 
         self.assertIn(1.0, line.neighborhood_at(1.0, 0.5))
         self.assertIn(0.0, circle.neighborhood_at(0.0, 0.5))
@@ -113,11 +113,11 @@ class TestNeighborhoodRefinement(unittest.TestCase):
 
     def test_spaces_expose_full_cover_and_refinement_api(self):
         """Spaces should expose full covers and smaller-diameter refinements."""
-        line = RealLine()
-        circle = Circle()
-        plane = Euclidean(2)
-        sphere = Sphere()
-        torus = Torus()
+        line = space_pkg.line.Space()
+        circle = space_pkg.circle.Space()
+        plane = space_pkg.euclidean.Space(2)
+        sphere = space_pkg.sphere.Space()
+        torus = space_pkg.torus.Space()
 
         line_cover = tuple(itertools.islice(line.full_cover(0.5), 5))
         plane_cover = tuple(itertools.islice(plane.full_cover(0.5), 9))
@@ -141,7 +141,7 @@ class TestNeighborhoodRefinement(unittest.TestCase):
 
     def test_refine_until_reduces_active_outer_radius(self):
         """Refinement should reduce the outer radius of active parts."""
-        space = RealLine()
+        space = space_pkg.line.Space()
         segment = space.subset((0.0, 1.0), name="segment")
         cover = local_chart_cover_from_points(
             space,

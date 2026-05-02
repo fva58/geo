@@ -13,11 +13,11 @@ from .manifold import (
     LocalObjectModel,
     Manifold,
     ManifoldChart,
-    Neighborhood,
     NeighborhoodMarking,
     classify_local_object,
     classify_neighborhoods,
 )
+from .space.base import Neighborhood
 
 if TYPE_CHECKING:
     from .space.base import Space

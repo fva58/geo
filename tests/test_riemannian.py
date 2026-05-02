@@ -8,8 +8,9 @@ from geo.cone import EuclideanCone, LocalConeModel
 from geo.euclidean import EuclideanNeighborhood, FloatPoint, FloatVector
 from geo.gobject import LazyExpressionObject, LazyMappedObject, LazyObject
 from geo.manifold import ManifoldChart
-from geo.space import Circle, Euclidean, RealLine
+from geo import space as space_pkg
 from geo.space.base import Space
+from geo.space.euclidean import Space as EuclideanSpace
 from geo.space.circle import Point as CirclePoint
 
 
@@ -18,14 +19,14 @@ class TestSpaces(unittest.TestCase):
 
     def test_real_line_space(self):
         """The real line should satisfy the metric-space protocol."""
-        space = RealLine()
+        space = space_pkg.line.Space()
         self.assertIsInstance(space, Space)
         self.assertEqual(space.distance(0.0, 4.0), 4.0)
         self.assertEqual(space.distance(4.0, 0.0), 4.0)
 
     def test_unit_circle_space(self):
         """The unit circle should use the shortest-arc metric."""
-        space = Circle()
+        space = space_pkg.circle.Space()
         point = CirclePoint(math.pi / 3.0)
         self.assertIsInstance(space, Space)
         self.assertAlmostEqual(space.distance(point, point), 0.0)
@@ -36,9 +37,9 @@ class TestSpaces(unittest.TestCase):
 
     def test_euclidean_plane_space(self):
         """The Euclidean plane should use Euclidean distance."""
-        space = Euclidean(2)
+        space = space_pkg.euclidean.Space(2)
         self.assertIsInstance(space, Space)
-        self.assertIsInstance(space, Euclidean)
+        self.assertIsInstance(space, EuclideanSpace)
         self.assertEqual(
             space.distance(FloatPoint(1.0, 2.0), FloatPoint(4.0, 6.0)),
             5.0,
@@ -50,7 +51,7 @@ class TestMetricObjects(unittest.TestCase):
 
     def test_real_line_subset(self):
         """A real-line subset should keep its local cone models."""
-        space = RealLine()
+        space = space_pkg.line.Space()
         obj = space.subset((0.0, 2.0), 5.0, name="segment-and-point")
         self.assertIsInstance(obj, GeometricObject)
         self.assertEqual(obj.space, space)
@@ -64,7 +65,7 @@ class TestMetricObjects(unittest.TestCase):
 
     def test_circle_arc(self):
         """An arc should be a geometric object in the unit circle space."""
-        space = Circle()
+        space = space_pkg.circle.Space()
         obj = space.arc(0.0, math.pi / 2.0, name="quarter-arc")
         self.assertIn(CirclePoint(math.pi / 4.0), obj)
         self.assertNotIn(CirclePoint(math.pi), obj)
@@ -75,7 +76,7 @@ class TestMetricObjects(unittest.TestCase):
 
     def test_plane_objects(self):
         """Standard planar objects should live in the Euclidean plane space."""
-        space = Euclidean(2)
+        space = space_pkg.euclidean.Space(2)
         half_plane = space.half_plane((0.0, 1.0), name="upper")
         angle = space.angle(FloatPoint(0.0, 0.0), 0.0, math.pi / 2.0)
 
@@ -95,7 +96,7 @@ class TestMetricObjects(unittest.TestCase):
 
     def test_real_line_set_operations(self):
         """Set-theoretic operations should work on real-line objects."""
-        space = RealLine()
+        space = space_pkg.line.Space()
         left = space.subset((0.0, 2.0), name="left")
         right = space.subset((1.0, 3.0), name="right")
 
@@ -120,7 +121,7 @@ class TestMetricObjects(unittest.TestCase):
 
     def test_set_operations_build_lazy_expression_nodes(self):
         """Set operations should preserve an explicit lazy expression tree."""
-        space = RealLine()
+        space = space_pkg.line.Space()
         left = space.subset((0.0, 2.0), name="left")
         right = space.subset((1.0, 3.0), name="right")
 
@@ -143,7 +144,7 @@ class TestMetricObjects(unittest.TestCase):
 
     def test_circle_set_operations(self):
         """Set-theoretic operations should work on circle objects."""
-        space = Circle()
+        space = space_pkg.circle.Space()
         left = space.arc(0.0, math.pi / 2.0, name="left")
         right = space.arc(math.pi / 4.0, math.pi, name="right")
 
@@ -160,7 +161,7 @@ class TestMetricObjects(unittest.TestCase):
 
     def test_plane_set_operations(self):
         """Set-theoretic operations should work on planar objects."""
-        space = Euclidean(2)
+        space = space_pkg.euclidean.Space(2)
         upper = space.half_plane((0.0, 1.0), name="upper")
         right = space.half_plane((1.0, 0.0), name="right")
 
@@ -179,15 +180,15 @@ class TestMetricObjects(unittest.TestCase):
 
     def test_set_operations_require_same_space(self):
         """Set-theoretic operations should reject mixed ambient spaces."""
-        real_line = RealLine()
-        another_real_line = RealLine()
+        real_line = space_pkg.line.Space()
+        another_real_line = space_pkg.line.Space()
 
         with self.assertRaises(ValueError):
             real_line.point(0.0).union(another_real_line.point(0.0))
 
     def test_set_operations_transport_local_models_across_charts(self):
         """Equivalent objects in different charts should keep boundary cones."""
-        space = RealLine()
+        space = space_pkg.line.Space()
         chart_identity = ManifoldChart(
             lambda point: FloatPoint(point),
             lambda coordinates: coordinates[0],
@@ -241,7 +242,7 @@ class TestMetricObjects(unittest.TestCase):
 
     def test_parallel_projection_onto_hyperplane(self):
         """Parallel projection should return a new geometric object."""
-        space = Euclidean(2)
+        space = space_pkg.euclidean.Space(2)
         source_hyperplane = space.hyperplane((0.0, 1.0), offset=1.0, name="source-line")
         source_line = source_hyperplane
         source_half_line = source_line & space.half_plane((1.0, 0.0), offset=0.0)
@@ -271,7 +272,7 @@ class TestMetricObjects(unittest.TestCase):
 
     def test_central_projection_onto_hyperplane(self):
         """Central projection should return a new geometric object."""
-        space = Euclidean(2)
+        space = space_pkg.euclidean.Space(2)
         source_hyperplane = space.hyperplane((0.0, 1.0), offset=1.0, name="source-line")
         source_line = source_hyperplane
         source_half_line = source_line & space.half_plane((1.0, 0.0), offset=0.0)
@@ -297,8 +298,8 @@ class TestMetricObjects(unittest.TestCase):
 
     def test_smooth_image_object(self):
         """A smooth image should define a new geometric object."""
-        source_space = RealLine()
-        target_space = Euclidean(2)
+        source_space = space_pkg.line.Space()
+        target_space = space_pkg.euclidean.Space(2)
         source = source_space.subset((0.0, 2.0), name="segment")
 
         def target_chart(point: FloatPoint) -> ManifoldChart[FloatPoint]:
@@ -348,7 +349,7 @@ class TestMetricObjects(unittest.TestCase):
 
     def test_visible_ball_from_direction(self):
         """A ball should expose the visible boundary cap from a direction."""
-        space = Euclidean(2)
+        space = space_pkg.euclidean.Space(2)
         ball = space.ball(FloatPoint(0.0, 0.0), 1.0, name="disk")
 
         visible = ball.visible_from_direction(FloatVector(0.0, 1.0))
@@ -367,7 +368,7 @@ class TestMetricObjects(unittest.TestCase):
 
     def test_visible_ellipsoid_surface_from_point(self):
         """An ellipsoid surface should keep only the observer-facing part."""
-        space = Euclidean(2)
+        space = space_pkg.euclidean.Space(2)
         surface = space.ellipsoid_surface(
             FloatPoint(0.0, 0.0),
             ((2.0, 0.0), (0.0, 1.0)),
@@ -384,7 +385,7 @@ class TestMetricObjects(unittest.TestCase):
 
     def test_visible_half_plane_from_point(self):
         """A half-plane should expose its boundary only from the exterior."""
-        space = Euclidean(2)
+        space = space_pkg.euclidean.Space(2)
         half_plane = space.half_plane((0.0, 1.0), offset=0.0, name="upper")
 
         visible = half_plane.visible_from_point(FloatPoint(0.0, -1.0))

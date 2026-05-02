@@ -9,7 +9,7 @@ from ..cone import EuclideanCone, LocalConeModel
 from ..euclidean import EuclideanNeighborhood, FloatPoint
 from ..gobject import GeometricObject
 from ..manifold import ManifoldChart
-from .base import Space
+from .base import Space as SpaceProtocol
 
 
 _POINT = FloatPoint.origin(0)
@@ -43,10 +43,10 @@ def _point_chart() -> ManifoldChart[FloatPoint]:
 
 
 @dataclass(frozen=True)
-class PointNeighborhood:
+class Neighborhood:
     """The unique neighborhood in the one-point space."""
 
-    manifold: Space[FloatPoint]
+    manifold: SpaceProtocol[FloatPoint]
     chart: ManifoldChart[FloatPoint]
     center: FloatPoint = _POINT
     name: str = ""
@@ -84,12 +84,12 @@ class PointNeighborhood:
         """Return points used for local probing."""
         return (_POINT,)
 
-    def subdivide(self) -> tuple["PointNeighborhood", ...]:
+    def subdivide(self) -> tuple["Neighborhood", ...]:
         """Return the unique refinement."""
         return (self,)
 
 
-class Point:
+class Space:
     """Zero-dimensional metric space with one point."""
 
     def __init__(self, name: str = "") -> None:
@@ -105,7 +105,7 @@ class Point:
     def __repr__(self) -> str:
         """Return a debug representation."""
         label = f", name={self.name!r}" if self.name else ""
-        return f"Point({label[2:]})" if label else "Point()"
+        return f"Space({label[2:]})" if label else "Space()"
 
     def contains(self, point: object) -> bool:
         """Check whether a point belongs to the space."""
@@ -149,15 +149,15 @@ class Point:
         point: object = (),
         radius: float = 1.0,
         name: str = "",
-    ) -> PointNeighborhood:
+    ) -> Neighborhood:
         """Return the unique neighborhood."""
         self.point(point)
         radius = float(radius)
         if radius <= 0.0:
             raise ValueError("Neighborhood radius must be positive")
-        return PointNeighborhood(self, self._chart, name=name or "point-neighborhood")
+        return Neighborhood(self, self._chart, name=name or "point-neighborhood")
 
-    def full_cover(self, radius: float) -> tuple[PointNeighborhood, ...]:
+    def full_cover(self, radius: float) -> tuple[Neighborhood, ...]:
         """Return the unique full cover."""
         return (self.neighborhood_at((), radius),)
 
@@ -165,10 +165,10 @@ class Point:
         self,
         neighborhoods,
         factor: int = 2,
-    ) -> tuple[PointNeighborhood, ...]:
+    ) -> tuple[Neighborhood, ...]:
         """Return the unchanged refinement."""
         del factor
         return tuple(neighborhoods)
 
 
-__all__ = ["Point", "PointNeighborhood"]
+__all__ = ["Neighborhood", "Space"]

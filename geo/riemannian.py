@@ -18,7 +18,7 @@ ChartedRiemannianSpace = ChartedMetricSpace
 RiemannianGeometricObject = MetricGeometricObject
 
 
-from .space.euclidean import Euclidean as EuclideanMetricSpace
+from .space.euclidean import Space as EuclideanMetricSpace
 
 
 EuclideanRiemannianSpace = EuclideanMetricSpace

@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Generic, TypeVar
 
-from .manifold import ChartNeighborhood, LocalObjectModel, NeighborhoodCover
+from .manifold import LocalObjectModel, NeighborhoodCover
 
 
 PointT = TypeVar("PointT")

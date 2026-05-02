@@ -6,7 +6,6 @@ import itertools
 
 from ..euclidean import EuclideanNeighborhood, FloatPoint, FloatVector
 from ..gobject import GeometricObject
-from ..manifold import ChartNeighborhood
 from ._euclidean_impl import (
     Ball,
     Cube,
@@ -25,10 +24,18 @@ from ._euclidean_impl import (
     WholeSpace,
     WholePlane,
 )
-from .base import ChartedSpace, refine_neighborhoods as _refine_neighborhoods
+from .base import (
+    BoxNeighborhood,
+    ChartedSpace,
+    refine_neighborhoods as _refine_neighborhoods,
+)
 
 
-class Euclidean(ChartedSpace[FloatPoint]):
+class Neighborhood(BoxNeighborhood[FloatPoint]):
+    """Neighborhood in Euclidean space."""
+
+
+class Space(ChartedSpace[FloatPoint]):
     """Euclidean space with its standard metric."""
 
     def __init__(self, dim: int, name: str = "") -> None:
@@ -70,7 +77,7 @@ class Euclidean(ChartedSpace[FloatPoint]):
         point: FloatPoint,
         radius: float,
         name: str = "",
-    ) -> ChartNeighborhood[FloatPoint]:
+    ) -> Neighborhood:
         center = FloatPoint(point)
         if center not in self:
             raise ValueError("Point is outside the Euclidean space")
@@ -78,7 +85,7 @@ class Euclidean(ChartedSpace[FloatPoint]):
         if radius <= 0.0:
             raise ValueError("Neighborhood radius must be positive")
         chart = self.point(center).local_model_at(center).chart
-        return ChartNeighborhood(
+        return Neighborhood(
             self,
             chart,
             center,
@@ -121,7 +128,7 @@ class Euclidean(ChartedSpace[FloatPoint]):
         self,
         neighborhoods,
         factor: int = 2,
-    ) -> tuple[ChartNeighborhood[FloatPoint], ...]:
+    ) -> tuple[Neighborhood, ...]:
         return _refine_neighborhoods(tuple(neighborhoods), factor=factor)
 
     def whole(self, name: str = "") -> GeometricObject[FloatPoint]:
@@ -153,7 +160,7 @@ class Euclidean(ChartedSpace[FloatPoint]):
         name: str = "",
     ) -> GeometricObject[FloatPoint]:
         if self.dim != 2:
-            raise ValueError("whole_plane() is only defined for Euclidean(2)")
+            raise ValueError("whole_plane() is only defined for euclidean.Space(2)")
         return self.wrap(WholePlane(name=name), name=name)
 
     def sphere(
@@ -189,7 +196,7 @@ class Euclidean(ChartedSpace[FloatPoint]):
         name: str = "",
     ) -> GeometricObject[FloatPoint]:
         if self.dim != 2:
-            raise ValueError("circle() is only defined for Euclidean(2)")
+            raise ValueError("circle() is only defined for euclidean.Space(2)")
         return self.sphere(center, radius, name=name)
 
     def ellipsoid_surface(
@@ -259,7 +266,7 @@ class Euclidean(ChartedSpace[FloatPoint]):
         name: str = "",
     ) -> GeometricObject[FloatPoint]:
         if self.dim != 2:
-            raise ValueError("half_plane() is only defined for Euclidean(2)")
+            raise ValueError("half_plane() is only defined for euclidean.Space(2)")
         normal = self._coerce_vector(normal)
         return self.wrap(HalfPlane(normal, offset=offset, name=name), name=name)
 
@@ -271,9 +278,9 @@ class Euclidean(ChartedSpace[FloatPoint]):
         name: str = "",
     ) -> GeometricObject[FloatPoint]:
         if self.dim != 2:
-            raise ValueError("angle() is only defined for Euclidean(2)")
+            raise ValueError("angle() is only defined for euclidean.Space(2)")
         apex = self._coerce_point(apex)
         return self.wrap(PlanarAngle(apex, start, end, name=name), name=name)
 
 
-__all__ = ["Euclidean"]
+__all__ = ["Neighborhood", "Space"]

@@ -10,8 +10,12 @@ from ..cone import EuclideanCone, LocalConeModel
 from ..euclidean import EuclideanNeighborhood, FloatPoint
 from ..gobject import GeometricObject
 from ..circle import Angle, Point, Set
-from ..manifold import ChartNeighborhood, ManifoldChart
-from .base import refine_neighborhoods as _refine_neighborhoods
+from ..manifold import ManifoldChart
+from .base import BoxNeighborhood, refine_neighborhoods as _refine_neighborhoods
+
+
+class Neighborhood(BoxNeighborhood["TorusPoint"]):
+    """Neighborhood on a torus."""
 
 
 def _point_cone(dim: int) -> EuclideanCone:
@@ -153,7 +157,7 @@ def _torus_chart(base_point: TorusPoint) -> ManifoldChart[TorusPoint]:
     )
 
 
-class Torus:
+class Space:
     """Flat torus modeled as a product of circles."""
 
     def __init__(
@@ -187,7 +191,7 @@ class Torus:
 
     def __repr__(self) -> str:
         label = f", name={self.name!r}" if self.name else ""
-        return f"Torus(dim={self.dim}, radii={self.radii}{label})"
+        return f"Space(dim={self.dim}, radii={self.radii}{label})"
 
     def contains(self, point: object) -> bool:
         try:
@@ -247,7 +251,7 @@ class Torus:
         point: object,
         radius: float,
         name: str = "",
-    ) -> ChartNeighborhood[TorusPoint]:
+    ) -> Neighborhood:
         center = self.point(point)
         radius = float(radius)
         if radius <= 0.0:
@@ -255,7 +259,7 @@ class Torus:
         if radius >= math.pi:
             raise ValueError("Torus angular neighborhoods must have radius < pi")
         chart = _torus_chart(center)
-        return ChartNeighborhood(
+        return Neighborhood(
             self,
             chart,
             center,
@@ -266,7 +270,7 @@ class Torus:
     def full_cover(
         self,
         radius: float,
-    ) -> tuple[ChartNeighborhood[TorusPoint], ...]:
+    ) -> tuple[Neighborhood, ...]:
         radius = float(radius)
         if radius <= 0.0:
             raise ValueError("Cover radius must be positive")
@@ -286,7 +290,7 @@ class Torus:
         self,
         neighborhoods,
         factor: int = 2,
-    ) -> tuple[ChartNeighborhood[TorusPoint], ...]:
+    ) -> tuple[Neighborhood, ...]:
         return _refine_neighborhoods(tuple(neighborhoods), factor=factor)
 
     def patch(
@@ -328,4 +332,4 @@ class Torus:
         )
 
 
-__all__ = ["Torus", "TorusPoint"]
+__all__ = ["Neighborhood", "Space", "TorusPoint"]

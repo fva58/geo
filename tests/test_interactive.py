@@ -5,7 +5,7 @@ import unittest
 
 from geo.euclidean import FloatPoint
 from geo.gobject import ChartedGeometricObject
-from geo.space import Circle, Euclidean, RealLine, Sphere, Torus
+from geo import space as space_pkg
 from geo.space.circle import Point as CirclePoint
 from geo.space.torus import TorusPoint
 from geo.interactive import (
@@ -40,7 +40,7 @@ class TestInteractiveHelpers(unittest.TestCase):
 
     def test_default_space_is_the_euclidean_plane(self):
         """The default interactive space should be a plane."""
-        self.assertIsInstance(current_space(), Euclidean)
+        self.assertIsInstance(current_space(), space_pkg.euclidean.Space)
 
         origin = point(0.0, 0.0)
         disk_object = disk((0.0, 0.0), 1.0)
@@ -56,8 +56,8 @@ class TestInteractiveHelpers(unittest.TestCase):
 
     def test_wrap_and_ball_helpers_use_the_selected_space(self):
         """Convenience helpers should wrap Euclidean zoo objects."""
-        space = Euclidean(2, name="plane")
-        line = RealLine()
+        space = space_pkg.euclidean.Space(2, name="plane")
+        line = space_pkg.line.Space()
         wrapped_subset = wrap(
             ChartedGeometricObject(
                 line,
@@ -69,7 +69,7 @@ class TestInteractiveHelpers(unittest.TestCase):
         )
         direct_ball = ball((0.0, 0.0), 1.0, space=space)
 
-        self.assertIsInstance(wrapped_subset.space, RealLine)
+        self.assertIsInstance(wrapped_subset.space, space_pkg.line.Space)
         self.assertIs(direct_ball.space, space)
         self.assertIn(0.5, wrapped_subset)
         self.assertIn(FloatPoint(0.5, 0.5), direct_ball)
@@ -78,7 +78,7 @@ class TestInteractiveHelpers(unittest.TestCase):
         """A context manager should isolate default-space changes."""
         original = current_space()
 
-        with using_space(RealLine()) as space:
+        with using_space(space_pkg.line.Space()) as space:
             self.assertIs(current_space(), space)
             obj = subset((0.0, 2.0), 5.0)
             singleton = point(5.0)
@@ -89,7 +89,7 @@ class TestInteractiveHelpers(unittest.TestCase):
 
     def test_circle_and_arc_helpers(self):
         """Circle-specific helpers should route through the unit circle."""
-        set_default_space(Circle())
+        set_default_space(space_pkg.circle.Space())
         quarter = arc(0.0, math.pi / 2.0)
         singleton = point(math.pi / 4.0)
 
@@ -98,7 +98,7 @@ class TestInteractiveHelpers(unittest.TestCase):
 
     def test_sphere_and_torus_helpers(self):
         """Native-space helpers should use point objects and native families."""
-        sphere = Sphere()
+        sphere = space_pkg.sphere.Space()
         north = sphere.point_from_angles(0.0, math.pi / 2.0)
         set_default_space(sphere)
         north_object = point(north)
@@ -107,7 +107,7 @@ class TestInteractiveHelpers(unittest.TestCase):
         self.assertIn(north, north_object)
         self.assertIn(sphere.point_from_angles(0.0, 0.0), hemisphere)
 
-        torus = Torus()
+        torus = space_pkg.torus.Space()
         set_default_space(torus)
         patch_object = patch((0.0, math.pi / 2.0), (0.0, math.pi / 2.0))
         torus_point = point(0.0, 0.0)
