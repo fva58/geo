@@ -1,12 +1,17 @@
-"""Real-number aliases for the current float-based model."""
+"""Real-line aliases for the current scalar model."""
 
 # pylint: disable=invalid-name
 
-from .floatset import ( FloatSet as realset ,
-                        EMPTY_FLOAT_INTERVAL as EMPTY_REAL_INTERVAL ,
-                        FULL_FLOAT_INTERVAL as ALL_REALS_INTERVAL )
+from .line import (
+    ALL_REALS_INTERVAL,
+    EMPTY_INTERVAL,
+    Point,
+    Set,
+)
 
-real = float
+real = Point
+realset = Set
+EMPTY_REAL_INTERVAL = EMPTY_INTERVAL
 
 __all__ = [
     "real",

@@ -5,9 +5,9 @@ import unittest
 
 import numpy as np
 
-from geo import (
+from geo.diffeomorphism import Chart
+from geo.euclidean import (
     AffineDiffeomorphism,
-    Chart,
     EuclideanChart,
     EuclideanNeighborhood,
     FloatPoint,

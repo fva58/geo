@@ -3,23 +3,20 @@
 import unittest
 from dataclasses import dataclass
 
-from geo import (
-    ChartedGeometricObject,
+from geo.cone import (
     CircleSphereObject,
     Cone,
     DirectionSetSphereObject,
     EuclideanCone,
-    EuclideanNeighborhood,
-    FloatCircleSet,
-    FloatPoint,
-    FloatVector,
-    GeometricObject,
     LocalConeModel,
-    ManifoldChart,
     RadialCone,
     SphereObject,
     SphericalCone,
 )
+from geo.euclidean import EuclideanNeighborhood, FloatPoint, FloatVector
+from geo.gobject import ChartedGeometricObject, GeometricObjectProtocol
+from geo.manifold import ManifoldChart
+from geo.space.circle import Set as CircleSet
 
 
 @dataclass(frozen=True)
@@ -132,7 +129,7 @@ class TestSphereObjectsAndSphericalCones(unittest.TestCase):
     def test_circle_sphere_object(self):
         """A sphere object in dimension 2 can be defined by a circle set."""
         circle_object = CircleSphereObject(
-            FloatCircleSet.from_single_interval(0.0, 1.5707963267948966),
+            CircleSet.from_single_interval(0.0, 1.5707963267948966),
             name="first-quadrant-arc",
         )
         self.assertIsInstance(circle_object, SphereObject)
@@ -143,7 +140,7 @@ class TestSphereObjectsAndSphericalCones(unittest.TestCase):
     def test_spherical_cone_from_circle_object(self):
         """A spherical cone can use the existing circle geometry as its base."""
         base = CircleSphereObject(
-            FloatCircleSet.from_single_interval(0.0, 1.5707963267948966)
+            CircleSet.from_single_interval(0.0, 1.5707963267948966)
         )
         cone = SphericalCone(
             base,
@@ -187,7 +184,7 @@ class TestChartedGeometricObject(unittest.TestCase):
             name="half-line-object",
         )
 
-        self.assertIsInstance(obj, GeometricObject)
+        self.assertIsInstance(obj, GeometricObjectProtocol)
         self.assertIn(LinePoint(1.0), obj)
         self.assertNotIn(LinePoint(-1.0), obj)
 

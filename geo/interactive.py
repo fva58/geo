@@ -5,16 +5,15 @@ from __future__ import annotations
 from contextlib import contextmanager
 from typing import Iterator
 
-from .geometric import Ball, Sphere
-from .riemannian import EuclideanPlaneSpace
+from .space import Euclidean
 
 
 _DEFAULT_SPACE = None
 
 
-def _make_default_space() -> EuclideanPlaneSpace:
+def _make_default_space() -> Euclidean:
     """Return the package-wide default space for interactive work."""
-    return EuclideanPlaneSpace(name="default-plane")
+    return Euclidean(2, name="default-plane")
 
 
 def current_space():
@@ -128,9 +127,10 @@ def angle(vertex, start_angle: float, end_angle: float, *,
 def ball(center, radius: float, *, space=None, name: str = ""):
     """Build a Euclidean ball in the selected space when supported."""
     ambient = _resolve_space(space)
-    if hasattr(ambient, "ball"):
-        return ambient.ball(center, radius, name=name)
-    return wrap(Ball(center, radius, name=name), space=ambient, name=name)
+    ball_method = getattr(ambient, "ball", None)
+    if ball_method is None:
+        raise TypeError(f"Space {ambient!r} does not support ball()")
+    return ball_method(center, radius, name=name)
 
 
 def disk(center, radius: float, *, space=None, name: str = ""):
@@ -141,9 +141,10 @@ def disk(center, radius: float, *, space=None, name: str = ""):
 def circle(center, radius: float, *, space=None, name: str = ""):
     """Build a Euclidean sphere boundary in the selected space."""
     ambient = _resolve_space(space)
-    if hasattr(ambient, "circle"):
-        return ambient.circle(center, radius, name=name)
-    return wrap(Sphere(center, radius, name=name), space=ambient, name=name)
+    circle_method = getattr(ambient, "circle", None)
+    if circle_method is None:
+        raise TypeError(f"Space {ambient!r} does not support circle()")
+    return circle_method(center, radius, name=name)
 
 
 def cap(center, radius: float, *, space=None, name: str = ""):

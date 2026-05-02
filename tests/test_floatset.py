@@ -1,45 +1,42 @@
-"""Unit tests for FloatInterval and FloatSet classes."""
+"""Unit tests for line intervals and line sets."""
 
-import unittest
 import math
-from geo.floatset import (
-    FloatInterval,
-    FloatSet,
-    FULL_FLOAT_INTERVAL,
-)
+import unittest
+
 from geo.real import ALL_REALS_INTERVAL, EMPTY_REAL_INTERVAL, real, realset
+from geo.space.line import FULL_INTERVAL, Interval, Point, Set
 
 
-class TestFloatInterval(unittest.TestCase):
-    """Test cases for FloatInterval class."""
+class TestInterval(unittest.TestCase):
+    """Test cases for ``Interval``."""
 
     def test_initialization(self):
         """Test interval initialization."""
-        iv = FloatInterval(0.0)
+        iv = Interval(0.0)
         self.assertEqual(iv.left, 0.0)
         self.assertEqual(iv.right, 0.0)
         self.assertFalse(iv.is_empty())
 
-        iv = FloatInterval(0.0, 1.0)
+        iv = Interval(0.0, 1.0)
         self.assertEqual(iv.left, 0.0)
         self.assertEqual(iv.right, 1.0)
         self.assertFalse(iv.is_empty())
 
-        iv = FloatInterval(iv)
+        iv = Interval(iv)
         self.assertEqual(iv.left, 0.0)
         self.assertEqual(iv.right, 1.0)
         self.assertFalse(iv.is_empty())
 
     def test_empty_interval(self):
         """Test empty interval."""
-        empty = FloatInterval(1.0, 0.0)
+        empty = Interval(1.0, 0.0)
         self.assertTrue(empty.is_empty())
         self.assertEqual(empty.length(), -math.inf)
         self.assertFalse(bool(empty))
 
     def test_contains(self):
         """Test point containment."""
-        iv = FloatInterval(0.0, 1.0)
+        iv = Interval(0.0, 1.0)
         self.assertTrue(0.5 in iv)
         self.assertTrue(0.0 in iv)
         self.assertTrue(1.0 in iv)
@@ -48,48 +45,43 @@ class TestFloatInterval(unittest.TestCase):
 
     def test_length(self):
         """Test interval length."""
-        iv = FloatInterval(0.0, 5.0)
+        iv = Interval(0.0, 5.0)
         self.assertEqual(iv.length(), 5.0)
 
-        point = FloatInterval(3.0, 3.0)
+        point = Interval(3.0, 3.0)
         self.assertEqual(point.length(), 0.0)
 
-        empty = FloatInterval(1.0, 0.0)
+        empty = Interval(1.0, 0.0)
         self.assertEqual(empty.length(), -math.inf)
 
     def test_intersection(self):
         """Test interval intersection."""
-        a = FloatInterval(0.0, 5.0)
-        b = FloatInterval(2.0, 7.0)
-        c = FloatInterval(8.0, 10.0)
+        a = Interval(0.0, 5.0)
+        b = Interval(2.0, 7.0)
+        c = Interval(8.0, 10.0)
 
-        # Overlapping intervals
         inter_ab = a.intersection(b)
         self.assertEqual(inter_ab.left, 2.0)
         self.assertEqual(inter_ab.right, 5.0)
 
-        # Disjoint intervals
         inter_ac = a.intersection(c)
         self.assertTrue(inter_ac.is_empty())
 
-        # With empty interval
-        empty = FloatInterval(1.0, 0.0)
+        empty = Interval(1.0, 0.0)
         self.assertTrue(a.intersection(empty).is_empty())
         self.assertTrue(empty.intersection(a).is_empty())
 
     def test_union(self):
         """Test interval union."""
-        a = FloatInterval(0.0, 3.0)
-        b = FloatInterval(2.0, 5.0)
-        c = FloatInterval(6.0, 8.0)
+        a = Interval(0.0, 3.0)
+        b = Interval(2.0, 5.0)
+        c = Interval(6.0, 8.0)
 
-        # Overlapping intervals
         union_ab = a.union(b)
         self.assertEqual(len(union_ab), 1)
         self.assertEqual(union_ab[0].left, 0.0)
         self.assertEqual(union_ab[0].right, 5.0)
 
-        # Disjoint intervals
         union_ac = a.union(c)
         self.assertEqual(len(union_ac), 2)
         self.assertEqual(union_ac[0].left, 0.0)
@@ -97,8 +89,7 @@ class TestFloatInterval(unittest.TestCase):
         self.assertEqual(union_ac[1].left, 6.0)
         self.assertEqual(union_ac[1].right, 8.0)
 
-        # With empty interval
-        empty = FloatInterval(1.0, 0.0)
+        empty = Interval(1.0, 0.0)
         self.assertEqual(a.union(empty), (a,))
         self.assertEqual(empty.union(a), (a,))
         self.assertEqual(empty.union(empty), ())
@@ -108,19 +99,15 @@ class TestFloatInterval(unittest.TestCase):
         boundary = 1.0
         adjacent = math.nextafter(boundary, math.inf)
 
-        union = FloatInterval(0.0, boundary).union(
-            FloatInterval(adjacent, 2.0)
-        )
-
-        self.assertEqual(union, (FloatInterval(0.0, 2.0),))
+        union = Interval(0.0, boundary).union(Interval(adjacent, 2.0))
+        self.assertEqual(union, (Interval(0.0, 2.0),))
 
     def test_difference(self):
         """Test interval difference."""
-        a = FloatInterval(0.0, 5.0)
-        b = FloatInterval(2.0, 3.0)
-        c = FloatInterval(6.0, 8.0)
+        a = Interval(0.0, 5.0)
+        b = Interval(2.0, 3.0)
+        c = Interval(6.0, 8.0)
 
-        # b is inside a
         diff_ab = a.difference(b)
         self.assertEqual(len(diff_ab), 2)
         self.assertEqual(diff_ab[0].left, 0.0)
@@ -130,21 +117,19 @@ class TestFloatInterval(unittest.TestCase):
         self.assertFalse(diff_ab[0].contains(2.0))
         self.assertFalse(diff_ab[1].contains(3.0))
 
-        # Disjoint intervals
         diff_ac = a.difference(c)
         self.assertEqual(len(diff_ac), 1)
         self.assertEqual(diff_ac[0].left, 0.0)
         self.assertEqual(diff_ac[0].right, 5.0)
 
-        # Empty interval
-        empty = FloatInterval(1.0, 0.0)
+        empty = Interval(1.0, 0.0)
         self.assertEqual(a.difference(empty), (a,))
         self.assertEqual(empty.difference(a), ())
 
     def test_symmetric_difference(self):
         """Test symmetric difference."""
-        a = FloatInterval(0.0, 3.0)
-        b = FloatInterval(2.0, 5.0)
+        a = Interval(0.0, 3.0)
+        b = Interval(2.0, 5.0)
 
         sym_diff = a.symmetric_difference(b)
         self.assertEqual(len(sym_diff), 2)
@@ -155,138 +140,131 @@ class TestFloatInterval(unittest.TestCase):
 
     def test_complement_of_empty_interval_is_full(self):
         """The complement of the empty interval should be the whole line."""
-        empty = FloatInterval(1.0, 0.0)
-        self.assertEqual(empty.complement(), (FULL_FLOAT_INTERVAL,))
-        self.assertEqual(~empty, (FULL_FLOAT_INTERVAL,))
+        empty = Interval(1.0, 0.0)
+        self.assertEqual(empty.complement(), (FULL_INTERVAL,))
+        self.assertEqual(~empty, (FULL_INTERVAL,))
 
     def test_operators(self):
         """Test operator overloads."""
-        a = FloatInterval(0.0, 3.0)
-        b = FloatInterval(2.0, 5.0)
+        a = Interval(0.0, 3.0)
+        b = Interval(2.0, 5.0)
 
-        # Intersection
         inter = a & b
         self.assertEqual(inter.left, 2.0)
         self.assertEqual(inter.right, 3.0)
 
-        # Union
         union = a | b
         self.assertEqual(len(union), 1)
         self.assertEqual(union[0].left, 0.0)
         self.assertEqual(union[0].right, 5.0)
 
-        # Difference
         diff = a - b
         self.assertEqual(len(diff), 1)
         self.assertEqual(diff[0].left, 0.0)
         self.assertEqual(diff[0].right, math.nextafter(2.0, -math.inf))
 
-        # Symmetric difference
         sym_diff = a ^ b
         self.assertEqual(len(sym_diff), 2)
 
     def test_is_subset(self):
         """Test subset relation."""
-        a = FloatInterval(0.0, 10.0)
-        b = FloatInterval(3.0, 7.0)
-        c = FloatInterval(5.0, 15.0)
+        a = Interval(0.0, 10.0)
+        b = Interval(3.0, 7.0)
+        c = Interval(5.0, 15.0)
 
         self.assertTrue(b.is_subset(a))
         self.assertFalse(a.is_subset(b))
         self.assertFalse(c.is_subset(a))
         self.assertFalse(a.is_subset(c))
 
-        # Empty interval is subset of everything
-        empty = FloatInterval(1.0, 0.0)
+        empty = Interval(1.0, 0.0)
         self.assertTrue(empty.is_subset(a))
         self.assertFalse(a.is_subset(empty))
 
     def test_equality_and_hash(self):
         """Test equality and hashing."""
-        a = FloatInterval(0.0, 1.0)
-        b = FloatInterval(0.0, 1.0)
-        c = FloatInterval(0.0, 2.0)
+        a = Interval(0.0, 1.0)
+        b = Interval(0.0, 1.0)
+        c = Interval(0.0, 2.0)
 
         self.assertEqual(a, b)
         self.assertNotEqual(a, c)
         self.assertEqual(hash(a), hash(b))
 
-        # Empty intervals
-        empty1 = FloatInterval(1.0, 0.0)
-        empty2 = FloatInterval(2.0, 1.0)
+        empty1 = Interval(1.0, 0.0)
+        empty2 = Interval(2.0, 1.0)
         self.assertEqual(empty1, empty2)
 
     def test_complement(self):
         """Test complement in the float model."""
-        interval = FloatInterval(0.0, 1.0)
+        interval = Interval(0.0, 1.0)
         complement = interval.complement()
         self.assertEqual(len(complement), 2)
         self.assertEqual(complement[0].left, -math.inf)
-        self.assertEqual(complement[0].right,
-                         math.nextafter(0.0, -math.inf))
+        self.assertEqual(complement[0].right, math.nextafter(0.0, -math.inf))
         self.assertEqual(complement[1].left, math.nextafter(1.0, math.inf))
         self.assertEqual(complement[1].right, math.inf)
 
 
-class TestFloatSet(unittest.TestCase):
-    """Test cases for FloatSet class."""
+class TestSet(unittest.TestCase):
+    """Test cases for ``Set``."""
 
     def test_initialization(self):
         """Test set initialization."""
-        intervals = [FloatInterval(0.0, 1.0), FloatInterval(2.0, 3.0)]
-        fset = FloatSet(intervals)
+        intervals = [Interval(0.0, 1.0), Interval(2.0, 3.0)]
+        fset = Set(intervals)
         self.assertEqual(len(fset), 2)
         self.assertFalse(fset.is_empty())
-        fset = FloatSet(*intervals)
+
+        fset = Set(*intervals)
         self.assertEqual(len(fset), 2)
         self.assertFalse(fset.is_empty())
-        fset = FloatSet(1,2)
+
+        fset = Set(1, 2)
         self.assertEqual(len(fset), 2)
         self.assertFalse(fset.is_empty())
 
     def test_single_pair_argument_means_interval(self):
         """A single numeric pair should be parsed as one interval."""
-        fset = FloatSet((1.0, 2.0))
-        self.assertEqual(fset, FloatSet(FloatInterval(1.0, 2.0)))
+        fset = Set((1.0, 2.0))
+        self.assertEqual(fset, Set(Interval(1.0, 2.0)))
 
     def test_invalid_inputs_raise_type_error(self):
         """Unsupported constructor inputs should fail predictably."""
         with self.assertRaises(TypeError):
-            FloatSet("ab")
+            Set("ab")
 
         with self.assertRaises(TypeError):
-            FloatSet(["ab"])
+            Set(["ab"])
 
         with self.assertRaises(TypeError):
-            FloatSet(object())
+            Set(object())
 
     def test_empty_set(self):
         """Test empty set."""
-        empty_set = FloatSet()
+        empty_set = Set()
         self.assertTrue(empty_set.is_empty())
         self.assertEqual(len(empty_set), 0)
         self.assertFalse(bool(empty_set))
 
     def test_normalization(self):
         """Test interval normalization."""
-        # Overlapping intervals should be merged
         intervals = [
-            FloatInterval(2.0, 4.0),
-            FloatInterval(1.0, 3.0),
-            FloatInterval(0.0, 1.0)
+            Interval(2.0, 4.0),
+            Interval(1.0, 3.0),
+            Interval(0.0, 1.0),
         ]
-        fset = FloatSet(intervals)
+        fset = Set(intervals)
         self.assertEqual(len(fset), 1)
         self.assertEqual(fset.intervals[0][0], 0.0)
         self.assertEqual(fset.intervals[0][1], 4.0)
 
-        # Disjoint intervals should stay separate
         intervals = [
-            FloatInterval(0.0, 1.0),
-            FloatInterval(3.0, 4.0),
-            FloatInterval(6.0, 7.0)
+            Interval(0.0, 1.0),
+            Interval(3.0, 4.0),
+            Interval(6.0, 7.0),
         ]
-        fset = FloatSet(intervals)
+        fset = Set(intervals)
         self.assertEqual(len(fset), 3)
 
     def test_normalization_merges_adjacent_representable_intervals(self):
@@ -294,16 +272,12 @@ class TestFloatSet(unittest.TestCase):
         boundary = 1.0
         adjacent = math.nextafter(boundary, math.inf)
 
-        fset = FloatSet(
-            FloatInterval(0.0, boundary),
-            FloatInterval(adjacent, 2.0),
-        )
-
-        self.assertEqual(fset, FloatSet(FloatInterval(0.0, 2.0)))
+        fset = Set(Interval(0.0, boundary), Interval(adjacent, 2.0))
+        self.assertEqual(fset, Set(Interval(0.0, 2.0)))
 
     def test_contains(self):
         """Test point containment in set."""
-        fset = FloatSet([FloatInterval(0.0, 1.0), FloatInterval(3.0, 4.0)])
+        fset = Set([Interval(0.0, 1.0), Interval(3.0, 4.0)])
 
         self.assertTrue(0.5 in fset)
         self.assertTrue(0.0 in fset)
@@ -315,23 +289,22 @@ class TestFloatSet(unittest.TestCase):
 
     def test_union(self):
         """Test set union."""
-        set1 = FloatSet([FloatInterval(0.0, 2.0), FloatInterval(4.0, 6.0)])
-        set2 = FloatSet([FloatInterval(1.0, 5.0)])
+        set1 = Set([Interval(0.0, 2.0), Interval(4.0, 6.0)])
+        set2 = Set([Interval(1.0, 5.0)])
 
         union = set1.union(set2)
-        self.assertEqual(len(union), 1)  # Should merge to single interval
+        self.assertEqual(len(union), 1)
         self.assertEqual(union.intervals[0][0], 0.0)
         self.assertEqual(union.intervals[0][1], 6.0)
 
-        # With empty set
-        empty = FloatSet()
+        empty = Set()
         self.assertEqual(set1.union(empty), set1)
         self.assertEqual(empty.union(set1), set1)
 
     def test_intersection(self):
         """Test set intersection."""
-        set1 = FloatSet([FloatInterval(0.0, 3.0), FloatInterval(5.0, 8.0)])
-        set2 = FloatSet([FloatInterval(2.0, 6.0)])
+        set1 = Set([Interval(0.0, 3.0), Interval(5.0, 8.0)])
+        set2 = Set([Interval(2.0, 6.0)])
 
         inter = set1.intersection(set2)
         self.assertEqual(len(inter), 2)
@@ -340,15 +313,14 @@ class TestFloatSet(unittest.TestCase):
         self.assertEqual(inter.intervals[1][0], 5.0)
         self.assertEqual(inter.intervals[1][1], 6.0)
 
-        # With empty set
-        empty = FloatSet()
+        empty = Set()
         self.assertTrue(set1.intersection(empty).is_empty())
         self.assertTrue(empty.intersection(set1).is_empty())
 
     def test_difference(self):
         """Test set difference."""
-        set1 = FloatSet([FloatInterval(0.0, 5.0)])
-        set2 = FloatSet([FloatInterval(1.0, 2.0), FloatInterval(3.0, 4.0)])
+        set1 = Set([Interval(0.0, 5.0)])
+        set2 = Set([Interval(1.0, 2.0), Interval(3.0, 4.0)])
 
         diff = set1.difference(set2)
         self.assertEqual(len(diff), 3)
@@ -362,59 +334,53 @@ class TestFloatSet(unittest.TestCase):
 
     def test_symmetric_difference(self):
         """Test symmetric difference."""
-        set1 = FloatSet([FloatInterval(0.0, 2.0), FloatInterval(4.0, 6.0)])
-        set2 = FloatSet([FloatInterval(1.0, 5.0)])
+        set1 = Set([Interval(0.0, 2.0), Interval(4.0, 6.0)])
+        set2 = Set([Interval(1.0, 5.0)])
 
         sym_diff = set1.symmetric_difference(set2)
-        # Should be: [0,1) ∪ (2,4) ∪ (5,6]
         self.assertEqual(len(sym_diff), 3)
 
     def test_operators(self):
         """Test operator overloads."""
-        set1 = FloatSet([FloatInterval(0.0, 2.0)])
-        set2 = FloatSet([FloatInterval(1.0, 3.0)])
+        set1 = Set([Interval(0.0, 2.0)])
+        set2 = Set([Interval(1.0, 3.0)])
 
-        # Union
         union = set1 | set2
         self.assertEqual(len(union), 1)
         self.assertEqual(union.intervals[0][0], 0.0)
         self.assertEqual(union.intervals[0][1], 3.0)
 
-        # Intersection
         inter = set1 & set2
         self.assertEqual(len(inter), 1)
         self.assertEqual(inter.intervals[0][0], 1.0)
         self.assertEqual(inter.intervals[0][1], 2.0)
 
-        # Difference
         diff = set1 - set2
         self.assertEqual(len(diff), 1)
         self.assertEqual(diff.intervals[0][0], 0.0)
-        self.assertEqual(diff.intervals[0][1],
-                         math.nextafter(1.0, -math.inf))
+        self.assertEqual(
+            diff.intervals[0][1],
+            math.nextafter(1.0, -math.inf),
+        )
 
-        # Symmetric difference
         sym_diff = set1 ^ set2
         self.assertEqual(len(sym_diff), 2)
 
     def test_from_methods(self):
         """Test factory methods."""
-        # From single interval
-        fset1 = FloatSet.from_single_interval(0.0, 1.0)
+        fset1 = Set.from_single_interval(0.0, 1.0)
         self.assertEqual(len(fset1), 1)
         self.assertEqual(fset1.intervals[0][0], 0.0)
         self.assertEqual(fset1.intervals[0][1], 1.0)
 
-        # From multiple intervals
-        intervals = [FloatInterval(0.0, 1.0), FloatInterval(2.0, 3.0)]
-        fset2 = FloatSet.from_intervals(*intervals)
+        intervals = [Interval(0.0, 1.0), Interval(2.0, 3.0)]
+        fset2 = Set.from_intervals(*intervals)
         self.assertEqual(len(fset2), 2)
 
     def test_to_tuple(self):
         """Test conversion to tuple."""
-        fset = FloatSet([FloatInterval(0.0, 1.0), FloatInterval(2.0, 3.0)])
-        tuples = fset.to_tuple()
-        self.assertEqual(tuples, ((0.0, 1.0), (2.0, 3.0)))
+        fset = Set([Interval(0.0, 1.0), Interval(2.0, 3.0)])
+        self.assertEqual(fset.to_tuple(), ((0.0, 1.0), (2.0, 3.0)))
 
 
 class TestEdgeCases(unittest.TestCase):
@@ -422,16 +388,14 @@ class TestEdgeCases(unittest.TestCase):
 
     def test_touching_intervals(self):
         """Test intervals that touch at endpoints."""
-        a = FloatInterval(0.0, 1.0)
-        b = FloatInterval(1.0, 2.0)
+        a = Interval(0.0, 1.0)
+        b = Interval(1.0, 2.0)
 
-        # With math.nextafter, intervals that exactly touch should merge
         union = a.union(b)
         self.assertEqual(len(union), 1)
         self.assertEqual(union[0][0], 0.0)
         self.assertEqual(union[0][1], 2.0)
 
-        # Intersection of touching intervals should be a single point
         inter = a.intersection(b)
         self.assertFalse(inter.is_empty())
         self.assertEqual(inter[0], 1.0)
@@ -440,41 +404,43 @@ class TestEdgeCases(unittest.TestCase):
 
     def test_single_point_intervals(self):
         """Test single point intervals."""
-        point = FloatInterval(3.0, 3.0)
+        point = Interval(3.0, 3.0)
         self.assertFalse(point.is_empty())
         self.assertEqual(point.length(), 0.0)
         self.assertTrue(3.0 in point)
         self.assertFalse(3.1 in point)
 
-        # Operations with point intervals
-        interval = FloatInterval(2.0, 4.0)
+        interval = Interval(2.0, 4.0)
         self.assertTrue(point.is_subset(interval))
         self.assertEqual(interval.intersection(point), point)
-        self.assertEqual(interval.union(point), (FloatInterval(2.0, 4.0),))
+        self.assertEqual(interval.union(point), (Interval(2.0, 4.0),))
+
+    def test_point_wrapper(self):
+        """Point wrappers should behave like line scalars."""
+        point = Point(3.0)
+        self.assertEqual(point.value, 3.0)
+        self.assertEqual(point.distance_to(5.0), 2.0)
 
     def test_floating_point_precision(self):
         """Test handling of floating point precision."""
-        # Leave one representable float between the intervals.
-        a = FloatInterval(0.0, 1.0)
+        a = Interval(0.0, 1.0)
         adjacent = math.nextafter(1.0, math.inf)
-        b = FloatInterval(math.nextafter(adjacent, math.inf), 2.0)
+        b = Interval(math.nextafter(adjacent, math.inf), 2.0)
 
-        # These are disjoint in the explicit float-lattice model.
         union = a.union(b)
         self.assertEqual(len(union), 2)
 
-        # Intersection should be empty
         inter = a.intersection(b)
         self.assertTrue(inter.is_empty())
 
 
 class TestRealModule(unittest.TestCase):
-    """Test the float-based real aliases."""
+    """Test the real-line aliases."""
 
     def test_real_aliases(self):
-        """Test that geo.real exposes the active float model."""
-        self.assertIs(real, float)
-        self.assertIs(realset, FloatSet)
+        """Test that ``geo.real`` exposes the active line model."""
+        self.assertIs(real, Point)
+        self.assertIs(realset, Set)
         self.assertTrue(EMPTY_REAL_INTERVAL.is_empty())
         self.assertTrue(ALL_REALS_INTERVAL.is_full())
 

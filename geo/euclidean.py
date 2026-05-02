@@ -8,7 +8,7 @@ from typing import Callable, Tuple
 
 import numpy as np
 
-from .floatset import FloatInterval, FloatSet
+from .line import Interval, Set
 
 
 def _coerce_coordinate_array(value: object) -> np.ndarray:
@@ -218,7 +218,7 @@ class FloatPoint(tuple):
 class EuclideanNeighborhood(tuple):
     """Rectangular neighborhood in Euclidean space.
 
-    The neighborhood is modeled as a Cartesian product of ``FloatSet``
+    The neighborhood is modeled as a Cartesian product of line ``Set``
     coordinate constraints.
     """
 
@@ -228,9 +228,9 @@ class EuclideanNeighborhood(tuple):
         """Create a neighborhood from coordinate sets or sequences."""
         if len(coordinate_sets) == 1 and isinstance(
             coordinate_sets[0], Sequence
-        ) and not isinstance(coordinate_sets[0], (str, bytes, FloatSet)):
+        ) and not isinstance(coordinate_sets[0], (str, bytes, Set)):
             coordinate_sets = tuple(coordinate_sets[0])
-        normalized = tuple(FloatSet(coordinate_set)
+        normalized = tuple(Set(coordinate_set)
                            for coordinate_set in coordinate_sets)
         return super().__new__(cls, normalized)
 
@@ -261,20 +261,20 @@ class EuclideanNeighborhood(tuple):
 
         Each bound may be:
 
-        - ``FloatInterval``
-        - ``FloatSet``
+        - ``line.Interval``
+        - ``line.Set``
         - a pair ``(left, right)``
         """
         coordinate_sets = []
         for bound in bounds:
-            if isinstance(bound, FloatSet):
+            if isinstance(bound, Set):
                 coordinate_sets.append(bound)
-            elif isinstance(bound, FloatInterval):
-                coordinate_sets.append(FloatSet(bound))
+            elif isinstance(bound, Interval):
+                coordinate_sets.append(Set(bound))
             elif (isinstance(bound, Sequence) and
                   not isinstance(bound, (str, bytes)) and len(bound) == 2):
                 coordinate_sets.append(
-                    FloatSet.from_single_interval(bound[0], bound[1])
+                    Set.from_single_interval(bound[0], bound[1])
                 )
             else:
                 raise TypeError(f"Unsupported neighborhood bound: {bound!r}")
@@ -283,7 +283,7 @@ class EuclideanNeighborhood(tuple):
     @classmethod
     def whole(cls, dim: int) -> "EuclideanNeighborhood":
         """Return the whole Euclidean space of the given dimension."""
-        return cls(*(FloatSet(FloatInterval(-math.inf, math.inf))
+        return cls(*(Set(Interval(-math.inf, math.inf))
                      for _ in range(dim)))
 
 

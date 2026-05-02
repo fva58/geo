@@ -3,15 +3,9 @@
 import unittest
 from dataclasses import dataclass
 
-from geo import (
-    Atlas,
-    Chart,
-    ChartTransition,
-    EuclideanNeighborhood,
-    FloatPoint,
-    Manifold,
-    ManifoldChart,
-)
+from geo.diffeomorphism import Chart
+from geo.euclidean import EuclideanNeighborhood, FloatPoint
+from geo.manifold import Atlas, ChartTransition, Manifold, ManifoldChart
 
 
 @dataclass(frozen=True)

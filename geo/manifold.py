@@ -374,19 +374,10 @@ def refine_neighborhoods(
     neighborhoods: tuple[Neighborhood[PointT], ...],
     factor: int = 2,
 ) -> tuple[Neighborhood[PointT], ...]:
-    """Return a cover with diameter reduced by at least ``factor``."""
-    factor = int(factor)
-    if factor < 2:
-        raise ValueError("Refinement factor must be at least 2")
-    depth = math.ceil(math.log2(factor))
-    current = tuple(neighborhoods)
-    for _ in range(depth):
-        current = tuple(
-            child
-            for neighborhood in current
-            for child in neighborhood.subdivide()
-        )
-    return current
+    """Compatibility wrapper for neighborhood refinement."""
+    from .space.base import refine_neighborhoods as refine
+
+    return refine(neighborhoods, factor=factor)
 
 
 @dataclass(frozen=True)

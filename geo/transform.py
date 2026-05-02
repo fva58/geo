@@ -1,13 +1,11 @@
-"""Transforms between spaces and visualization adapters."""
+"""Transforms between spaces."""
 
 from __future__ import annotations
 
 from typing import Callable, Generic, Protocol, TypeVar, runtime_checkable
 
 from .diffeomorphism import Map
-from .euclidean import FloatPoint
-from .riemannian import EuclideanMetricSpace, MetricSpace
-from .space import Space
+from .space.base import Space
 
 
 SourceT = TypeVar("SourceT")
@@ -20,11 +18,11 @@ class Transform(Map[SourceT, TargetT], Protocol[SourceT, TargetT]):
     """Protocol for a point transform between ambient spaces."""
 
     @property
-    def source_space(self) -> MetricSpace[SourceT]:
+    def source_space(self) -> Space[SourceT]:
         """Return the source ambient space."""
 
     @property
-    def target_space(self) -> MetricSpace[TargetT]:
+    def target_space(self) -> Space[TargetT]:
         """Return the target ambient space."""
 
 
@@ -33,8 +31,8 @@ class PointTransform(Generic[SourceT, TargetT]):
 
     def __init__(
         self,
-        source_space: MetricSpace[SourceT],
-        target_space: MetricSpace[TargetT],
+        source_space: Space[SourceT],
+        target_space: Space[TargetT],
         forward: Callable[[SourceT], TargetT],
         name: str = "",
     ) -> None:
@@ -45,12 +43,12 @@ class PointTransform(Generic[SourceT, TargetT]):
         self.name = name
 
     @property
-    def source_space(self) -> MetricSpace[SourceT]:
+    def source_space(self) -> Space[SourceT]:
         """Return the source ambient space."""
         return self._source_space
 
     @property
-    def target_space(self) -> MetricSpace[TargetT]:
+    def target_space(self) -> Space[TargetT]:
         """Return the target ambient space."""
         return self._target_space
 
@@ -92,7 +90,7 @@ class PointTransform(Generic[SourceT, TargetT]):
 
 
 def identity_transform(
-    space: MetricSpace[SourceT],
+    space: Space[SourceT],
     name: str = "",
 ) -> PointTransform[SourceT, SourceT]:
     """Return the identity transform on one space."""
@@ -104,40 +102,8 @@ def identity_transform(
     )
 
 
-def visualization_transform_2d(
-    space: Space[SourceT],
-    method: str = "default",
-    name: str = "",
-) -> PointTransform[SourceT, FloatPoint]:
-    """Return a transform from intrinsic points into ``R^2``."""
-    target_space = EuclideanMetricSpace(2, name=f"{space.space_kind}-vis2d")
-    return PointTransform(
-        space,
-        target_space,
-        forward=lambda point: FloatPoint(space.to_2d(point, method=method)),
-        name=name or f"{space.space_kind}-to-2d",
-    )
-
-
-def visualization_transform_3d(
-    space: Space[SourceT],
-    method: str = "default",
-    name: str = "",
-) -> PointTransform[SourceT, FloatPoint]:
-    """Return a transform from intrinsic points into ``R^3``."""
-    target_space = EuclideanMetricSpace(3, name=f"{space.space_kind}-vis3d")
-    return PointTransform(
-        space,
-        target_space,
-        forward=lambda point: FloatPoint(space.to_3d(point, method=method)),
-        name=name or f"{space.space_kind}-to-3d",
-    )
-
-
 __all__ = [
     "Transform",
     "PointTransform",
     "identity_transform",
-    "visualization_transform_2d",
-    "visualization_transform_3d",
 ]

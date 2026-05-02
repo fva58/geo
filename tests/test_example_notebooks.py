@@ -16,7 +16,7 @@ class TestExampleNotebooks(unittest.TestCase):
         return json.loads((EXAMPLES / name).read_text(encoding="utf-8"))
 
     def test_updated_metric_notebook_uses_current_names(self):
-        """The higher-level workflow notebook should use metric terminology."""
+        """The higher-level workflow notebook should use space terminology."""
         notebook = self._load_notebook(
             "03_riemannian_objects_and_projections.ipynb"
         )
@@ -24,16 +24,16 @@ class TestExampleNotebooks(unittest.TestCase):
             "".join(cell.get("source", []))
             for cell in notebook["cells"]
         )
-        self.assertIn("Metric Objects", text)
-        self.assertIn("MetricGeometricObject", text)
+        self.assertIn("Objects In Spaces", text)
+        self.assertIn("GeometricObject", text)
         self.assertNotIn("RiemannianGeometricObject", text)
 
     def test_set_operations_notebook_uses_metric_wrapper(self):
-        """The 2D set-operations notebook should use metric object wrappers."""
+        """The 2D set-operations notebook should use object wrappers."""
         notebook = self._load_notebook("04_set_operations_2d.ipynb")
         text = "\n".join(
             "".join(cell.get("source", []))
             for cell in notebook["cells"]
         )
-        self.assertIn("MetricGeometricObject", text)
+        self.assertIn("GeometricObject", text)
         self.assertNotIn("RiemannianGeometricObject", text)

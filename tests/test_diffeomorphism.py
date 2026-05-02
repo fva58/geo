@@ -2,7 +2,7 @@
 
 import unittest
 
-from geo import Chart, Diffeomorphism, InvertibleMap, Map
+from geo.diffeomorphism import Chart, Diffeomorphism, InvertibleMap, Map
 
 
 class ShiftByOne:
