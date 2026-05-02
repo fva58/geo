@@ -80,10 +80,6 @@ class Neighborhood:
         """Return the neighborhood diameter."""
         return 0.0
 
-    def probe_points(self) -> tuple[FloatPoint, ...]:
-        """Return points used for local probing."""
-        return (_POINT,)
-
     def subdivide(self) -> tuple["Neighborhood", ...]:
         """Return the unique refinement."""
         return (self,)

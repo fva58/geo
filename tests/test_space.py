@@ -35,7 +35,6 @@ class TestSpaceProtocol(unittest.TestCase):
         neighborhood = space.neighborhood_at(())
         self.assertEqual(neighborhood.diameter(), 0.0)
         self.assertEqual(neighborhood.outer_radius(), 0.0)
-        self.assertEqual(neighborhood.probe_points(), (FloatPoint.origin(0),))
 
     def test_space_factories_dispatch_on_dimension(self):
         """Factories should choose the correct family member by dimension."""

@@ -279,25 +279,8 @@ def classify_local_object(
     obj,
     neighborhood: Neighborhood[PointT],
 ) -> LocalObjectModel[PointT]:
-    """Classify an object inside one neighborhood by finite probing."""
-    center = neighborhood.center_point()
-    if center in obj:
-        return LocalObjectModel(
-            "cone",
-            neighborhood,
-            witness_point=center,
-            local_model=obj.local_model_at(center),
-        )
-
-    probes = neighborhood.probe_points()
-    inside = [point for point in probes if point in obj]
-    if not inside:
-        return LocalObjectModel("empty", neighborhood)
-    return LocalObjectModel(
-        "complex",
-        neighborhood,
-        witness_point=inside[0],
-    )
+    """Classify an object inside one neighborhood."""
+    return obj.classify_neighborhood(neighborhood)
 
 
 def classify_neighborhoods(

@@ -63,9 +63,6 @@ class Neighborhood(Protocol[PointT]):
     def center_point(self) -> PointT:
         """Return the distinguished center point."""
 
-    def probe_points(self) -> tuple[PointT, ...]:
-        """Return finitely many test points for local classification."""
-
     def subdivide(self) -> tuple["Neighborhood[PointT]", ...]:
         """Return a finite refinement cover by smaller neighborhoods."""
 
@@ -151,25 +148,6 @@ class BoxNeighborhood(Generic[PointT]):
     def diameter(self) -> float:
         """Return an upper bound on neighborhood diameter."""
         return 2.0 * self.outer_radius()
-
-    def probe_points(self) -> tuple[PointT, ...]:
-        """Return the center and box corners mapped back to the manifold."""
-        bounds = _single_interval_bounds(self.image)
-        coordinate_points = [FloatPoint(
-            [(left + right) / 2.0 for left, right in bounds]
-        )]
-        coordinate_points.extend(
-            FloatPoint(vertex)
-            for vertex in itertools.product(
-                *((left, right) for left, right in bounds)
-            )
-        )
-        probes = []
-        for coordinates in coordinate_points:
-            point = self.chart.inverse(coordinates)
-            if point not in probes:
-                probes.append(point)
-        return tuple(probes)
 
     def subdivide(self) -> tuple["BoxNeighborhood[PointT]", ...]:
         """Split the box image into ``2^dim`` smaller box neighborhoods."""

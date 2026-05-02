@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+import itertools
 from typing import TYPE_CHECKING, Callable, Generic, Protocol, TypeVar, runtime_checkable
 
 import numpy as np
@@ -107,6 +108,31 @@ def _contains_linear_image(
     return source_cone.contains(FloatPoint(source_array))
 
 
+def _classification_points(neighborhood: Neighborhood[PointT]) -> tuple[PointT, ...]:
+    """Return private test points used by object-side classification."""
+    bounds = []
+    for coordinate_set in neighborhood.image:
+        if len(coordinate_set) != 1:
+            raise ValueError("Classification requires box neighborhoods")
+        interval = coordinate_set[0]
+        bounds.append((float(interval[0]), float(interval[1])))
+    coordinate_points = [FloatPoint(
+        [(left + right) / 2.0 for left, right in bounds]
+    )]
+    coordinate_points.extend(
+        FloatPoint(vertex)
+        for vertex in itertools.product(
+            *((left, right) for left, right in bounds)
+        )
+    )
+    points = []
+    for coordinates in coordinate_points:
+        point = neighborhood.chart.inverse(coordinates)
+        if point not in points:
+            points.append(point)
+    return tuple(points)
+
+
 class ChartedGeometricObject(Generic[PointT]):
     """Geometric object with local cone models on an ambient manifold."""
 
@@ -146,7 +172,40 @@ class ChartedGeometricObject(Generic[PointT]):
         self,
         neighborhood: Neighborhood[PointT],
     ) -> LocalObjectModel[PointT]:
-        return classify_local_object(self, neighborhood)
+        center = neighborhood.center_point()
+        if center in self:
+            local_model = self.local_model_at(center)
+            for point in _classification_points(neighborhood):
+                actual = point in self
+                try:
+                    predicted = local_model.chart(point) in local_model.cone
+                except ValueError:
+                    return LocalObjectModel(
+                        "complex",
+                        neighborhood,
+                        witness_point=point,
+                    )
+                if actual != predicted:
+                    return LocalObjectModel(
+                        "complex",
+                        neighborhood,
+                        witness_point=point,
+                    )
+            return LocalObjectModel(
+                "cone",
+                neighborhood,
+                witness_point=center,
+                local_model=local_model,
+            )
+
+        for point in _classification_points(neighborhood):
+            if point in self:
+                return LocalObjectModel(
+                    "complex",
+                    neighborhood,
+                    witness_point=point,
+                )
+        return LocalObjectModel("empty", neighborhood)
 
     def classify_neighborhoods(
         self,

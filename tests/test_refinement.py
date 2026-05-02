@@ -19,7 +19,7 @@ class TestNeighborhoodRefinement(unittest.TestCase):
     """Test the refinement-oriented manifold layer."""
 
     def test_chart_neighborhood_on_real_line(self):
-        """A chart neighborhood should expose radial bounds and probes."""
+        """A chart neighborhood should expose radial bounds."""
         space = space_pkg.line.Space()
         neighborhood = space.neighborhood_at(0.5, 0.5, name="unit-interval")
 
@@ -30,7 +30,6 @@ class TestNeighborhoodRefinement(unittest.TestCase):
         self.assertAlmostEqual(neighborhood.outer_radius(), 0.5)
         self.assertAlmostEqual(neighborhood.diameter(), 1.0)
         self.assertEqual(neighborhood.center_point(), 0.5)
-        self.assertEqual(neighborhood.probe_points(), (0.5, 0.0, 1.0))
 
     def test_neighborhood_cover_refines(self):
         """A cover should refine into smaller neighborhoods."""
@@ -94,6 +93,18 @@ class TestNeighborhoodRefinement(unittest.TestCase):
 
         self.assertEqual(local.status, "complex")
         self.assertIn(local.witness_point, upper)
+        self.assertIsNone(local.local_model)
+
+    def test_large_neighborhood_is_not_forced_to_be_cone(self):
+        """A large neighborhood can contain more than one local cone patch."""
+        space = space_pkg.euclidean.Space(2)
+        cube = space.cube(FloatPoint(1.0, 1.0), 1.0, name="cube")
+        neighborhood = space.neighborhood_at(FloatPoint(0.0, 0.0), 10.0)
+
+        local = classify_local_object(cube, neighborhood)
+
+        self.assertEqual(local.status, "complex")
+        self.assertEqual(local.witness_point, FloatPoint(10.0, 10.0))
         self.assertIsNone(local.local_model)
 
     def test_standard_spaces_expose_intrinsic_neighborhoods(self):
