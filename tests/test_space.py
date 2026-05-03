@@ -60,6 +60,13 @@ class TestSpaceProtocol(unittest.TestCase):
         """Euclidean space should still satisfy the space protocol."""
         self.assertIsInstance(space_pkg.euclidean.Space(2), Space)
 
+    def test_euclidean_space_exposes_configurable_max_size(self):
+        """Euclidean full_cover should be bounded by a configurable size."""
+        space = space_pkg.euclidean.Space(2, max_size=1.0)
+
+        self.assertEqual(space.max_size, 1.0)
+        self.assertEqual(len(space.full_cover(0.5)), 9)
+
     def test_sphere_distance_and_visualization(self):
         """The sphere should use intrinsic distance."""
         space = space_pkg.sphere.Space(radius=2.0)

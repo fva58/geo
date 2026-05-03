@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import itertools
+import math
 
 from ..euclidean import EuclideanNeighborhood, FloatPoint, FloatVector
 from ..gobject import GeometricObject
@@ -38,8 +39,18 @@ class Neighborhood(BoxNeighborhood[FloatPoint]):
 class Space(ChartedSpace[FloatPoint]):
     """Euclidean space with its standard metric."""
 
-    def __init__(self, dim: int, name: str = "") -> None:
+    def __init__(
+        self,
+        dim: int,
+        name: str = "",
+        max_size: float | None = None,
+    ) -> None:
         self._dim = int(dim)
+        self.max_size = None if max_size is None else float(max_size)
+        if self.max_size is not None and (
+            self.max_size <= 0.0 or not math.isfinite(self.max_size)
+        ):
+            raise ValueError("max_size must be a positive finite number")
         super().__init__(
             EuclideanSpace(self._dim),
             distance=lambda left, right: FloatPoint(left).distance_to(
@@ -97,32 +108,45 @@ class Space(ChartedSpace[FloatPoint]):
         radius = float(radius)
         if radius <= 0.0:
             raise ValueError("Cover radius must be positive")
+        step = 2.0 * radius
 
-        def shell_indices(shell: int):
-            if self.dim == 1:
-                if shell == 0:
-                    yield (0,)
-                else:
-                    yield (shell,)
-                    yield (-shell,)
-                return
-            ranges = [range(-shell, shell + 1) for _ in range(self.dim)]
-            for index in itertools.product(*ranges):
-                if max(abs(value) for value in index) == shell:
-                    yield index
+        if self.max_size is None:
+            def shell_indices(shell: int):
+                if self.dim == 1:
+                    if shell == 0:
+                        yield (0,)
+                    else:
+                        yield (shell,)
+                        yield (-shell,)
+                    return
+                ranges = [range(-shell, shell + 1) for _ in range(self.dim)]
+                for index in itertools.product(*ranges):
+                    if max(abs(value) for value in index) == shell:
+                        yield index
 
-        def generator():
-            step = 2.0 * radius
-            shell = 0
-            while True:
-                for index in shell_indices(shell):
-                    yield self.neighborhood_at(
-                        FloatPoint([step * value for value in index]),
-                        radius,
-                    )
-                shell += 1
+            def generator():
+                shell = 0
+                while True:
+                    for index in shell_indices(shell):
+                        yield self.neighborhood_at(
+                            FloatPoint([step * value for value in index]),
+                            radius,
+                        )
+                    shell += 1
 
-        return generator()
+            return generator()
+
+        shell = int(math.ceil(self.max_size / step))
+        return tuple(
+            self.neighborhood_at(
+                FloatPoint([step * value for value in index]),
+                radius,
+            )
+            for index in itertools.product(
+                range(-shell, shell + 1),
+                repeat=self.dim,
+            )
+        )
 
     def refine_cover(
         self,

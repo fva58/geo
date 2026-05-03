@@ -131,7 +131,7 @@ class TestNeighborhoodRefinement(unittest.TestCase):
         torus = space_pkg.torus.Space()
 
         line_cover = tuple(itertools.islice(line.full_cover(0.5), 5))
-        plane_cover = tuple(itertools.islice(plane.full_cover(0.5), 9))
+        plane_cover = plane.full_cover(0.5)
         circle_cover = circle.full_cover(0.8)
         sphere_cover = sphere.full_cover(0.8, resolution=8)
         torus_cover = torus.full_cover(1.0)
@@ -148,6 +148,24 @@ class TestNeighborhoodRefinement(unittest.TestCase):
         self.assertLess(
             max(neighborhood.diameter() for neighborhood in refined),
             circle_cover[0].diameter(),
+        )
+
+    def test_euclidean_full_cover_is_finite_and_bounded_by_max_size(self):
+        """Euclidean full_cover should respect the configured finite size."""
+        plane = space_pkg.euclidean.Space(2, max_size=1.0)
+
+        cover = plane.full_cover(0.5)
+
+        self.assertEqual(len(cover), 9)
+        self.assertTrue(any(FloatPoint(0.0, 0.0) in neighborhood for neighborhood in cover))
+        centers = {neighborhood.center_point().to_tuple() for neighborhood in cover}
+        self.assertEqual(
+            centers,
+            {
+                (-1.0, -1.0), (-1.0, 0.0), (-1.0, 1.0),
+                (0.0, -1.0), (0.0, 0.0), (0.0, 1.0),
+                (1.0, -1.0), (1.0, 0.0), (1.0, 1.0),
+            },
         )
 
     def test_refine_until_reduces_active_outer_radius(self):

@@ -22,7 +22,6 @@
 - **Packaging**: Follow setuptools configuration in pyproject.toml
 
 ## Project Context
-- This is a geometry package for Riemannian spaces
+- This is a geometry package for Metric spaces
 - Target: PyPI package distribution
-- Early stage project - tests directory currently empty
 - MIT licensed, Russian author with English documentation requirement
