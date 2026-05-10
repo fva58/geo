@@ -15,7 +15,8 @@ def _previous_float(value: float) -> float:
 
 
 def _intervals_are_separated(left: "Interval", right: "Interval") -> bool:
-    """Return whether two ordered intervals are separated on the float lattice."""
+    """Return whether two ordered intervals are separated on
+    the float lattice."""
     return left.right < _previous_float(right.left)
 
 
