@@ -189,6 +189,11 @@ class Space(SpaceBase):
         """Return the torus dimension."""
         return self._dim
 
+    @property
+    def point_type(self) -> type:
+        """Return the type of points in this space."""
+        return TorusPoint
+
     def __repr__(self) -> str:
         return f"Space(dim={self.dim}, radii={self.radii})"
 

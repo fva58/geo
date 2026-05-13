@@ -57,6 +57,11 @@ class Space(ChartedSpace[FloatPoint]):
             ),
         )
 
+    @property
+    def point_type(self) -> type:
+        """Return the type of points in this space."""
+        return FloatPoint
+
     def _coerce_point(self, point: object) -> FloatPoint:
         point = FloatPoint(point)
         if point.dim != self.dim:

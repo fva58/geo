@@ -56,6 +56,11 @@ class Space(ChartedSpace[float]):
             distance=lambda left, right: abs(float(left) - float(right)),
         )
 
+    @property
+    def point_type(self) -> type:
+        """Return the type of points in this space."""
+        return float
+
     def point(
         self,
         point: object,

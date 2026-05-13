@@ -16,8 +16,18 @@ from ..manifold import Manifold, ManifoldChart
 PointT = TypeVar("PointT")
 
 
-class Space(Manifold[PointT], abc.ABC):
+class Space(Manifold[PointT], abc.ABC, Generic[PointT]):
     """Abstract base class for spaces with distance and neighborhood covers."""
+
+    @property
+    @abc.abstractmethod
+    def dim(self) -> int:
+        """Return the space dimension."""
+
+    @property
+    @abc.abstractmethod
+    def point_type(self) -> type:
+        """Return the type of points in this space."""
 
     @abc.abstractmethod
     def distance(self, left: PointT, right: PointT) -> float:

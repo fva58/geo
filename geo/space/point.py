@@ -95,6 +95,11 @@ class Space(SpaceBase):
         """Return the space dimension."""
         return 0
 
+    @property
+    def point_type(self) -> type:
+        """Return the type of points in this space."""
+        return FloatPoint
+
     def __repr__(self) -> str:
         """Return a debug representation."""
         return "Space()"
