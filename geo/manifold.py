@@ -80,39 +80,7 @@ class ManifoldChart(Generic[PointT]):
         return point
 
 
-class ChartTransition(Generic[PointT]):
-    """Coordinate transition between two charts on the same manifold patch."""
-
-    def __init__(
-        self,
-        source_chart: ManifoldChart[PointT],
-        target_chart: ManifoldChart[PointT],
-    ) -> None:
-        """Initialize a transition from source coordinates to target coordinates."""
-        if source_chart.dim != target_chart.dim:
-            raise ValueError(
-                "Chart dimensions do not match: "
-                f"{source_chart.dim} != {target_chart.dim}"
-            )
-        self.source_chart = source_chart
-        self.target_chart = target_chart
-        self.dim = source_chart.dim
-
-    def __repr__(self) -> str:
-        """Return a debug representation."""
-        return f"ChartTransition(dim={self.dim})"
-
-    def __call__(self, coordinates: FloatPoint) -> FloatPoint:
-        """Apply the transition map in coordinates."""
-        return self.target_chart(self.source_chart.inverse(coordinates))
-
-    def inverse(self, coordinates: FloatPoint) -> FloatPoint:
-        """Apply the inverse transition map."""
-        return self.source_chart(self.target_chart.inverse(coordinates))
-
-
 __all__ = [
     "Manifold",
     "ManifoldChart",
-    "ChartTransition",
 ]

@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 from geo.diffeomorphism import Chart
 from geo.euclidean import EuclideanNeighborhood, FloatPoint
-from geo.manifold import ChartTransition, Manifold, ManifoldChart
+from geo.manifold import Manifold, ManifoldChart
 
 
 @dataclass(frozen=True)
@@ -81,33 +81,6 @@ class TestManifoldChart(unittest.TestCase):
         with self.assertRaises(ValueError):
             chart.inverse(FloatPoint(2.0))
 
-
-class TestAtlasAndTransitions(unittest.TestCase):
-    """Test chart transitions and finite atlases."""
-
-    def test_chart_transition(self):
-        """Transitions should convert coordinates between charts."""
-        manifold = OpenIntervalManifold(-10.0, 10.0)
-        image_a = EuclideanNeighborhood.box((-10.0, 10.0))
-        image_b = EuclideanNeighborhood.box((-9.0, 11.0))
-        chart_a = ManifoldChart(
-            lambda point: FloatPoint(point.x),
-            lambda coordinates: LinePoint(coordinates[0]),
-            dim=1,
-            domain_contains=manifold.contains,
-            image=image_a,
-        )
-        chart_b = ManifoldChart(
-            lambda point: FloatPoint(point.x + 1.0),
-            lambda coordinates: LinePoint(coordinates[0] - 1.0),
-            dim=1,
-            domain_contains=manifold.contains,
-            image=image_b,
-        )
-        transition = ChartTransition(chart_a, chart_b)
-        self.assertIsInstance(transition, Chart)
-        self.assertEqual(transition(FloatPoint(2.0)).to_tuple(), (3.0,))
-        self.assertEqual(transition.inverse(FloatPoint(3.0)).to_tuple(), (2.0,))
 
 
 
