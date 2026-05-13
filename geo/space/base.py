@@ -24,11 +24,11 @@ class Space(Manifold[PointT], abc.ABC):
         """Return the distance between two points."""
 
     @abc.abstractmethod
-    def full_cover(self, radius: float):
+    def full(self, radius: float):
         """Return a full cover of the space by neighborhoods."""
 
     @abc.abstractmethod
-    def refine_cover(self, neighborhoods, factor: int = 2):
+    def refine(self, neighborhoods, factor: int = 2):
         """Return a covering refinement with smaller diameters."""
 
 

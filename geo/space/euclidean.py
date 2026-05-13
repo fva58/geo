@@ -98,7 +98,7 @@ class Space(ChartedSpace[FloatPoint]):
             EuclideanNeighborhood.box(*(((-radius, radius),) * self.dim)),
         )
 
-    def full_cover(self, radius: float):
+    def full(self, radius: float):
         radius = float(radius)
         if radius <= 0.0:
             raise ValueError("Cover radius must be positive")
@@ -142,7 +142,7 @@ class Space(ChartedSpace[FloatPoint]):
             )
         )
 
-    def refine_cover(
+    def refine(
         self,
         neighborhoods,
         factor: int = 2,

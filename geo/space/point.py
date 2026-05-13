@@ -146,11 +146,11 @@ class Space(SpaceBase):
             raise ValueError("Neighborhood radius must be positive")
         return Neighborhood(self, self._chart)
 
-    def full_cover(self, radius: float) -> tuple[Neighborhood, ...]:
+    def full(self, radius: float) -> tuple[Neighborhood, ...]:
         """Return the unique full cover."""
         return (self.neighborhood_at((), radius),)
 
-    def refine_cover(
+    def refine(
         self,
         neighborhoods,
         factor: int = 2,

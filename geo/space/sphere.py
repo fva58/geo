@@ -284,7 +284,7 @@ class Space(SpaceBase):
             EuclideanNeighborhood.box(*(((-radius, radius),) * self.dim)),
         )
 
-    def full_cover(
+    def full(
         self,
         radius: float,
         resolution: int | None = None,
@@ -330,7 +330,7 @@ class Space(SpaceBase):
             for direction in directions
         )
 
-    def refine_cover(
+    def refine(
         self,
         neighborhoods,
         factor: int = 2,

@@ -122,7 +122,7 @@ class TestNeighborhoodRefinement(unittest.TestCase):
         self.assertIn(north, sphere.neighborhood_at(north, 0.5))
         self.assertIn((0.0, 0.0), torus.neighborhood_at((0.0, 0.0), 0.5))
 
-    def test_spaces_expose_full_cover_and_refinement_api(self):
+    def test_spaces_expose_full_and_refinement_api(self):
         """Spaces should expose full covers and smaller-diameter refinements."""
         line = space_pkg.line.Space()
         circle = space_pkg.circle.Space()
@@ -130,11 +130,11 @@ class TestNeighborhoodRefinement(unittest.TestCase):
         sphere = space_pkg.sphere.Space()
         torus = space_pkg.torus.Space()
 
-        line_cover = tuple(itertools.islice(line.full_cover(0.5), 5))
-        plane_cover = plane.full_cover(0.5)
-        circle_cover = circle.full_cover(0.8)
-        sphere_cover = sphere.full_cover(0.8, resolution=8)
-        torus_cover = torus.full_cover(1.0)
+        line_cover = tuple(itertools.islice(line.full(0.5), 5))
+        plane_cover = plane.full(0.5)
+        circle_cover = circle.full(0.8)
+        sphere_cover = sphere.full(0.8, resolution=8)
+        torus_cover = torus.full(1.0)
 
         self.assertTrue(any(0.0 in neighborhood for neighborhood in line_cover))
         self.assertTrue(any(FloatPoint(0.0, 0.0) in neighborhood for neighborhood in plane_cover))
@@ -143,18 +143,18 @@ class TestNeighborhoodRefinement(unittest.TestCase):
         self.assertTrue(any(north in neighborhood for neighborhood in sphere_cover))
         self.assertTrue(any((0.0, 0.0) in neighborhood for neighborhood in torus_cover))
 
-        refined = circle.refine_cover(circle_cover[:1], factor=4)
+        refined = circle.refine(circle_cover[:1], factor=4)
         self.assertTrue(refined)
         self.assertLess(
             max(neighborhood.diameter() for neighborhood in refined),
             circle_cover[0].diameter(),
         )
 
-    def test_euclidean_full_cover_is_finite_and_bounded_by_max_size(self):
-        """Euclidean full_cover should respect the configured finite size."""
+    def test_euclidean_full_is_finite_and_bounded_by_max_size(self):
+        """Euclidean full should respect the configured finite size."""
         plane = space_pkg.euclidean.Space(2, max_size=1.0)
 
-        cover = plane.full_cover(0.5)
+        cover = plane.full(0.5)
 
         self.assertEqual(len(cover), 9)
         self.assertTrue(any(FloatPoint(0.0, 0.0) in neighborhood for neighborhood in cover))

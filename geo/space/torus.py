@@ -261,7 +261,7 @@ class Space(SpaceBase):
             EuclideanNeighborhood.box(*(((-radius, radius),) * self.dim)),
         )
 
-    def full_cover(
+    def full(
         self,
         radius: float,
     ) -> tuple[Neighborhood, ...]:
@@ -280,7 +280,7 @@ class Space(SpaceBase):
             for point in itertools.product(*axis_values)
         )
 
-    def refine_cover(
+    def refine(
         self,
         neighborhoods,
         factor: int = 2,
