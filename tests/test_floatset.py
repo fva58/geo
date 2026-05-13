@@ -3,8 +3,11 @@
 import math
 import unittest
 
-from geo.real import ALL_REALS_INTERVAL, EMPTY_REAL_INTERVAL, real, realset
-from geo.space.line import FULL_INTERVAL, Interval, Point, Set
+from geo.space.line import ALL_REALS_INTERVAL, EMPTY_INTERVAL, FULL_INTERVAL, Interval, Point, Set
+
+real = Point
+realset = Set
+EMPTY_REAL_INTERVAL = EMPTY_INTERVAL
 
 
 class TestInterval(unittest.TestCase):
