@@ -14,10 +14,10 @@ def _previous_float(value: float) -> float:
     return math.nextafter(value, -math.inf)
 
 
-def _intervals_are_separated(left: "Interval", right: "Interval") -> bool:
+def _intervals_are_separated(start: "Interval", end: "Interval") -> bool:
     """Return whether two ordered intervals are separated on
     the float lattice."""
-    return left.right < _previous_float(right.left)
+    return start.end < _previous_float(end.start)
 
 
 def _is_scalar(value: object) -> bool:
@@ -54,34 +54,34 @@ class Interval(tuple):
 
     __slots__ = ()
 
-    def __new__(cls, left: object, right: object | None = None) -> "Interval":
-        if right is None:
-            if isinstance(left, cls):
-                return left
-            if isinstance(left, ValidTuple) and len(left) == 2:
-                right = left[1]
-                left = left[0]
+    def __new__(cls, start: object, end: object | None = None) -> "Interval":
+        if end is None:
+            if isinstance(start, cls):
+                return start
+            if isinstance(start, ValidTuple) and len(start) == 2:
+                end = start[1]
+                start = start[0]
             else:
-                right = left
-        return super().__new__(cls, (float(left), float(right)))
+                end = start
+        return super().__new__(cls, (float(start), float(end)))
 
     @property
-    def left(self) -> float:
+    def start(self) -> float:
         return self[0]
 
     @property
-    def right(self) -> float:
+    def end(self) -> float:
         return self[1]
 
     def __repr__(self) -> str:
-        return f"Interval({self.left}, {self.right})"
+        return f"Interval({self.start}, {self.end})"
 
     def __str__(self) -> str:
         if self.is_empty():
             return "∅"
-        if self.left == self.right:
-            return str(self.left)
-        return f"[{self.left}, {self.right}]"
+        if self.start == self.end:
+            return str(self.start)
+        return f"[{self.start}, {self.end}]"
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Interval):
@@ -100,18 +100,18 @@ class Interval(tuple):
         return not self.is_empty()
 
     def is_empty(self) -> bool:
-        return self.left > self.right
+        return self.start > self.end
 
     def is_full(self) -> bool:
-        return math.isinf(self.left) and math.isinf(self.right)
+        return math.isinf(self.start) and math.isinf(self.end)
 
     def is_point(self) -> bool:
-        return self.left == self.right
+        return self.start == self.end
 
     def contains(self, x: float) -> bool:
         if self.is_empty():
             return False
-        return self.left <= x <= self.right
+        return self.start <= x <= self.end
 
     def __contains__(self, x: float) -> bool:
         return self.contains(x)
@@ -121,7 +121,7 @@ class Interval(tuple):
             return other.is_empty()
         if other.is_empty():
             return True
-        return self.left <= other.left and other.right <= self.right
+        return self.start <= other.start and other.end <= self.end
 
     def is_subset(self, other: "Interval") -> bool:
         return other.contains_interval(self)
@@ -129,17 +129,17 @@ class Interval(tuple):
     def length(self) -> float:
         if self.is_empty():
             return -math.inf
-        return self.right - self.left
+        return self.end - self.start
 
     def intersection(self, other: object) -> "Interval":
         other = Interval(other)
         if self.is_empty() or other.is_empty():
             return EMPTY_INTERVAL
-        left = max(self.left, other.left)
-        right = min(self.right, other.right)
-        if left > right:
+        start = max(self.start, other.start)
+        end = min(self.end, other.end)
+        if start > end:
             return EMPTY_INTERVAL
-        return Interval(left, right)
+        return Interval(start, end)
 
     def union(self, other: object) -> tuple["Interval", ...]:
         other = Interval(other)
@@ -147,11 +147,11 @@ class Interval(tuple):
             return () if other.is_empty() else (other,)
         if other.is_empty():
             return (self,)
-        if self.left <= other.left and _intervals_are_separated(self, other):
+        if self.start <= other.start and _intervals_are_separated(self, other):
             return (self, other)
-        if other.left < self.left and _intervals_are_separated(other, self):
+        if other.start < self.start and _intervals_are_separated(other, self):
             return (other, self)
-        return (Interval(min(self.left, other.left), max(self.right, other.right)),)
+        return (Interval(min(self.start, other.start), max(self.end, other.end)),)
 
     def difference(self, other: object) -> tuple["Interval", ...]:
         other = Interval(other)
@@ -161,10 +161,10 @@ class Interval(tuple):
         if inter.is_empty():
             return (self,)
         result = []
-        if self.left <= math.nextafter(inter.left, -math.inf):
-            result.append(Interval(self.left, math.nextafter(inter.left, -math.inf)))
-        if inter.right <= math.nextafter(self.right, -math.inf):
-            result.append(Interval(math.nextafter(inter.right, math.inf), self.right))
+        if self.start <= math.nextafter(inter.start, -math.inf):
+            result.append(Interval(self.start, math.nextafter(inter.start, -math.inf)))
+        if inter.end <= math.nextafter(self.end, -math.inf):
+            result.append(Interval(math.nextafter(inter.end, math.inf), self.end))
         return tuple(result)
 
     def symmetric_difference(self, other: object) -> tuple["Interval", ...]:
@@ -175,10 +175,10 @@ class Interval(tuple):
         if self.is_empty():
             return (FULL_INTERVAL,)
         result = []
-        if not math.isinf(self.left):
-            result.append(Interval(-math.inf, math.nextafter(self.left, -math.inf)))
-        if not math.isinf(self.right):
-            result.append(Interval(math.nextafter(self.right, math.inf), math.inf))
+        if not math.isinf(self.start):
+            result.append(Interval(-math.inf, math.nextafter(self.start, -math.inf)))
+        if not math.isinf(self.end):
+            result.append(Interval(math.nextafter(self.end, math.inf), math.inf))
         return tuple(result)
 
     def __and__(self, other: object) -> "Interval":
@@ -374,11 +374,11 @@ class Set(tuple):
         interval = Interval(interval)
         if interval.is_empty():
             return True
-        return any(iv[0] <= interval.left and iv[1] >= interval.right for iv in self)
+        return any(iv[0] <= interval.start and iv[1] >= interval.end for iv in self)
 
     @classmethod
-    def from_single_interval(cls, left: object, right: object) -> "Set":
-        return cls(Interval(left, right))
+    def from_single_interval(cls, start: object, end: object) -> "Set":
+        return cls(Interval(start, end))
 
     @classmethod
     def from_intervals(cls, *intervals: Interval) -> "Set":

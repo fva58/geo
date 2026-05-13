@@ -137,14 +137,14 @@ def _previous_angle(value: object) -> float:
 
 
 def _normalize_linear_interval(interval: LinearInterval) -> LinearInterval:
-    left = float(_as_angle(interval.left))
-    right = float(_as_angle(interval.right))
-    if left > right:
+    start = float(_as_angle(interval.start))
+    end = float(_as_angle(interval.end))
+    if start > end:
         raise ValueError(
-            "Linear circle intervals must satisfy left <= right. "
+            "Linear circle intervals must satisfy start <= end. "
             "Use circle.Interval for wrapped arcs."
         )
-    return LinearInterval(left, right)
+    return LinearInterval(start, end)
 
 
 class Set(LinearSet):

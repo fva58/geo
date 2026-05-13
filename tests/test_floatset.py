@@ -13,18 +13,18 @@ class TestInterval(unittest.TestCase):
     def test_initialization(self):
         """Test interval initialization."""
         iv = Interval(0.0)
-        self.assertEqual(iv.left, 0.0)
-        self.assertEqual(iv.right, 0.0)
+        self.assertEqual(iv.start, 0.0)
+        self.assertEqual(iv.end, 0.0)
         self.assertFalse(iv.is_empty())
 
         iv = Interval(0.0, 1.0)
-        self.assertEqual(iv.left, 0.0)
-        self.assertEqual(iv.right, 1.0)
+        self.assertEqual(iv.start, 0.0)
+        self.assertEqual(iv.end, 1.0)
         self.assertFalse(iv.is_empty())
 
         iv = Interval(iv)
-        self.assertEqual(iv.left, 0.0)
-        self.assertEqual(iv.right, 1.0)
+        self.assertEqual(iv.start, 0.0)
+        self.assertEqual(iv.end, 1.0)
         self.assertFalse(iv.is_empty())
 
     def test_empty_interval(self):
@@ -61,8 +61,8 @@ class TestInterval(unittest.TestCase):
         c = Interval(8.0, 10.0)
 
         inter_ab = a.intersection(b)
-        self.assertEqual(inter_ab.left, 2.0)
-        self.assertEqual(inter_ab.right, 5.0)
+        self.assertEqual(inter_ab.start, 2.0)
+        self.assertEqual(inter_ab.end, 5.0)
 
         inter_ac = a.intersection(c)
         self.assertTrue(inter_ac.is_empty())
@@ -79,15 +79,15 @@ class TestInterval(unittest.TestCase):
 
         union_ab = a.union(b)
         self.assertEqual(len(union_ab), 1)
-        self.assertEqual(union_ab[0].left, 0.0)
-        self.assertEqual(union_ab[0].right, 5.0)
+        self.assertEqual(union_ab[0].start, 0.0)
+        self.assertEqual(union_ab[0].end, 5.0)
 
         union_ac = a.union(c)
         self.assertEqual(len(union_ac), 2)
-        self.assertEqual(union_ac[0].left, 0.0)
-        self.assertEqual(union_ac[0].right, 3.0)
-        self.assertEqual(union_ac[1].left, 6.0)
-        self.assertEqual(union_ac[1].right, 8.0)
+        self.assertEqual(union_ac[0].start, 0.0)
+        self.assertEqual(union_ac[0].end, 3.0)
+        self.assertEqual(union_ac[1].start, 6.0)
+        self.assertEqual(union_ac[1].end, 8.0)
 
         empty = Interval(1.0, 0.0)
         self.assertEqual(a.union(empty), (a,))
@@ -110,17 +110,17 @@ class TestInterval(unittest.TestCase):
 
         diff_ab = a.difference(b)
         self.assertEqual(len(diff_ab), 2)
-        self.assertEqual(diff_ab[0].left, 0.0)
-        self.assertEqual(diff_ab[0].right, math.nextafter(2.0, -math.inf))
-        self.assertEqual(diff_ab[1].left, math.nextafter(3.0, math.inf))
-        self.assertEqual(diff_ab[1].right, 5.0)
+        self.assertEqual(diff_ab[0].start, 0.0)
+        self.assertEqual(diff_ab[0].end, math.nextafter(2.0, -math.inf))
+        self.assertEqual(diff_ab[1].start, math.nextafter(3.0, math.inf))
+        self.assertEqual(diff_ab[1].end, 5.0)
         self.assertFalse(diff_ab[0].contains(2.0))
         self.assertFalse(diff_ab[1].contains(3.0))
 
         diff_ac = a.difference(c)
         self.assertEqual(len(diff_ac), 1)
-        self.assertEqual(diff_ac[0].left, 0.0)
-        self.assertEqual(diff_ac[0].right, 5.0)
+        self.assertEqual(diff_ac[0].start, 0.0)
+        self.assertEqual(diff_ac[0].end, 5.0)
 
         empty = Interval(1.0, 0.0)
         self.assertEqual(a.difference(empty), (a,))
@@ -133,10 +133,10 @@ class TestInterval(unittest.TestCase):
 
         sym_diff = a.symmetric_difference(b)
         self.assertEqual(len(sym_diff), 2)
-        self.assertEqual(sym_diff[0].left, 0.0)
-        self.assertEqual(sym_diff[0].right, math.nextafter(2.0, -math.inf))
-        self.assertEqual(sym_diff[1].left, math.nextafter(3.0, math.inf))
-        self.assertEqual(sym_diff[1].right, 5.0)
+        self.assertEqual(sym_diff[0].start, 0.0)
+        self.assertEqual(sym_diff[0].end, math.nextafter(2.0, -math.inf))
+        self.assertEqual(sym_diff[1].start, math.nextafter(3.0, math.inf))
+        self.assertEqual(sym_diff[1].end, 5.0)
 
     def test_complement_of_empty_interval_is_full(self):
         """The complement of the empty interval should be the whole line."""
@@ -150,18 +150,18 @@ class TestInterval(unittest.TestCase):
         b = Interval(2.0, 5.0)
 
         inter = a & b
-        self.assertEqual(inter.left, 2.0)
-        self.assertEqual(inter.right, 3.0)
+        self.assertEqual(inter.start, 2.0)
+        self.assertEqual(inter.end, 3.0)
 
         union = a | b
         self.assertEqual(len(union), 1)
-        self.assertEqual(union[0].left, 0.0)
-        self.assertEqual(union[0].right, 5.0)
+        self.assertEqual(union[0].start, 0.0)
+        self.assertEqual(union[0].end, 5.0)
 
         diff = a - b
         self.assertEqual(len(diff), 1)
-        self.assertEqual(diff[0].left, 0.0)
-        self.assertEqual(diff[0].right, math.nextafter(2.0, -math.inf))
+        self.assertEqual(diff[0].start, 0.0)
+        self.assertEqual(diff[0].end, math.nextafter(2.0, -math.inf))
 
         sym_diff = a ^ b
         self.assertEqual(len(sym_diff), 2)
@@ -200,10 +200,10 @@ class TestInterval(unittest.TestCase):
         interval = Interval(0.0, 1.0)
         complement = interval.complement()
         self.assertEqual(len(complement), 2)
-        self.assertEqual(complement[0].left, -math.inf)
-        self.assertEqual(complement[0].right, math.nextafter(0.0, -math.inf))
-        self.assertEqual(complement[1].left, math.nextafter(1.0, math.inf))
-        self.assertEqual(complement[1].right, math.inf)
+        self.assertEqual(complement[0].start, -math.inf)
+        self.assertEqual(complement[0].end, math.nextafter(0.0, -math.inf))
+        self.assertEqual(complement[1].start, math.nextafter(1.0, math.inf))
+        self.assertEqual(complement[1].end, math.inf)
 
 
 class TestSet(unittest.TestCase):
