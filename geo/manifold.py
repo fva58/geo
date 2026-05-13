@@ -155,20 +155,9 @@ class Atlas(Generic[PointT]):
             raise ValueError("Both charts must belong to the atlas")
         return ChartTransition(source_chart, target_chart)
 
-def refine_neighborhoods(
-    neighborhoods: tuple[Neighborhood[PointT], ...],
-    factor: int = 2,
-) -> tuple[Neighborhood[PointT], ...]:
-    """Compatibility wrapper for neighborhood refinement."""
-    from .space.base import refine_neighborhoods as refine
-
-    return refine(neighborhoods, factor=factor)
-
-
 __all__ = [
     "Manifold",
     "ManifoldChart",
     "ChartTransition",
     "Atlas",
-    "refine_neighborhoods",
 ]

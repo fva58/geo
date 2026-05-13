@@ -5,7 +5,7 @@ import unittest
 
 from geo.cone import LocalConeModel
 from geo.euclidean import FloatPoint
-from geo.manifold import refine_neighborhoods
+from geo.space.base import refine_neighborhoods
 from geo.operations import classify_cover, local_chart_cover_from_points, refine_until
 from geo import space as space_pkg
 from geo.space.base import Neighborhood
