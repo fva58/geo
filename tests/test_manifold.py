@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 from geo.diffeomorphism import Chart
 from geo.euclidean import EuclideanNeighborhood, FloatPoint
-from geo.manifold import Atlas, ChartTransition, Manifold, ManifoldChart
+from geo.manifold import ChartTransition, Manifold, ManifoldChart
 
 
 @dataclass(frozen=True)
@@ -109,27 +109,7 @@ class TestAtlasAndTransitions(unittest.TestCase):
         self.assertEqual(transition(FloatPoint(2.0)).to_tuple(), (3.0,))
         self.assertEqual(transition.inverse(FloatPoint(3.0)).to_tuple(), (2.0,))
 
-    def test_atlas(self):
-        """An atlas should hold charts and build transitions between them."""
-        manifold = OpenIntervalManifold(-10.0, 10.0)
-        chart_a = ManifoldChart(
-            lambda point: FloatPoint(point.x),
-            lambda coordinates: LinePoint(coordinates[0]),
-            dim=1,
-            domain_contains=manifold.contains,
-            image=EuclideanNeighborhood.box((-10.0, 10.0)),
-        )
-        chart_b = ManifoldChart(
-            lambda point: FloatPoint(point.x + 1.0),
-            lambda coordinates: LinePoint(coordinates[0] - 1.0),
-            dim=1,
-            domain_contains=manifold.contains,
-            image=EuclideanNeighborhood.box((-9.0, 11.0)),
-        )
-        atlas = Atlas(manifold, chart_a, chart_b)
-        self.assertEqual(len(atlas), 2)
-        transition = atlas.transition(0, 1)
-        self.assertEqual(transition(FloatPoint(0.5)).to_tuple(), (1.5,))
+
 
 
 if __name__ == "__main__":

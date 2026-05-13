@@ -111,53 +111,8 @@ class ChartTransition(Generic[PointT]):
         return self.source_chart(self.target_chart.inverse(coordinates))
 
 
-class Atlas(Generic[PointT]):
-    """Finite atlas on a manifold."""
-
-    def __init__(
-        self,
-        manifold: Manifold[PointT],
-        *charts: ManifoldChart[PointT],
-    ) -> None:
-        """Initialize an atlas from a manifold and compatible charts."""
-        if not charts:
-            raise ValueError("Atlas must contain at least one chart")
-        for chart in charts:
-            if chart.dim != manifold.dim:
-                raise ValueError(
-                    "Chart dimension does not match manifold dimension: "
-                    f"{chart.dim} != {manifold.dim}"
-                )
-        self.manifold = manifold
-        self.charts = tuple(charts)
-
-    def __repr__(self) -> str:
-        """Return a debug representation."""
-        return f"Atlas(num_charts={len(self.charts)}, dim={self.manifold.dim})"
-
-    def __len__(self) -> int:
-        """Return the number of charts."""
-        return len(self.charts)
-
-    def __iter__(self):
-        """Iterate over the charts."""
-        return iter(self.charts)
-
-    def transition(
-        self,
-        source: int | ManifoldChart[PointT],
-        target: int | ManifoldChart[PointT],
-    ) -> ChartTransition[PointT]:
-        """Build the transition map between two atlas charts."""
-        source_chart = self.charts[source] if isinstance(source, int) else source
-        target_chart = self.charts[target] if isinstance(target, int) else target
-        if source_chart not in self.charts or target_chart not in self.charts:
-            raise ValueError("Both charts must belong to the atlas")
-        return ChartTransition(source_chart, target_chart)
-
 __all__ = [
     "Manifold",
     "ManifoldChart",
     "ChartTransition",
-    "Atlas",
 ]
