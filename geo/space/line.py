@@ -44,24 +44,21 @@ def _real_chart(center: float) -> ManifoldChart[float]:
         dim=1,
         domain_contains=_RealLineManifold().contains,
         image=EuclideanNeighborhood.whole(1),
-        name="real-centered",
     )
 
 
 class Space(ChartedSpace[float]):
     """The real line with its standard metric."""
 
-    def __init__(self, name: str = "") -> None:
+    def __init__(self) -> None:
         super().__init__(
             _RealLineManifold(),
             distance=lambda left, right: abs(float(left) - float(right)),
-            name=name or "R",
         )
 
     def point(
         self,
         point: object,
-        name: str = "",
     ) -> GeometricObject[float]:
         point = float(Point(point))
         return GeometricObject(
@@ -71,14 +68,12 @@ class Space(ChartedSpace[float]):
                 _real_chart(point),
                 point_cone(1),
             ),
-            name=name,
         )
 
     def neighborhood_at(
         self,
         point: object,
         radius: float,
-        name: str = "",
     ) -> Neighborhood:
         center = float(Point(point))
         if center not in self:
@@ -92,7 +87,6 @@ class Space(ChartedSpace[float]):
             chart,
             center,
             EuclideanNeighborhood.box((-radius, radius)),
-            name=name or "real-neighborhood",
         )
 
     def full_cover(self, radius: float):
@@ -121,7 +115,6 @@ class Space(ChartedSpace[float]):
     def subset(
         self,
         *point_set: object,
-        name: str = "",
     ) -> GeometricObject[float]:
         subset = Set(*point_set)
 
@@ -145,7 +138,6 @@ class Space(ChartedSpace[float]):
             self,
             contains=lambda point: float(point) in subset,
             local_model=local_model,
-            name=name,
         )
 
 

@@ -3,16 +3,16 @@
 from . import base, circle, euclidean, line, point, sphere, torus
 
 
-def make_euclidean(dim: int, name: str = ""):
+def make_euclidean(dim: int):
     """Return the Euclidean family space of the requested dimension."""
     dim = int(dim)
     if dim < 0:
         raise ValueError("Dimension must be non-negative")
     if dim == 0:
-        return point.Space(name=name or "Point")
+        return point.Space()
     if dim == 1:
-        return line.Space(name=name or "R")
-    return euclidean.Space(dim, name=name)
+        return line.Space()
+    return euclidean.Space(dim)
 
 
 def make_torus(dim: int, **kwargs):
@@ -21,9 +21,9 @@ def make_torus(dim: int, **kwargs):
     if dim < 0:
         raise ValueError("Dimension must be non-negative")
     if dim == 0:
-        return point.Space(name=kwargs.pop("name", "") or "Point")
+        return point.Space()
     if dim == 1:
-        return circle.Space(name=kwargs.pop("name", "") or "S1")
+        return circle.Space()
     return torus.Space(dim=dim, **kwargs)
 
 

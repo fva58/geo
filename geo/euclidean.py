@@ -303,7 +303,6 @@ class EuclideanChart:
         target_dim: int,
         domain: EuclideanNeighborhood | None = None,
         image: EuclideanNeighborhood | None = None,
-        name: str = "",
     ) -> None:
         """Initialize a chart from forward and inverse maps."""
         self._forward = forward
@@ -312,17 +311,15 @@ class EuclideanChart:
         self.target_dim = target_dim
         self.domain = domain
         self.image = image
-        self.name = name
 
     def __repr__(self) -> str:
         """Return a debug representation."""
-        label = f", name={self.name!r}" if self.name else ""
         domain = f", domain_dim={self.domain.dim}" if self.domain else ""
         image = f", image_dim={self.image.dim}" if self.image else ""
         return (
             "EuclideanChart("
             f"source_dim={self.source_dim}, target_dim={self.target_dim}"
-            f"{domain}{image}{label})"
+            f"{domain}{image})"
         )
 
     def __call__(self, point: FloatPoint) -> FloatPoint:
@@ -363,7 +360,6 @@ class EuclideanChart:
 
     def inverse_chart(self) -> "EuclideanChart":
         """Return the inverse chart."""
-        inverse_name = f"{self.name}^-1" if self.name else ""
         return EuclideanChart(
             self._inverse,
             self._forward,
@@ -371,7 +367,6 @@ class EuclideanChart:
             self.source_dim,
             domain=self.image,
             image=self.domain,
-            name=inverse_name,
         )
 
     def compose(self, other: "EuclideanChart") -> "EuclideanChart":
@@ -388,11 +383,6 @@ class EuclideanChart:
         def inverse(point: FloatPoint) -> FloatPoint:
             return other.inverse(self.inverse(point))
 
-        if self.name and other.name:
-            name = f"{self.name} o {other.name}"
-        else:
-            name = ""
-
         return EuclideanChart(
             forward,
             inverse,
@@ -400,7 +390,6 @@ class EuclideanChart:
             self.target_dim,
             domain=other.domain,
             image=self.image,
-            name=name,
         )
 
     @classmethod
@@ -413,7 +402,6 @@ class EuclideanChart:
             dim,
             domain=EuclideanNeighborhood.whole(dim),
             image=EuclideanNeighborhood.whole(dim),
-            name="id",
         )
 
 
@@ -424,7 +412,6 @@ class AffineDiffeomorphism(EuclideanChart):
         self,
         matrix: Sequence[Sequence[object]],
         offset: Sequence[object] | FloatVector,
-        name: str = "",
     ) -> None:
         """Initialize an affine diffeomorphism from a matrix and offset."""
         self.matrix = _coerce_matrix(matrix)
@@ -443,7 +430,6 @@ class AffineDiffeomorphism(EuclideanChart):
         self.inverse_offset = FloatVector(
             tuple(-value for value in _matvec(self.inverse_matrix, self.offset))
         )
-        self.name = name
 
         super().__init__(
             self._forward_map,
@@ -452,7 +438,6 @@ class AffineDiffeomorphism(EuclideanChart):
             target_dim=self.target_dim,
             domain=EuclideanNeighborhood.whole(self.source_dim),
             image=EuclideanNeighborhood.whole(self.target_dim),
-            name=name,
         )
 
     def _forward_map(self, point: FloatPoint) -> FloatPoint:
@@ -465,19 +450,16 @@ class AffineDiffeomorphism(EuclideanChart):
 
     def __repr__(self) -> str:
         """Return a debug representation."""
-        label = f", name={self.name!r}" if self.name else ""
         return (
             "AffineDiffeomorphism("
-            f"matrix={self.matrix}, offset={self.offset.to_tuple()}{label})"
+            f"matrix={self.matrix}, offset={self.offset.to_tuple()})"
         )
 
     def inverse_chart(self) -> EuclideanChart:
         """Return the inverse affine diffeomorphism."""
-        inverse_name = f"{self.name}^-1" if self.name else ""
         return AffineDiffeomorphism(
             self.inverse_matrix,
             self.inverse_offset,
-            name=inverse_name,
         )
 
 

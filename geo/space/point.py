@@ -38,7 +38,6 @@ def _point_chart() -> ManifoldChart[FloatPoint]:
         dim=0,
         domain_contains=lambda point: FloatPoint(point) == _POINT,
         image=EuclideanNeighborhood.box(),
-        name="point-chart",
     )
 
 
@@ -49,7 +48,6 @@ class Neighborhood:
     manifold: SpaceProtocol[FloatPoint]
     chart: ManifoldChart[FloatPoint]
     center: FloatPoint = _POINT
-    name: str = ""
 
     @property
     def image(self) -> EuclideanNeighborhood:
@@ -88,9 +86,8 @@ class Neighborhood:
 class Space:
     """Zero-dimensional metric space with one point."""
 
-    def __init__(self, name: str = "") -> None:
+    def __init__(self) -> None:
         self.manifold = _PointManifold()
-        self.name = name or "Point"
         self._chart = _point_chart()
 
     @property
@@ -100,8 +97,7 @@ class Space:
 
     def __repr__(self) -> str:
         """Return a debug representation."""
-        label = f", name={self.name!r}" if self.name else ""
-        return f"Space({label[2:]})" if label else "Space()"
+        return "Space()"
 
     def contains(self, point: object) -> bool:
         """Check whether a point belongs to the space."""
@@ -126,7 +122,6 @@ class Space:
     def point_object(
         self,
         point: object = (),
-        name: str = "",
     ) -> GeometricObject[FloatPoint]:
         """Return the singleton object in the point space."""
         self.point(point)
@@ -137,21 +132,19 @@ class Space:
                 self._chart,
                 EuclideanCone.whole(0),
             ),
-            name=name or "point-space-point",
         )
 
     def neighborhood_at(
         self,
         point: object = (),
         radius: float = 1.0,
-        name: str = "",
     ) -> Neighborhood:
         """Return the unique neighborhood."""
         self.point(point)
         radius = float(radius)
         if radius <= 0.0:
             raise ValueError("Neighborhood radius must be positive")
-        return Neighborhood(self, self._chart, name=name or "point-neighborhood")
+        return Neighborhood(self, self._chart)
 
     def full_cover(self, radius: float) -> tuple[Neighborhood, ...]:
         """Return the unique full cover."""

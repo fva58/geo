@@ -58,7 +58,6 @@ class TestManifoldChart(unittest.TestCase):
             dim=1,
             domain_contains=manifold.contains,
             image=image,
-            name="line-chart",
         )
         point = LinePoint(0.25)
         coordinates = chart(point)
@@ -97,7 +96,6 @@ class TestAtlasAndTransitions(unittest.TestCase):
             dim=1,
             domain_contains=manifold.contains,
             image=image_a,
-            name="a",
         )
         chart_b = ManifoldChart(
             lambda point: FloatPoint(point.x + 1.0),
@@ -105,9 +103,8 @@ class TestAtlasAndTransitions(unittest.TestCase):
             dim=1,
             domain_contains=manifold.contains,
             image=image_b,
-            name="b",
         )
-        transition = ChartTransition(chart_a, chart_b, name="b o a^-1")
+        transition = ChartTransition(chart_a, chart_b)
         self.assertIsInstance(transition, Chart)
         self.assertEqual(transition(FloatPoint(2.0)).to_tuple(), (3.0,))
         self.assertEqual(transition.inverse(FloatPoint(3.0)).to_tuple(), (2.0,))
@@ -121,7 +118,6 @@ class TestAtlasAndTransitions(unittest.TestCase):
             dim=1,
             domain_contains=manifold.contains,
             image=EuclideanNeighborhood.box((-10.0, 10.0)),
-            name="a",
         )
         chart_b = ManifoldChart(
             lambda point: FloatPoint(point.x + 1.0),
@@ -129,9 +125,8 @@ class TestAtlasAndTransitions(unittest.TestCase):
             dim=1,
             domain_contains=manifold.contains,
             image=EuclideanNeighborhood.box((-9.0, 11.0)),
-            name="b",
         )
-        atlas = Atlas(manifold, chart_a, chart_b, name="line")
+        atlas = Atlas(manifold, chart_a, chart_b)
         self.assertEqual(len(atlas), 2)
         transition = atlas.transition(0, 1)
         self.assertEqual(transition(FloatPoint(0.5)).to_tuple(), (1.5,))

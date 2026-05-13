@@ -92,7 +92,6 @@ class BoxNeighborhood(Generic[PointT]):
     chart: ManifoldChart[PointT]
     center: PointT
     image: EuclideanNeighborhood
-    name: str = ""
 
     def __post_init__(self) -> None:
         """Validate center and image dimensions."""
@@ -169,7 +168,6 @@ class BoxNeighborhood(Generic[PointT]):
                     self.chart,
                     self.chart.inverse(center_coordinates),
                     image,
-                    name=self.name,
                 )
             )
         return tuple(neighborhoods)
@@ -182,12 +180,10 @@ class ChartedSpace(Generic[PointT]):
         self,
         manifold: Manifold[PointT],
         distance: Callable[[PointT, PointT], float],
-        name: str = "",
     ) -> None:
         """Initialize the space."""
         self.manifold = manifold
         self._distance = distance
-        self.name = name
 
     @property
     def dim(self) -> int:
@@ -196,8 +192,7 @@ class ChartedSpace(Generic[PointT]):
 
     def __repr__(self) -> str:
         """Return a debug representation."""
-        label = f", name={self.name!r}" if self.name else ""
-        return f"ChartedSpace(dim={self.dim}{label})"
+        return f"ChartedSpace(dim={self.dim})"
 
     def contains(self, point: PointT) -> bool:
         """Check whether a point belongs to the underlying manifold."""
@@ -216,11 +211,11 @@ class ChartedSpace(Generic[PointT]):
             raise ValueError("Distance must be non-negative")
         return value
 
-    def wrap(self, obj, name: str = ""):
+    def wrap(self, obj):
         """Wrap a charted object into this ambient space."""
         from ..gobject import GeometricObject
 
-        return GeometricObject.from_charted(self, obj, name=name)
+        return GeometricObject.from_charted(self, obj)
 
 
 def refine_neighborhoods(
@@ -258,7 +253,6 @@ def centered_real_chart(center: float, domain_contains) -> "ManifoldChart[float]
         dim=1,
         domain_contains=domain_contains,
         image=EuclideanNeighborhood.whole(1),
-        name="real-centered",
     )
 
 

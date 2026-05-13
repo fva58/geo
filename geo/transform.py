@@ -34,13 +34,11 @@ class PointTransform(Generic[SourceT, TargetT]):
         source_space: Space[SourceT],
         target_space: Space[TargetT],
         forward: Callable[[SourceT], TargetT],
-        name: str = "",
     ) -> None:
         """Initialize the transform."""
         self._source_space = source_space
         self._target_space = target_space
         self._forward = forward
-        self.name = name
 
     @property
     def source_space(self) -> Space[SourceT]:
@@ -54,11 +52,10 @@ class PointTransform(Generic[SourceT, TargetT]):
 
     def __repr__(self) -> str:
         """Return a debug representation."""
-        label = f", name={self.name!r}" if self.name else ""
         return (
             "PointTransform("
             f"source_dim={self.source_space.dim}, "
-            f"target_dim={self.target_space.dim}{label})"
+            f"target_dim={self.target_space.dim})"
         )
 
     def __call__(self, point: SourceT) -> TargetT:
@@ -73,32 +70,27 @@ class PointTransform(Generic[SourceT, TargetT]):
     def then(
         self,
         other: Transform[TargetT, NextT],
-        name: str = "",
     ) -> "PointTransform[SourceT, NextT]":
         """Return the composition ``other(self(point))``."""
         if self.target_space is not other.source_space:
             raise ValueError(
                 "Transform composition requires the same intermediate space"
             )
-        chosen_name = name or self.name or getattr(other, "name", "")
         return PointTransform(
             self.source_space,
             other.target_space,
             forward=lambda point: other(self(point)),
-            name=chosen_name,
         )
 
 
 def identity_transform(
     space: Space[SourceT],
-    name: str = "",
 ) -> PointTransform[SourceT, SourceT]:
     """Return the identity transform on one space."""
     return PointTransform(
         space,
         space,
         forward=lambda point: point,
-        name=name or "identity",
     )
 
 

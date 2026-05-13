@@ -98,7 +98,6 @@ class TestEuclideanChart(unittest.TestCase):
             lambda point: point - shift,
             source_dim=2,
             target_dim=2,
-            name="translate",
         )
         point = FloatPoint(1.0, 2.0)
         image = chart(point)
@@ -113,7 +112,6 @@ class TestEuclideanChart(unittest.TestCase):
             lambda point: point - shift,
             source_dim=2,
             target_dim=2,
-            name="shift",
         )
         inverse_chart = chart.inverse_chart()
         point = FloatPoint(2.0, 3.0)
@@ -142,7 +140,6 @@ class TestEuclideanChart(unittest.TestCase):
             target_dim=2,
             domain=domain,
             image=image,
-            name="unit-shift",
         )
         self.assertEqual(chart(FloatPoint(0.5, 0.25)).to_tuple(), (1.5, 1.25))
         with self.assertRaises(ValueError):

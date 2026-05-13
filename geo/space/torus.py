@@ -23,7 +23,6 @@ def _point_cone(dim: int) -> EuclideanCone:
         dim,
         contains=lambda point: FloatPoint(point) == FloatPoint.origin(dim),
         neighborhood=EuclideanNeighborhood.whole(dim),
-        name="point",
     )
 
 
@@ -52,7 +51,7 @@ def _signed_circle_difference(
     return difference
 
 
-def _product_cone(axis_flags: Sequence[tuple[bool, bool]], name: str) -> EuclideanCone:
+def _product_cone(axis_flags: Sequence[tuple[bool, bool]]) -> EuclideanCone:
     def axis_ok(value: float, left_in: bool, right_in: bool) -> bool:
         if left_in and right_in:
             return True
@@ -70,7 +69,6 @@ def _product_cone(axis_flags: Sequence[tuple[bool, bool]], name: str) -> Euclide
             for index, (left_in, right_in) in enumerate(axis_flags)
         ),
         neighborhood=EuclideanNeighborhood.whole(dim),
-        name=name,
     )
 
 
@@ -153,7 +151,6 @@ def _torus_chart(base_point: TorusPoint) -> ManifoldChart[TorusPoint]:
         forward,
         inverse,
         dim=dim,
-        name="torus-angle",
     )
 
 
@@ -166,7 +163,6 @@ class Space:
         major_radius: float = 2.0,
         minor_radius: float = 0.5,
         radii: Sequence[float] | None = None,
-        name: str = "",
     ) -> None:
         self.dim = int(dim)
         if self.dim < 1:
@@ -187,11 +183,9 @@ class Space:
             raise ValueError("Torus radii must be positive")
         self.major_radius = self.radii[0]
         self.minor_radius = self.radii[1] if self.dim > 1 else self.radii[0]
-        self.name = name or f"T^{self.dim}"
 
     def __repr__(self) -> str:
-        label = f", name={self.name!r}" if self.name else ""
-        return f"Space(dim={self.dim}, radii={self.radii}{label})"
+        return f"Space(dim={self.dim}, radii={self.radii})"
 
     def contains(self, point: object) -> bool:
         try:
@@ -219,7 +213,7 @@ class Space:
             squared += diff * diff
         return math.sqrt(squared)
 
-    def whole(self, name: str = "") -> GeometricObject[TorusPoint]:
+    def whole(self) -> GeometricObject[TorusPoint]:
         return GeometricObject(
             self,
             contains=lambda point: point in self,
@@ -227,13 +221,11 @@ class Space:
                 _torus_chart(self.point(point)),
                 EuclideanCone.whole(self.dim),
             ),
-            name=name or "torus",
         )
 
     def point_object(
         self,
         point: object,
-        name: str = "",
     ) -> GeometricObject[TorusPoint]:
         torus_point = self.point(point)
         return GeometricObject(
@@ -243,14 +235,12 @@ class Space:
                 _torus_chart(torus_point),
                 _point_cone(self.dim),
             ),
-            name=name or "torus-point",
         )
 
     def neighborhood_at(
         self,
         point: object,
         radius: float,
-        name: str = "",
     ) -> Neighborhood:
         center = self.point(point)
         radius = float(radius)
@@ -264,7 +254,6 @@ class Space:
             chart,
             center,
             EuclideanNeighborhood.box(*(((-radius, radius),) * self.dim)),
-            name=name or "torus-neighborhood",
         )
 
     def full_cover(
@@ -296,7 +285,6 @@ class Space:
     def patch(
         self,
         *angle_sets: object,
-        name: str = "",
     ) -> GeometricObject[TorusPoint]:
         if len(angle_sets) != self.dim:
             raise ValueError(
@@ -321,14 +309,13 @@ class Space:
                 )
                 for index in range(self.dim)
             ]
-            cone = _product_cone(axis_flags, "torus-patch")
+            cone = _product_cone(axis_flags)
             return LocalConeModel(chart, cone)
 
         return GeometricObject(
             self,
             contains=contains,
             local_model=local_model,
-            name=name or "torus-patch",
         )
 
 

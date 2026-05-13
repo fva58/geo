@@ -21,7 +21,7 @@ class TestNeighborhoodRefinement(unittest.TestCase):
     def test_chart_neighborhood_on_real_line(self):
         """A chart neighborhood should expose radial bounds."""
         space = space_pkg.line.Space()
-        neighborhood = space.neighborhood_at(0.5, 0.5, name="unit-interval")
+        neighborhood = space.neighborhood_at(0.5, 0.5)
 
         self.assertIsInstance(neighborhood, Neighborhood)
         self.assertIn(0.5, neighborhood)
@@ -46,7 +46,7 @@ class TestNeighborhoodRefinement(unittest.TestCase):
     def test_local_object_classification_on_real_line(self):
         """Local classification should distinguish empty and cone patches."""
         space = space_pkg.line.Space()
-        segment = space.subset((0.0, 1.0), name="segment")
+        segment = space.subset((0.0, 1.0))
 
         conic = classify_local_object(
             segment,
@@ -67,7 +67,7 @@ class TestNeighborhoodRefinement(unittest.TestCase):
     def test_object_marks_list_of_neighborhoods(self):
         """An object should classify a whole neighborhood list at once."""
         space = space_pkg.line.Space()
-        segment = space.subset((0.0, 1.0), name="segment")
+        segment = space.subset((0.0, 1.0))
         neighborhoods = (
             space.neighborhood_at(0.5, 0.25),
             space.neighborhood_at(2.0, 0.4),
@@ -86,7 +86,7 @@ class TestNeighborhoodRefinement(unittest.TestCase):
     def test_local_object_classification_can_request_refinement(self):
         """Mixed neighborhoods should be marked complex for refinement."""
         space = space_pkg.euclidean.Space(2)
-        upper = space.half_plane((0.0, 1.0), offset=0.0, name="upper")
+        upper = space.half_plane((0.0, 1.0), offset=0.0)
         neighborhood = space.neighborhood_at(FloatPoint(0.0, -0.5), 1.0)
 
         local = classify_local_object(upper, neighborhood)
@@ -98,7 +98,7 @@ class TestNeighborhoodRefinement(unittest.TestCase):
     def test_large_neighborhood_is_not_forced_to_be_cone(self):
         """A large neighborhood can contain more than one local cone patch."""
         space = space_pkg.euclidean.Space(2)
-        cube = space.cube(FloatPoint(1.0, 1.0), 1.0, name="cube")
+        cube = space.cube(FloatPoint(1.0, 1.0), 1.0)
         neighborhood = space.neighborhood_at(FloatPoint(0.0, 0.0), 10.0)
 
         local = classify_local_object(cube, neighborhood)
@@ -171,7 +171,7 @@ class TestNeighborhoodRefinement(unittest.TestCase):
     def test_refine_until_reduces_active_outer_radius(self):
         """Refinement should reduce the outer radius of active parts."""
         space = space_pkg.line.Space()
-        segment = space.subset((0.0, 1.0), name="segment")
+        segment = space.subset((0.0, 1.0))
         cover = local_chart_cover_from_points(
             space,
             (0.0, 1.0),

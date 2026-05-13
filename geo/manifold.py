@@ -40,7 +40,6 @@ class ManifoldChart(Generic[PointT]):
         dim: int,
         domain_contains: Callable[[PointT], bool] | None = None,
         image: EuclideanNeighborhood | None = None,
-        name: str = "",
     ) -> None:
         """Initialize a local manifold chart."""
         self._forward = forward
@@ -48,13 +47,11 @@ class ManifoldChart(Generic[PointT]):
         self.dim = dim
         self.domain_contains = domain_contains
         self.image = image
-        self.name = name
 
     def __repr__(self) -> str:
         """Return a debug representation."""
-        label = f", name={self.name!r}" if self.name else ""
         image = f", image_dim={self.image.dim}" if self.image else ""
-        return f"ManifoldChart(dim={self.dim}{image}{label})"
+        return f"ManifoldChart(dim={self.dim}{image})"
 
     def __call__(self, point: PointT) -> FloatPoint:
         """Apply the chart map to a manifold point."""
@@ -91,7 +88,6 @@ class ChartTransition(Generic[PointT]):
         self,
         source_chart: ManifoldChart[PointT],
         target_chart: ManifoldChart[PointT],
-        name: str = "",
     ) -> None:
         """Initialize a transition from source coordinates to target coordinates."""
         if source_chart.dim != target_chart.dim:
@@ -102,12 +98,10 @@ class ChartTransition(Generic[PointT]):
         self.source_chart = source_chart
         self.target_chart = target_chart
         self.dim = source_chart.dim
-        self.name = name
 
     def __repr__(self) -> str:
         """Return a debug representation."""
-        label = f", name={self.name!r}" if self.name else ""
-        return f"ChartTransition(dim={self.dim}{label})"
+        return f"ChartTransition(dim={self.dim})"
 
     def __call__(self, coordinates: FloatPoint) -> FloatPoint:
         """Apply the transition map in coordinates."""
@@ -125,7 +119,6 @@ class Atlas(Generic[PointT]):
         self,
         manifold: Manifold[PointT],
         *charts: ManifoldChart[PointT],
-        name: str = "",
     ) -> None:
         """Initialize an atlas from a manifold and compatible charts."""
         if not charts:
@@ -138,12 +131,10 @@ class Atlas(Generic[PointT]):
                 )
         self.manifold = manifold
         self.charts = tuple(charts)
-        self.name = name
 
     def __repr__(self) -> str:
         """Return a debug representation."""
-        label = f", name={self.name!r}" if self.name else ""
-        return f"Atlas(num_charts={len(self.charts)}, dim={self.manifold.dim}{label})"
+        return f"Atlas(num_charts={len(self.charts)}, dim={self.manifold.dim})"
 
     def __len__(self) -> int:
         """Return the number of charts."""
@@ -157,21 +148,19 @@ class Atlas(Generic[PointT]):
         self,
         source: int | ManifoldChart[PointT],
         target: int | ManifoldChart[PointT],
-        name: str = "",
     ) -> ChartTransition[PointT]:
         """Build the transition map between two atlas charts."""
         source_chart = self.charts[source] if isinstance(source, int) else source
         target_chart = self.charts[target] if isinstance(target, int) else target
         if source_chart not in self.charts or target_chart not in self.charts:
             raise ValueError("Both charts must belong to the atlas")
-        return ChartTransition(source_chart, target_chart, name=name)
+        return ChartTransition(source_chart, target_chart)
 
 @dataclass(frozen=True)
 class NeighborhoodCover(Generic[PointT]):
     """Finite cover by neighborhoods."""
 
     neighborhoods: tuple[Neighborhood[PointT], ...]
-    name: str = ""
 
     def __post_init__(self) -> None:
         """Require a non-empty homogeneous cover."""
@@ -193,7 +182,7 @@ class NeighborhoodCover(Generic[PointT]):
             for neighborhood in self.neighborhoods
             for child in neighborhood.subdivide()
         )
-        return NeighborhoodCover(refined, name=self.name)
+        return NeighborhoodCover(refined)
 
     def max_diameter(self) -> float:
         """Return the largest neighborhood diameter in the cover."""
@@ -249,7 +238,6 @@ class NeighborhoodMarking(Generic[PointT]):
     """Object marking on a finite neighborhood family."""
 
     entries: tuple[LocalObjectModel[PointT], ...]
-    name: str = ""
 
     def __iter__(self):
         """Iterate over marked neighborhoods."""
@@ -286,7 +274,6 @@ def classify_local_object(
 def classify_neighborhoods(
     obj,
     neighborhoods,
-    name: str = "",
 ) -> NeighborhoodMarking[PointT]:
     """Return the object marking on a finite neighborhood family."""
     return NeighborhoodMarking(
@@ -294,7 +281,6 @@ def classify_neighborhoods(
             classify_local_object(obj, neighborhood)
             for neighborhood in neighborhoods
         ),
-        name=name,
     )
 
 

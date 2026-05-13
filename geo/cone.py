@@ -125,7 +125,6 @@ def point_cone(dim: int) -> "EuclideanCone":
         contains=lambda point: FloatPoint(point) == origin,
         apex=origin,
         neighborhood=EuclideanNeighborhood.whole(dim),
-        name="point",
     )
 
 
@@ -136,7 +135,6 @@ def positive_half_line_cone() -> "EuclideanCone":
         contains=lambda point: point[0] >= 0.0,
         apex=FloatPoint.origin(1),
         neighborhood=EuclideanNeighborhood.whole(1),
-        name="positive-half-line",
     )
 
 
@@ -147,7 +145,6 @@ def negative_half_line_cone() -> "EuclideanCone":
         contains=lambda point: point[0] <= 0.0,
         apex=FloatPoint.origin(1),
         neighborhood=EuclideanNeighborhood.whole(1),
-        name="negative-half-line",
     )
 
 
@@ -155,7 +152,6 @@ def half_space_cone(
     normal: FloatVector,
     *,
     reverse: bool = False,
-    name: str = "",
 ) -> "EuclideanCone":
     """Return a cone defined by one linear inequality."""
     orientation = -1.0 if reverse else 1.0
@@ -167,11 +163,10 @@ def half_space_cone(
         ),
         apex=FloatPoint.origin(dim),
         neighborhood=EuclideanNeighborhood.whole(dim),
-        name=name,
     )
 
 
-def hyperplane_cone(normal: FloatVector, name: str = "") -> "EuclideanCone":
+def hyperplane_cone(normal: FloatVector) -> "EuclideanCone":
     """Return a cone given by one linear equality."""
     dim = normal.dim
     return EuclideanCone(
@@ -181,7 +176,6 @@ def hyperplane_cone(normal: FloatVector, name: str = "") -> "EuclideanCone":
         ),
         apex=FloatPoint.origin(dim),
         neighborhood=EuclideanNeighborhood.whole(dim),
-        name=name,
     )
 
 
@@ -194,7 +188,6 @@ class EuclideanCone:
         contains: Callable[[FloatPoint], bool],
         apex: FloatPoint | None = None,
         neighborhood: EuclideanNeighborhood | None = None,
-        name: str = "",
     ) -> None:
         self._dim = dim
         self._contains = contains
@@ -206,7 +199,6 @@ class EuclideanCone:
                 f"Neighborhood dimension mismatch: {neighborhood.dim} != {dim}"
             )
         self.neighborhood = neighborhood
-        self.name = name
 
     @property
     def dim(self) -> int:
@@ -217,8 +209,7 @@ class EuclideanCone:
         return self._apex
 
     def __repr__(self) -> str:
-        label = f", name={self.name!r}" if self.name else ""
-        return f"EuclideanCone(dim={self.dim}, apex={self.apex.to_tuple()}{label})"
+        return f"EuclideanCone(dim={self.dim}, apex={self.apex.to_tuple()})"
 
     def contains(self, point: FloatPoint) -> bool:
         point = FloatPoint(point)
@@ -238,7 +229,6 @@ class EuclideanCone:
             contains=lambda point: True,
             apex=FloatPoint.origin(dim),
             neighborhood=EuclideanNeighborhood.whole(dim),
-            name="whole",
         )
 
 
@@ -251,7 +241,6 @@ class RadialCone(EuclideanCone):
         contains_direction: Callable[[FloatVector], bool],
         apex: FloatPoint | None = None,
         neighborhood: EuclideanNeighborhood | None = None,
-        name: str = "",
     ) -> None:
         self._contains_direction = contains_direction
         chosen_apex = FloatPoint.origin(dim) if apex is None else FloatPoint(apex)
@@ -269,7 +258,6 @@ class RadialCone(EuclideanCone):
             contains=contains,
             apex=chosen_apex,
             neighborhood=neighborhood,
-            name=name,
         )
 
     @classmethod
@@ -279,7 +267,6 @@ class RadialCone(EuclideanCone):
             contains_direction=lambda direction: True,
             apex=FloatPoint.origin(dim),
             neighborhood=EuclideanNeighborhood.whole(dim),
-            name="whole-radial",
         )
 
 
@@ -290,19 +277,16 @@ class DirectionSetSphereObject:
         self,
         dim: int,
         contains: Callable[[FloatVector], bool],
-        name: str = "",
     ) -> None:
         self._dim = dim
         self._contains = contains
-        self.name = name
 
     @property
     def dim(self) -> int:
         return self._dim
 
     def __repr__(self) -> str:
-        label = f", name={self.name!r}" if self.name else ""
-        return f"DirectionSetSphereObject(dim={self.dim}{label})"
+        return f"DirectionSetSphereObject(dim={self.dim})"
 
     def contains(self, direction: FloatVector) -> bool:
         direction = FloatVector(direction)
@@ -318,17 +302,15 @@ class DirectionSetSphereObject:
 class CircleSphereObject:
     """Sphere object in dimension 2 defined by a circle subset."""
 
-    def __init__(self, circle_set: CircleSet, name: str = "") -> None:
+    def __init__(self, circle_set: CircleSet) -> None:
         self.circle_set = CircleSet(circle_set)
-        self.name = name
 
     @property
     def dim(self) -> int:
         return 2
 
     def __repr__(self) -> str:
-        label = f", name={self.name!r}" if self.name else ""
-        return f"CircleSphereObject({self.circle_set!r}{label})"
+        return f"CircleSphereObject({self.circle_set!r})"
 
     def contains(self, direction: FloatVector) -> bool:
         direction = FloatVector(direction)
@@ -349,7 +331,6 @@ class SphericalCone(RadialCone):
         sphere_object: SphereObject,
         apex: FloatPoint | None = None,
         neighborhood: EuclideanNeighborhood | None = None,
-        name: str = "",
     ) -> None:
         self.sphere_object = sphere_object
         super().__init__(
@@ -357,7 +338,6 @@ class SphericalCone(RadialCone):
             contains_direction=sphere_object.contains,
             apex=apex,
             neighborhood=neighborhood,
-            name=name,
         )
 
 

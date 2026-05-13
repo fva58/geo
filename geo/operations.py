@@ -15,22 +15,18 @@ def local_chart_cover_from_points(
     space,
     points,
     radius: float,
-    name: str = "",
 ) -> NeighborhoodCover[PointT]:
     """Build a neighborhood cover from explicit points in one space."""
     radius = float(radius)
     if radius <= 0.0:
         raise ValueError("Neighborhood radius must be positive")
     neighborhoods = tuple(
-        space.neighborhood_at(point, radius, name=name)
+        space.neighborhood_at(point, radius)
         for point in points
     )
     if not neighborhoods:
         raise ValueError("Need at least one point to build a cover")
-    return NeighborhoodCover(
-        neighborhoods,
-        name=name or getattr(space, "name", ""),
-    )
+    return NeighborhoodCover(neighborhoods)
 
 
 @dataclass(frozen=True)
@@ -67,7 +63,6 @@ def classify_cover(
     """Classify one object over all neighborhoods in a cover."""
     marking = obj.classify_neighborhoods(
         cover.neighborhoods,
-        name=cover.name,
     )
     return RefinedObjectCover(
         obj,
@@ -115,7 +110,7 @@ def refine_until(
         )
         if not refined:
             return current
-        current_cover = NeighborhoodCover(tuple(to_keep) + refined, name=cover.name)
+        current_cover = NeighborhoodCover(tuple(to_keep) + refined)
         current = classify_cover(obj, current_cover)
     return current
 

@@ -39,7 +39,6 @@ def _point_cone(dim: int) -> EuclideanCone:
         dim,
         contains=lambda point: FloatPoint(point) == FloatPoint.origin(dim),
         neighborhood=EuclideanNeighborhood.whole(dim),
-        name="point",
     )
 
 
@@ -116,7 +115,6 @@ def _sphere_chart(base_point: FloatPoint) -> ManifoldChart[FloatPoint]:
         forward,
         inverse,
         dim=dim,
-        name="sphere-gnomonic",
     )
 
 
@@ -176,7 +174,6 @@ class Space:
         self,
         dim: int = 2,
         radius: float = 1.0,
-        name: str = "",
     ) -> None:
         self.dim = int(dim)
         if self.dim < 1:
@@ -184,11 +181,9 @@ class Space:
         self.radius = float(radius)
         if self.radius <= 0.0:
             raise ValueError("Sphere radius must be positive")
-        self.name = name or f"S^{self.dim}({self.radius})"
 
     def __repr__(self) -> str:
-        label = f", name={self.name!r}" if self.name else ""
-        return f"Space(dim={self.dim}, radius={self.radius}{label})"
+        return f"Space(dim={self.dim}, radius={self.radius})"
 
     def contains(self, point: object) -> bool:
         try:
@@ -243,7 +238,7 @@ class Space:
         )
         return self.radius * math.acos(cosine)
 
-    def whole(self, name: str = "") -> GeometricObject[SpherePoint]:
+    def whole(self) -> GeometricObject[SpherePoint]:
         return GeometricObject(
             self,
             contains=lambda point: point in self,
@@ -251,13 +246,11 @@ class Space:
                 _sphere_chart(self.point(point)),
                 EuclideanCone.whole(self.dim),
             ),
-            name=name or "sphere",
         )
 
     def point_object(
         self,
         point: object,
-        name: str = "",
     ) -> GeometricObject[SpherePoint]:
         sphere_point = self.point(point)
         return GeometricObject(
@@ -267,14 +260,12 @@ class Space:
                 _sphere_chart(sphere_point),
                 _point_cone(self.dim),
             ),
-            name=name or "sphere-point",
         )
 
     def neighborhood_at(
         self,
         point: object,
         radius: float,
-        name: str = "",
     ) -> Neighborhood:
         center = self.point(point)
         radius = float(radius)
@@ -286,7 +277,6 @@ class Space:
             chart,
             center,
             EuclideanNeighborhood.box(*(((-radius, radius),) * self.dim)),
-            name=name or "sphere-neighborhood",
         )
 
     def full_cover(
@@ -346,7 +336,6 @@ class Space:
         self,
         center: object,
         radius: float,
-        name: str = "",
     ) -> GeometricObject[SpherePoint]:
         center_point = self.point(center)
         cap_radius = float(radius)
@@ -356,7 +345,7 @@ class Space:
         if cap_radius > max_radius:
             raise ValueError("Cap radius must not exceed the sphere diameter")
         if math.isclose(cap_radius, 0.0, abs_tol=1e-12):
-            return self.point_object(center_point, name=name or "sphere-cap")
+            return self.point_object(center_point)
         threshold = (self.radius * self.radius) * math.cos(
             cap_radius / self.radius
         )
@@ -368,7 +357,6 @@ class Space:
                     _sphere_chart(self.point(point)),
                     EuclideanCone.whole(self.dim),
                 ),
-                name=name or "sphere-cap",
             )
 
         def contains(point: FloatPoint) -> bool:
@@ -399,7 +387,6 @@ class Space:
                             gradient.dot(FloatVector(coordinates)) >= -1e-12
                         ),
                         neighborhood=EuclideanNeighborhood.whole(self.dim),
-                        name="sphere-cap-boundary",
                     )
             return LocalConeModel(chart, cone)
 
@@ -407,7 +394,6 @@ class Space:
             self,
             contains=contains,
             local_model=local_model,
-            name=name or "sphere-cap",
         )
 
 

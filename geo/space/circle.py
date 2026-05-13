@@ -50,24 +50,21 @@ def _circle_chart(center: Point) -> ManifoldChart[Point]:
             and abs(_signed_circle_offset(center, Point(point))) < math.pi
         ),
         image=EuclideanNeighborhood.box((-math.pi, math.pi)),
-        name="circle-centered",
     )
 
 
 class Space(ChartedSpace[Point]):
     """The unit circle with its standard arc-length metric."""
 
-    def __init__(self, name: str = "") -> None:
+    def __init__(self) -> None:
         super().__init__(
             _CircleManifold(),
             distance=lambda left, right: float(Point(left).distance_to(Point(right))),
-            name=name or "S1",
         )
 
     def point(
         self,
         point: object,
-        name: str = "",
     ) -> GeometricObject[Point]:
         point = Point(point)
         return GeometricObject(
@@ -77,14 +74,12 @@ class Space(ChartedSpace[Point]):
                 _circle_chart(point),
                 point_cone(1),
             ),
-            name=name,
         )
 
     def neighborhood_at(
         self,
         point: object,
         radius: float,
-        name: str = "",
     ) -> Neighborhood:
         center = Point(point)
         if center not in self:
@@ -100,7 +95,6 @@ class Space(ChartedSpace[Point]):
             chart,
             center,
             EuclideanNeighborhood.box((-radius, radius)),
-            name=name or "circle-neighborhood",
         )
 
     def full_cover(self, radius: float) -> tuple[Neighborhood, ...]:
@@ -125,7 +119,6 @@ class Space(ChartedSpace[Point]):
     def subset(
         self,
         *point_set: object,
-        name: str = "",
     ) -> GeometricObject[Point]:
         point_set = Set(*point_set)
 
@@ -152,16 +145,14 @@ class Space(ChartedSpace[Point]):
             self,
             contains=lambda point: Point(point) in point_set,
             local_model=local_model,
-            name=name,
         )
 
     def arc(
         self,
         start: object,
         end: object,
-        name: str = "",
     ) -> GeometricObject[Point]:
-        return self.subset((start, end), name=name)
+        return self.subset((start, end))
 
 
 __all__ = [

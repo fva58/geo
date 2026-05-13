@@ -49,7 +49,6 @@ class TestEuclideanCone(unittest.TestCase):
             1,
             contains=lambda point: point[0] >= 0.0,
             neighborhood=EuclideanNeighborhood.box((0.0, 10.0)),
-            name="half-line",
         )
         self.assertIsInstance(cone, Cone)
         self.assertIn(FloatPoint(0.0), cone)
@@ -71,7 +70,6 @@ class TestRadialCone(unittest.TestCase):
             1,
             contains_direction=lambda direction: direction[0] >= 0.0,
             neighborhood=EuclideanNeighborhood.box((-10.0, 10.0)),
-            name="positive-half-line",
         )
         self.assertIn(FloatPoint(0.0), cone)
         self.assertIn(FloatPoint(3.0), cone)
@@ -85,7 +83,6 @@ class TestRadialCone(unittest.TestCase):
                 direction[0] >= 0.0 and direction[1] >= 0.0
             ),
             neighborhood=EuclideanNeighborhood.box((-10.0, 10.0), (-10.0, 10.0)),
-            name="first-quadrant",
         )
         self.assertIn(FloatPoint(1.0, 2.0), cone)
         self.assertIn(FloatPoint(0.0, 0.0), cone)
@@ -103,7 +100,6 @@ class TestSphereObjectsAndSphericalCones(unittest.TestCase):
         sphere_object = DirectionSetSphereObject(
             2,
             contains=lambda direction: direction[0] >= 0.0 and direction[1] >= 0.0,
-            name="first-quadrant-directions",
         )
         self.assertIsInstance(sphere_object, SphereObject)
         self.assertIn(FloatVector(1.0, 0.0), sphere_object)
@@ -120,7 +116,6 @@ class TestSphereObjectsAndSphericalCones(unittest.TestCase):
         cone = SphericalCone(
             sphere_object,
             neighborhood=EuclideanNeighborhood.box((-10.0, 10.0), (-10.0, 10.0)),
-            name="first-quadrant-cone",
         )
         self.assertIn(FloatPoint(2.0, 3.0), cone)
         self.assertIn(FloatPoint(0.0, 0.0), cone)
@@ -130,7 +125,6 @@ class TestSphereObjectsAndSphericalCones(unittest.TestCase):
         """A sphere object in dimension 2 can be defined by a circle set."""
         circle_object = CircleSphereObject(
             CircleSet.from_single_interval(0.0, 1.5707963267948966),
-            name="first-quadrant-arc",
         )
         self.assertIsInstance(circle_object, SphereObject)
         self.assertIn(FloatVector(1.0, 0.0), circle_object)
@@ -162,7 +156,6 @@ class TestChartedGeometricObject(unittest.TestCase):
             dim=1,
             domain_contains=manifold.contains,
             image=EuclideanNeighborhood.box((-10.0, 10.0)),
-            name="line",
         )
 
         def local_model(point: LinePoint) -> LocalConeModel[LinePoint]:
@@ -171,7 +164,6 @@ class TestChartedGeometricObject(unittest.TestCase):
                     1,
                     contains=lambda coordinates: coordinates[0] >= 0.0,
                     neighborhood=EuclideanNeighborhood.box((0.0, 10.0)),
-                    name="boundary-cone",
                 )
             else:
                 cone = EuclideanCone.whole(1)
@@ -181,7 +173,6 @@ class TestChartedGeometricObject(unittest.TestCase):
             manifold,
             contains=lambda point: point.x >= 0.0,
             local_model=local_model,
-            name="half-line-object",
         )
 
         self.assertIsInstance(obj, GeometricObjectProtocol)

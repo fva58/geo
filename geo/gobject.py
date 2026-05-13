@@ -15,7 +15,6 @@ from .manifold import (
     Manifold,
     ManifoldChart,
     NeighborhoodMarking,
-    classify_local_object,
     classify_neighborhoods,
 )
 from .space.base import Neighborhood
@@ -91,7 +90,6 @@ def _centered_chart_at(
         dim=chart.dim,
         domain_contains=chart.domain_contains,
         image=_whole_neighborhood(chart.dim),
-        name=f"{chart.name}-centered" if chart.name else "",
     )
 
 
@@ -141,16 +139,13 @@ class ChartedGeometricObject(Generic[PointT]):
         manifold: Manifold[PointT],
         contains: Callable[[PointT], bool],
         local_model: Callable[[PointT], LocalConeModel[PointT]],
-        name: str = "",
     ) -> None:
         self.manifold = manifold
         self._contains = contains
         self._local_model = local_model
-        self.name = name
 
     def __repr__(self) -> str:
-        label = f", name={self.name!r}" if self.name else ""
-        return f"ChartedGeometricObject(dim={self.manifold.dim}{label})"
+        return f"ChartedGeometricObject(dim={self.manifold.dim})"
 
     def contains(self, point: PointT) -> bool:
         return point in self.manifold and self._contains(point)
@@ -210,30 +205,27 @@ class ChartedGeometricObject(Generic[PointT]):
     def classify_neighborhoods(
         self,
         neighborhoods: Sequence[Neighborhood[PointT]],
-        name: str = "",
     ) -> NeighborhoodMarking[PointT]:
-        return classify_neighborhoods(self, neighborhoods, name=name or self.name)
+        return classify_neighborhoods(self, neighborhoods)
 
     def visible_from_direction(
         self,
         direction: FloatVector,
-        name: str = "",
     ) -> "ChartedGeometricObject[FloatPoint]":
         from .space._euclidean_impl import visible_part_from_direction
 
         direction = FloatVector(direction)
         if direction.norm() == 0.0:
             raise ValueError("Visibility direction must be non-zero")
-        return visible_part_from_direction(self, direction, name=name)
+        return visible_part_from_direction(self, direction)
 
     def visible_from_point(
         self,
         point: FloatPoint,
-        name: str = "",
     ) -> "ChartedGeometricObject[FloatPoint]":
         from .space._euclidean_impl import visible_part_from_point
 
-        return visible_part_from_point(self, FloatPoint(point), name=name)
+        return visible_part_from_point(self, FloatPoint(point))
 
     def image_under_smooth_map(
         self,
@@ -242,7 +234,6 @@ class ChartedGeometricObject(Generic[PointT]):
         target_manifold: Manifold[TargetT],
         target_chart: Callable[[TargetT], ManifoldChart[TargetT]],
         contains_image_point: Callable[[TargetT], bool] | None = None,
-        name: str = "",
     ) -> "SmoothImageObject[PointT, TargetT]":
         return SmoothImageObject(
             self,
@@ -251,7 +242,6 @@ class ChartedGeometricObject(Generic[PointT]):
             target_manifold,
             target_chart,
             contains_image_point=contains_image_point,
-            name=name,
         )
 
     def project_along_direction_onto(
@@ -259,7 +249,6 @@ class ChartedGeometricObject(Generic[PointT]):
         source_hyperplane,
         target_hyperplane,
         direction: FloatVector,
-        name: str = "",
     ) -> "ChartedGeometricObject[FloatPoint]":
         from .space._euclidean_impl import (
             parallel_projection_inverse,
@@ -271,7 +260,6 @@ class ChartedGeometricObject(Generic[PointT]):
             target_hyperplane,
             direction,
         )
-        chosen_name = name or "parallel-projection"
 
         def contains(point: FloatPoint) -> bool:
             point = FloatPoint(point)
@@ -292,14 +280,12 @@ class ChartedGeometricObject(Generic[PointT]):
                 target_hyperplane,
                 target_point,
                 inverse_map,
-                chosen_name,
             )
 
         return ChartedGeometricObject(
             self.manifold,
             contains=contains,
             local_model=local_model,
-            name=chosen_name,
         )
 
     def project_from_point_onto(
@@ -307,7 +293,6 @@ class ChartedGeometricObject(Generic[PointT]):
         source_hyperplane,
         target_hyperplane,
         center: FloatPoint,
-        name: str = "",
     ) -> "ChartedGeometricObject[FloatPoint]":
         from .space._euclidean_impl import (
             central_projection_inverse,
@@ -319,7 +304,6 @@ class ChartedGeometricObject(Generic[PointT]):
             target_hyperplane,
             center,
         )
-        chosen_name = name or "central-projection"
 
         def contains(point: FloatPoint) -> bool:
             point = FloatPoint(point)
@@ -340,14 +324,12 @@ class ChartedGeometricObject(Generic[PointT]):
                 target_hyperplane,
                 target_point,
                 inverse_map,
-                chosen_name,
             )
 
         return ChartedGeometricObject(
             self.manifold,
             contains=contains,
             local_model=local_model,
-            name=chosen_name,
         )
 
 
@@ -362,7 +344,6 @@ class SmoothImageObject(ChartedGeometricObject[TargetT], Generic[PointT, TargetT
         target_manifold: Manifold[TargetT],
         target_chart: Callable[[TargetT], ManifoldChart[TargetT]],
         contains_image_point: Callable[[TargetT], bool] | None = None,
-        name: str = "",
     ) -> None:
         self.source_object = source_object
         self.forward = forward
@@ -386,7 +367,6 @@ class SmoothImageObject(ChartedGeometricObject[TargetT], Generic[PointT, TargetT
                 and self.preimage_on_image(point) in self.source_object
             ),
             local_model=self._local_model,
-            name=name,
         )
 
     def _local_model(self, point: TargetT) -> LocalConeModel[TargetT]:
@@ -417,7 +397,6 @@ class SmoothImageObject(ChartedGeometricObject[TargetT], Generic[PointT, TargetT
             ),
             apex=FloatPoint.origin(centered_target_chart.dim),
             neighborhood=_whole_neighborhood(centered_target_chart.dim),
-            name="smooth-image",
         )
         return LocalConeModel(centered_target_chart, cone)
 
@@ -430,26 +409,22 @@ class GeometricObject(ChartedGeometricObject[PointT]):
         space: Space[PointT],
         contains: Callable[[PointT], bool],
         local_model,
-        name: str = "",
     ) -> None:
         """Initialize the ambient-space geometric object."""
         self.space = space
-        super().__init__(space, contains, local_model, name=name)
+        super().__init__(space, contains, local_model)
 
     @classmethod
     def from_charted(
         cls,
         space: Space[PointT],
         obj: ChartedGeometricObject[PointT],
-        name: str = "",
     ) -> "GeometricObject[PointT]":
         """Wrap an existing charted object in an ambient space."""
-        chosen_name = name or getattr(obj, "name", "")
         wrapped = cls(
             space,
             contains=obj.contains,
             local_model=obj.local_model_at,
-            name=chosen_name,
         )
         wrapped._charted_source_object = obj
         return wrapped
@@ -459,7 +434,6 @@ class GeometricObject(ChartedGeometricObject[PointT]):
         left_model,
         right_model,
         operation: Callable[[bool, bool], bool],
-        name: str,
     ):
         """Combine two local cone models in a shared coordinate chart."""
         if left_model.chart.dim != right_model.chart.dim:
@@ -495,37 +469,32 @@ class GeometricObject(ChartedGeometricObject[PointT]):
                 ),
             ),
             neighborhood=_whole_neighborhood(dim),
-            name=name,
         )
         return LocalConeModel(left_model.chart, cone)
 
     def union(
         self,
         other: "GeometricObject[PointT]",
-        name: str = "",
     ) -> "GeometricObject[PointT]":
-        return LazyExpressionObject("union", self, other, name=name)
+        return LazyExpressionObject("union", self, other)
 
     def intersection(
         self,
         other: "GeometricObject[PointT]",
-        name: str = "",
     ) -> "GeometricObject[PointT]":
-        return LazyExpressionObject("intersection", self, other, name=name)
+        return LazyExpressionObject("intersection", self, other)
 
     def difference(
         self,
         other: "GeometricObject[PointT]",
-        name: str = "",
     ) -> "GeometricObject[PointT]":
-        return LazyExpressionObject("difference", self, other, name=name)
+        return LazyExpressionObject("difference", self, other)
 
     def symmetric_difference(
         self,
         other: "GeometricObject[PointT]",
-        name: str = "",
     ) -> "GeometricObject[PointT]":
-        return LazyExpressionObject("symmetric-difference", self, other, name=name)
+        return LazyExpressionObject("symmetric-difference", self, other)
 
     def __or__(self, other: "GeometricObject[PointT]") -> "GeometricObject[PointT]":
         return self.union(other)
@@ -544,13 +513,11 @@ class GeometricObject(ChartedGeometricObject[PointT]):
         source_hyperplane,
         target_hyperplane,
         direction: FloatVector,
-        name: str = "",
     ) -> "GeometricObject[PointT]":
         return LazyMappedObject(
             self.space,
             "project-along-direction",
             self,
-            name=name,
             source_hyperplane=source_hyperplane,
             target_hyperplane=target_hyperplane,
             direction=FloatVector(direction),
@@ -561,13 +528,11 @@ class GeometricObject(ChartedGeometricObject[PointT]):
         source_hyperplane,
         target_hyperplane,
         center: FloatPoint,
-        name: str = "",
     ) -> "GeometricObject[PointT]":
         return LazyMappedObject(
             self.space,
             "project-from-point",
             self,
-            name=name,
             source_hyperplane=source_hyperplane,
             target_hyperplane=target_hyperplane,
             center=FloatPoint(center),
@@ -576,26 +541,22 @@ class GeometricObject(ChartedGeometricObject[PointT]):
     def visible_from_direction(
         self,
         direction: FloatVector,
-        name: str = "",
     ) -> "GeometricObject[PointT]":
         return LazyMappedObject(
             self.space,
             "visible-from-direction",
             self,
-            name=name,
             direction=FloatVector(direction),
         )
 
     def visible_from_point(
         self,
         point: FloatPoint,
-        name: str = "",
     ) -> "GeometricObject[PointT]":
         return LazyMappedObject(
             self.space,
             "visible-from-point",
             self,
-            name=name,
             point=FloatPoint(point),
         )
 
@@ -606,13 +567,11 @@ class GeometricObject(ChartedGeometricObject[PointT]):
         target_space: Space[TargetT],
         target_chart,
         contains_image_point: Callable[[TargetT], bool] | None = None,
-        name: str = "",
     ) -> "GeometricObject[TargetT]":
         return LazyMappedObject(
             target_space,
             "image-under-smooth-map",
             self,
-            name=name,
             forward=forward,
             preimage_on_image=preimage_on_image,
             target_chart=target_chart,
@@ -623,13 +582,12 @@ class GeometricObject(ChartedGeometricObject[PointT]):
 class LazyObject(GeometricObject[PointT]):
     """Base class for lazy object expression-tree nodes."""
 
-    def __init__(self, space: Space[PointT], operation: str, name: str = "") -> None:
+    def __init__(self, space: Space[PointT], operation: str) -> None:
         self.operation = operation
         super().__init__(
             space,
             contains=self._contains_lazy,
             local_model=self._local_model_lazy,
-            name=name or self._default_name(),
         )
 
     @property
@@ -642,9 +600,6 @@ class LazyObject(GeometricObject[PointT]):
 
     @property
     def node_kind(self) -> str:
-        raise NotImplementedError
-
-    def _default_name(self) -> str:
         raise NotImplementedError
 
     def _contains_lazy(self, point: PointT) -> bool:
@@ -662,16 +617,15 @@ class LazyExpressionObject(LazyObject[PointT]):
         operation: str,
         left: GeometricObject[PointT],
         right: GeometricObject[PointT],
-        name: str = "",
     ) -> None:
         if left.space is not right.space:
             raise ValueError("Set-theoretic operations require the same ambient space")
         self.left = left
         self.right = right
-        super().__init__(left.space, operation, name=name)
+        super().__init__(left.space, operation)
 
     def __repr__(self) -> str:
-        return f"LazyExpressionObject(operation={self.operation!r}, name={self.name!r})"
+        return f"LazyExpressionObject(operation={self.operation!r})"
 
     @property
     def children(self) -> tuple[GeometricObject[PointT], ...]:
@@ -680,16 +634,6 @@ class LazyExpressionObject(LazyObject[PointT]):
     @property
     def node_kind(self) -> str:
         return "binary"
-
-    def _default_name(self) -> str:
-        symbols = {
-            "union": "|",
-            "intersection": "&",
-            "difference": "-",
-            "symmetric-difference": "^",
-        }
-        symbol = symbols.get(self.operation, "?")
-        return f"({self.left.name}){symbol}({self.right.name})"
 
     def _contains_lazy(self, point: PointT) -> bool:
         left_contains = point in self.left
@@ -711,7 +655,6 @@ class LazyExpressionObject(LazyObject[PointT]):
                     self.left.local_model_at(point),
                     self.right.local_model_at(point),
                     lambda left, right: left or right,
-                    self.operation,
                 )
             if point in self.left:
                 return self.left.local_model_at(point)
@@ -721,7 +664,6 @@ class LazyExpressionObject(LazyObject[PointT]):
                 self.left.local_model_at(point),
                 self.right.local_model_at(point),
                 lambda left, right: left and right,
-                self.operation,
             )
         if self.operation == "difference":
             if point in self.right:
@@ -729,7 +671,6 @@ class LazyExpressionObject(LazyObject[PointT]):
                     self.left.local_model_at(point),
                     self.right.local_model_at(point),
                     lambda left, right: left and not right,
-                    self.operation,
                 )
             return self.left.local_model_at(point)
         if self.operation == "symmetric-difference":
@@ -741,7 +682,6 @@ class LazyExpressionObject(LazyObject[PointT]):
                 self.left.local_model_at(point),
                 self.right.local_model_at(point),
                 lambda left, right: left ^ right,
-                self.operation,
             )
         raise ValueError(f"Unsupported lazy operation: {self.operation!r}")
 
@@ -754,15 +694,14 @@ class LazyMappedObject(LazyObject):
         space: Space,
         operation: str,
         source: GeometricObject,
-        name: str = "",
         **parameters,
     ) -> None:
         self.source = source
         self.parameters = parameters
-        super().__init__(space, operation, name=name)
+        super().__init__(space, operation)
 
     def __repr__(self) -> str:
-        return f"LazyMappedObject(operation={self.operation!r}, name={self.name!r})"
+        return f"LazyMappedObject(operation={self.operation!r})"
 
     @property
     def children(self) -> tuple[GeometricObject, ...]:
@@ -772,9 +711,6 @@ class LazyMappedObject(LazyObject):
     def node_kind(self) -> str:
         return "unary"
 
-    def _default_name(self) -> str:
-        return f"{self.operation}({self.source.name})"
-
     def _materialize_charted_object(self):
         source_object = getattr(self.source, "_charted_source_object", self.source)
         if self.operation == "project-along-direction":
@@ -783,7 +719,6 @@ class LazyMappedObject(LazyObject):
                 self.parameters["source_hyperplane"],
                 self.parameters["target_hyperplane"],
                 self.parameters["direction"],
-                name=self.name,
             )
         if self.operation == "project-from-point":
             return ChartedGeometricObject.project_from_point_onto(
@@ -791,19 +726,16 @@ class LazyMappedObject(LazyObject):
                 self.parameters["source_hyperplane"],
                 self.parameters["target_hyperplane"],
                 self.parameters["center"],
-                name=self.name,
             )
         if self.operation == "visible-from-direction":
             return ChartedGeometricObject.visible_from_direction(
                 source_object,
                 self.parameters["direction"],
-                name=self.name,
             )
         if self.operation == "visible-from-point":
             return ChartedGeometricObject.visible_from_point(
                 source_object,
                 self.parameters["point"],
-                name=self.name,
             )
         if self.operation == "image-under-smooth-map":
             return ChartedGeometricObject.image_under_smooth_map(
@@ -813,7 +745,6 @@ class LazyMappedObject(LazyObject):
                 self.space,
                 self.parameters["target_chart"],
                 contains_image_point=self.parameters["contains_image_point"],
-                name=self.name,
             )
         raise ValueError(f"Unsupported lazy mapped operation: {self.operation!r}")
 
@@ -821,7 +752,6 @@ class LazyMappedObject(LazyObject):
         return GeometricObject.from_charted(
             self.space,
             self._materialize_charted_object(),
-            name=self.name,
         )
 
     def _contains_lazy(self, point):
