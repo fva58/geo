@@ -9,7 +9,7 @@ from ..cone import EuclideanCone, LocalConeModel
 from ..euclidean import EuclideanNeighborhood, FloatPoint, FloatVector
 from ..gobject import GeometricObject
 from ..manifold import ManifoldChart
-from .base import BoxNeighborhood, refine_neighborhoods as _refine_neighborhoods
+from .base import BoxNeighborhood, Space as SpaceBase, refine_neighborhoods as _refine_neighborhoods
 
 
 class Neighborhood(BoxNeighborhood["SpherePoint"]):
@@ -167,7 +167,7 @@ class SpherePoint(FloatPoint):
         )
 
 
-class Space:
+class Space(SpaceBase):
     """Sphere represented by embedded points in ``R^(n+1)``."""
 
     def __init__(
@@ -175,12 +175,17 @@ class Space:
         dim: int = 2,
         radius: float = 1.0,
     ) -> None:
-        self.dim = int(dim)
-        if self.dim < 1:
+        self._dim = int(dim)
+        if self._dim < 1:
             raise ValueError("Sphere dimension must be positive")
         self.radius = float(radius)
         if self.radius <= 0.0:
             raise ValueError("Sphere radius must be positive")
+
+    @property
+    def dim(self) -> int:
+        """Return the sphere dimension."""
+        return self._dim
 
     def __repr__(self) -> str:
         return f"Space(dim={self.dim}, radius={self.radius})"

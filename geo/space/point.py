@@ -9,7 +9,7 @@ from ..cone import EuclideanCone, LocalConeModel
 from ..euclidean import EuclideanNeighborhood, FloatPoint
 from ..gobject import GeometricObject
 from ..manifold import ManifoldChart
-from .base import Space as SpaceProtocol
+from .base import Neighborhood as NeighborhoodBase, Space as SpaceBase
 
 
 _POINT = FloatPoint.origin(0)
@@ -42,10 +42,10 @@ def _point_chart() -> ManifoldChart[FloatPoint]:
 
 
 @dataclass(frozen=True)
-class Neighborhood:
+class Neighborhood(NeighborhoodBase[FloatPoint]):
     """The unique neighborhood in the one-point space."""
 
-    manifold: SpaceProtocol[FloatPoint]
+    manifold: SpaceBase[FloatPoint]
     chart: ManifoldChart[FloatPoint]
     center: FloatPoint = _POINT
 
@@ -83,7 +83,7 @@ class Neighborhood:
         return (self,)
 
 
-class Space:
+class Space(SpaceBase):
     """Zero-dimensional metric space with one point."""
 
     def __init__(self) -> None:

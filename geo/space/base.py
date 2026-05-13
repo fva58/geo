@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import abc
 import itertools
 import math
 from dataclasses import dataclass
-from typing import Callable, Generic, Protocol, TypeVar, runtime_checkable
+from typing import Callable, Generic, TypeVar
+from collections.abc import Sequence
 
 from ..euclidean import EuclideanNeighborhood, FloatPoint
 from ..manifold import Manifold, ManifoldChart
@@ -14,57 +16,38 @@ from ..manifold import Manifold, ManifoldChart
 PointT = TypeVar("PointT")
 
 
-@runtime_checkable
-class Space(Manifold[PointT], Protocol[PointT]):
-    """Protocol for spaces with distance and neighborhood covers."""
+class Space(Manifold[PointT], abc.ABC):
+    """Abstract base class for spaces with distance and neighborhood covers."""
 
+    @abc.abstractmethod
     def distance(self, left: PointT, right: PointT) -> float:
         """Return the distance between two points."""
 
+    @abc.abstractmethod
     def full_cover(self, radius: float):
         """Return a full cover of the space by neighborhoods."""
 
+    @abc.abstractmethod
     def refine_cover(self, neighborhoods, factor: int = 2):
         """Return a covering refinement with smaller diameters."""
 
 
-@runtime_checkable
-class Neighborhood(Protocol[PointT]):
-    """Protocol for a local neighborhood in a space."""
+class Neighborhood(abc.ABC, Generic[PointT]):
+    """Abstract base class for local neighborhoods in a space."""
 
-    @property
-    def manifold(self) -> Manifold[PointT]:
-        """Return the ambient manifold."""
-
-    @property
-    def chart(self) -> ManifoldChart[PointT]:
-        """Return chart coordinates for the neighborhood."""
-
-    @property
-    def center(self) -> PointT:
-        """Return a distinguished point in the neighborhood."""
-
-    @property
-    def image(self) -> EuclideanNeighborhood:
-        """Return the coordinate image of the neighborhood."""
-
-    def inner_radius(self) -> float:
-        """Return a guaranteed included ball radius around the center."""
-
-    def outer_radius(self) -> float:
-        """Return a guaranteed containing ball radius around the center."""
-
-    def diameter(self) -> float:
-        """Return an upper bound on the neighborhood diameter."""
-
-    def contains(self, point: PointT) -> bool:
-        """Check whether a point belongs to the neighborhood."""
-
-    def center_point(self) -> PointT:
-        """Return the distinguished center point."""
-
-    def subdivide(self) -> tuple["Neighborhood[PointT]", ...]:
-        """Return a finite refinement cover by smaller neighborhoods."""
+    @classmethod
+    def __subclasshook__(cls, subclass: type) -> bool:
+        """Structural subtyping: accept any class with the expected methods."""
+        if cls is Neighborhood:
+            for attr in (
+                "manifold", "chart", "center", "image",
+                "inner_radius", "outer_radius", "diameter",
+                "contains", "center_point", "subdivide",
+            ):
+                if not any(attr in vars(klass) for klass in subclass.__mro__):
+                    return NotImplemented
+            return True
+        return NotImplemented
 
 
 def _single_interval_bounds(
@@ -85,7 +68,7 @@ def _single_interval_bounds(
 
 
 @dataclass(frozen=True)
-class BoxNeighborhood(Generic[PointT]):
+class BoxNeighborhood(Neighborhood[PointT]):
     """Neighborhood represented by one chart patch and a box image."""
 
     manifold: Manifold[PointT]
@@ -173,7 +156,7 @@ class BoxNeighborhood(Generic[PointT]):
         return tuple(neighborhoods)
 
 
-class ChartedSpace(Generic[PointT]):
+class ChartedSpace(Space[PointT]):
     """Concrete space given by a manifold and a distance function."""
 
     def __init__(

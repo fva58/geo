@@ -11,7 +11,7 @@ from ..euclidean import EuclideanNeighborhood, FloatPoint
 from ..gobject import GeometricObject
 from ..circle import Angle, Point, Set
 from ..manifold import ManifoldChart
-from .base import BoxNeighborhood, refine_neighborhoods as _refine_neighborhoods
+from .base import BoxNeighborhood, Space as SpaceBase, refine_neighborhoods as _refine_neighborhoods
 
 
 class Neighborhood(BoxNeighborhood["TorusPoint"]):
@@ -154,7 +154,7 @@ def _torus_chart(base_point: TorusPoint) -> ManifoldChart[TorusPoint]:
     )
 
 
-class Space:
+class Space(SpaceBase):
     """Flat torus modeled as a product of circles."""
 
     def __init__(
@@ -164,25 +164,30 @@ class Space:
         minor_radius: float = 0.5,
         radii: Sequence[float] | None = None,
     ) -> None:
-        self.dim = int(dim)
-        if self.dim < 1:
+        self._dim = int(dim)
+        if self._dim < 1:
             raise ValueError("Torus dimension must be positive")
         if radii is None:
-            if self.dim == 1:
+            if self._dim == 1:
                 radii = (float(major_radius),)
-            elif self.dim == 2:
+            elif self._dim == 2:
                 radii = (float(major_radius), float(minor_radius))
             else:
                 base = float(major_radius)
                 step = float(minor_radius)
-                radii = tuple(base - step * index for index in range(self.dim))
+                radii = tuple(base - step * index for index in range(self._dim))
         self.radii = tuple(float(radius) for radius in radii)
-        if len(self.radii) != self.dim:
+        if len(self.radii) != self._dim:
             raise ValueError("Torus radii length must match the torus dimension")
         if any(radius <= 0.0 for radius in self.radii):
             raise ValueError("Torus radii must be positive")
         self.major_radius = self.radii[0]
-        self.minor_radius = self.radii[1] if self.dim > 1 else self.radii[0]
+        self.minor_radius = self.radii[1] if self._dim > 1 else self.radii[0]
+
+    @property
+    def dim(self) -> int:
+        """Return the torus dimension."""
+        return self._dim
 
     def __repr__(self) -> str:
         return f"Space(dim={self.dim}, radii={self.radii})"
