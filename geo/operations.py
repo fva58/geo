@@ -5,7 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Generic, TypeVar
 
-from .manifold import LocalObjectModel
+from .cone import LocalConeModel
+from .space.base import Neighborhood
 
 
 PointT = TypeVar("PointT")
@@ -34,12 +35,12 @@ class RefinedObjectCover(Generic[PointT]):
     """Refinement state for one object over a neighborhood cover."""
 
     obj: object
-    cone_parts: tuple[LocalObjectModel[PointT], ...]
-    complex_parts: tuple[LocalObjectModel[PointT], ...]
-    empty_parts: tuple[LocalObjectModel[PointT], ...]
+    cone_parts: tuple[Neighborhood[PointT], ...]
+    complex_parts: tuple[Neighborhood[PointT], ...]
+    empty_parts: tuple[Neighborhood[PointT], ...]
 
     @property
-    def active_parts(self) -> tuple[LocalObjectModel[PointT], ...]:
+    def active_parts(self):
         """Return the non-empty parts of the current refinement."""
         return self.cone_parts + self.complex_parts
 
@@ -47,13 +48,13 @@ class RefinedObjectCover(Generic[PointT]):
         """Return the largest diameter among active parts."""
         if not self.active_parts:
             return 0.0
-        return max(part.neighborhood.diameter() for part in self.active_parts)
+        return max(n.diameter() for n in self.active_parts)
 
     def max_outer_radius(self) -> float:
         """Return the largest outer radius among active parts."""
         if not self.active_parts:
             return 0.0
-        return max(part.neighborhood.outer_radius() for part in self.active_parts)
+        return max(n.outer_radius() for n in self.active_parts)
 
 
 def _max_outer_radius(cover) -> float:
@@ -68,12 +69,21 @@ def classify_cover(
     cover,
 ):
     """Classify one object over all neighborhoods in a cover."""
-    marking = obj.classify_neighborhoods(cover)
+    cone = []
+    complex_ = []
+    empty = []
+    for neighborhood, result in zip(cover, obj.classify_neighborhoods(cover)):
+        if isinstance(result, LocalConeModel):
+            cone.append(neighborhood)
+        elif result is Ellipsis:
+            complex_.append(neighborhood)
+        else:
+            empty.append(neighborhood)
     return RefinedObjectCover(
         obj,
-        marking.cone,
-        marking.complex,
-        marking.empty,
+        tuple(cone),
+        tuple(complex_),
+        tuple(empty),
     )
 
 
@@ -95,18 +105,16 @@ def refine_until(
             current.max_outer_radius() <= max_outer_radius
         ):
             return current
-        to_keep = [part.neighborhood for part in current.cone_parts]
-        to_refine = [part.neighborhood for part in current.complex_parts]
+        to_keep = list(current.cone_parts)
+        to_refine = list(current.complex_parts)
         if current.max_outer_radius() > max_outer_radius:
             to_refine.extend(
-                part.neighborhood
-                for part in current.cone_parts
-                if part.neighborhood.outer_radius() > max_outer_radius
+                n for n in current.cone_parts
+                if n.outer_radius() > max_outer_radius
             )
             to_keep = [
-                part.neighborhood
-                for part in current.cone_parts
-                if part.neighborhood.outer_radius() <= max_outer_radius
+                n for n in current.cone_parts
+                if n.outer_radius() <= max_outer_radius
             ]
         refined = tuple(
             child

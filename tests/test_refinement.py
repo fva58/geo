@@ -3,13 +3,9 @@
 import itertools
 import unittest
 
+from geo.cone import LocalConeModel
 from geo.euclidean import FloatPoint
-from geo.manifold import (
-    LocalObjectModel,
-    NeighborhoodMarking,
-    classify_local_object,
-    refine_neighborhoods,
-)
+from geo.manifold import refine_neighborhoods
 from geo.operations import classify_cover, local_chart_cover_from_points, refine_until
 from geo import space as space_pkg
 from geo.space.base import Neighborhood
@@ -54,21 +50,15 @@ class TestNeighborhoodRefinement(unittest.TestCase):
         space = space_pkg.line.Space()
         segment = space.subset((0.0, 1.0))
 
-        conic = classify_local_object(
-            segment,
+        conic = segment.classify_neighborhood(
             space.neighborhood_at(0.5, 0.25),
         )
-        empty = classify_local_object(
-            segment,
+        empty = segment.classify_neighborhood(
             space.neighborhood_at(2.0, 0.4),
         )
 
-        self.assertIsInstance(conic, LocalObjectModel)
-        self.assertEqual(conic.status, "cone")
-        self.assertTrue(conic.is_cone)
-        self.assertIsNotNone(conic.local_model)
-        self.assertEqual(empty.status, "empty")
-        self.assertIsNone(empty.witness_point)
+        self.assertIsInstance(conic, LocalConeModel)
+        self.assertIsNone(empty)
 
     def test_object_marks_list_of_neighborhoods(self):
         """An object should classify a whole neighborhood list at once."""
@@ -82,12 +72,11 @@ class TestNeighborhoodRefinement(unittest.TestCase):
 
         marking = segment.classify_neighborhoods(neighborhoods)
 
-        self.assertIsInstance(marking, NeighborhoodMarking)
+        self.assertIsInstance(marking, tuple)
         self.assertEqual(len(marking), 3)
-        self.assertEqual(tuple(model.status for model in marking), ("cone", "empty", "complex"))
-        self.assertEqual(len(marking.cone), 1)
-        self.assertEqual(len(marking.empty), 1)
-        self.assertEqual(len(marking.complex), 1)
+        self.assertIsInstance(marking[0], LocalConeModel)
+        self.assertIsNone(marking[1])
+        self.assertIs(marking[2], Ellipsis)
 
     def test_local_object_classification_can_request_refinement(self):
         """Mixed neighborhoods should be marked complex for refinement."""
@@ -95,11 +84,9 @@ class TestNeighborhoodRefinement(unittest.TestCase):
         upper = space.half_plane((0.0, 1.0), offset=0.0)
         neighborhood = space.neighborhood_at(FloatPoint(0.0, -0.5), 1.0)
 
-        local = classify_local_object(upper, neighborhood)
+        local = upper.classify_neighborhood(neighborhood)
 
-        self.assertEqual(local.status, "complex")
-        self.assertIn(local.witness_point, upper)
-        self.assertIsNone(local.local_model)
+        self.assertIs(local, Ellipsis)
 
     def test_large_neighborhood_is_not_forced_to_be_cone(self):
         """A large neighborhood can contain more than one local cone patch."""
@@ -107,11 +94,9 @@ class TestNeighborhoodRefinement(unittest.TestCase):
         cube = space.cube(FloatPoint(1.0, 1.0), 1.0)
         neighborhood = space.neighborhood_at(FloatPoint(0.0, 0.0), 10.0)
 
-        local = classify_local_object(cube, neighborhood)
+        local = cube.classify_neighborhood(neighborhood)
 
-        self.assertEqual(local.status, "complex")
-        self.assertEqual(local.witness_point, FloatPoint(10.0, 10.0))
-        self.assertIsNone(local.local_model)
+        self.assertIs(local, Ellipsis)
 
     def test_standard_spaces_expose_intrinsic_neighborhoods(self):
         """Standard spaces should provide centered intrinsic neighborhoods."""

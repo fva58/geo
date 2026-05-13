@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import TYPE_CHECKING, Callable, Generic, Protocol, TypeVar, runtime_checkable
 
 from .euclidean import EuclideanNeighborhood, FloatPoint
@@ -166,95 +165,10 @@ def refine_neighborhoods(
     return refine(neighborhoods, factor=factor)
 
 
-@dataclass(frozen=True)
-class LocalObjectModel(Generic[PointT]):
-    """Classification of one object inside one neighborhood."""
-
-    status: str
-    neighborhood: Neighborhood[PointT]
-    witness_point: PointT | None = None
-    local_model: object | None = None
-
-    def __post_init__(self) -> None:
-        """Require one of the supported statuses."""
-        if self.status not in {"empty", "cone", "complex"}:
-            raise ValueError(f"Unsupported local object status: {self.status!r}")
-
-    @property
-    def is_empty(self) -> bool:
-        """Return whether the object is empty in the neighborhood."""
-        return self.status == "empty"
-
-    @property
-    def is_cone(self) -> bool:
-        """Return whether the object is conic in the neighborhood."""
-        return self.status == "cone"
-
-    @property
-    def is_complex(self) -> bool:
-        """Return whether the neighborhood should be refined."""
-        return self.status == "complex"
-
-
-@dataclass(frozen=True)
-class NeighborhoodMarking(Generic[PointT]):
-    """Object marking on a finite neighborhood family."""
-
-    entries: tuple[LocalObjectModel[PointT], ...]
-
-    def __iter__(self):
-        """Iterate over marked neighborhoods."""
-        return iter(self.entries)
-
-    def __len__(self) -> int:
-        """Return the number of marked neighborhoods."""
-        return len(self.entries)
-
-    @property
-    def empty(self) -> tuple[LocalObjectModel[PointT], ...]:
-        """Return neighborhoods marked empty."""
-        return tuple(entry for entry in self.entries if entry.is_empty)
-
-    @property
-    def cone(self) -> tuple[LocalObjectModel[PointT], ...]:
-        """Return neighborhoods marked cone."""
-        return tuple(entry for entry in self.entries if entry.is_cone)
-
-    @property
-    def complex(self) -> tuple[LocalObjectModel[PointT], ...]:
-        """Return neighborhoods marked complex."""
-        return tuple(entry for entry in self.entries if entry.is_complex)
-
-
-def classify_local_object(
-    obj,
-    neighborhood: Neighborhood[PointT],
-) -> LocalObjectModel[PointT]:
-    """Classify an object inside one neighborhood."""
-    return obj.classify_neighborhood(neighborhood)
-
-
-def classify_neighborhoods(
-    obj,
-    neighborhoods,
-) -> NeighborhoodMarking[PointT]:
-    """Return the object marking on a finite neighborhood family."""
-    return NeighborhoodMarking(
-        tuple(
-            classify_local_object(obj, neighborhood)
-            for neighborhood in neighborhoods
-        ),
-    )
-
-
 __all__ = [
     "Manifold",
     "ManifoldChart",
     "ChartTransition",
     "Atlas",
     "refine_neighborhoods",
-    "LocalObjectModel",
-    "NeighborhoodMarking",
-    "classify_local_object",
-    "classify_neighborhoods",
 ]

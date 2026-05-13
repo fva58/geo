@@ -11,11 +11,8 @@ import numpy as np
 from .cone import EuclideanCone, LocalConeModel
 from .euclidean import FloatPoint, FloatVector
 from .manifold import (
-    LocalObjectModel,
     Manifold,
     ManifoldChart,
-    NeighborhoodMarking,
-    classify_neighborhoods,
 )
 from .space.base import Neighborhood
 
@@ -166,7 +163,7 @@ class ChartedGeometricObject(Generic[PointT]):
     def classify_neighborhood(
         self,
         neighborhood: Neighborhood[PointT],
-    ) -> LocalObjectModel[PointT]:
+    ):
         center = neighborhood.center_point()
         if center in self:
             local_model = self.local_model_at(center)
@@ -175,38 +172,24 @@ class ChartedGeometricObject(Generic[PointT]):
                 try:
                     predicted = local_model.chart(point) in local_model.cone
                 except ValueError:
-                    return LocalObjectModel(
-                        "complex",
-                        neighborhood,
-                        witness_point=point,
-                    )
+                    return Ellipsis
                 if actual != predicted:
-                    return LocalObjectModel(
-                        "complex",
-                        neighborhood,
-                        witness_point=point,
-                    )
-            return LocalObjectModel(
-                "cone",
-                neighborhood,
-                witness_point=center,
-                local_model=local_model,
-            )
+                    return Ellipsis
+            return local_model
 
         for point in _classification_points(neighborhood):
             if point in self:
-                return LocalObjectModel(
-                    "complex",
-                    neighborhood,
-                    witness_point=point,
-                )
-        return LocalObjectModel("empty", neighborhood)
+                return Ellipsis
+        return None
 
     def classify_neighborhoods(
         self,
         neighborhoods: Sequence[Neighborhood[PointT]],
-    ) -> NeighborhoodMarking[PointT]:
-        return classify_neighborhoods(self, neighborhoods)
+    ):
+        return tuple(
+            self.classify_neighborhood(neighborhood)
+            for neighborhood in neighborhoods
+        )
 
     def visible_from_direction(
         self,
