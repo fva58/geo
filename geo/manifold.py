@@ -156,43 +156,6 @@ class Atlas(Generic[PointT]):
             raise ValueError("Both charts must belong to the atlas")
         return ChartTransition(source_chart, target_chart)
 
-@dataclass(frozen=True)
-class NeighborhoodCover(Generic[PointT]):
-    """Finite cover by neighborhoods."""
-
-    neighborhoods: tuple[Neighborhood[PointT], ...]
-
-    def __post_init__(self) -> None:
-        """Require a non-empty homogeneous cover."""
-        if not self.neighborhoods:
-            raise ValueError("NeighborhoodCover must not be empty")
-        manifold = self.neighborhoods[0].manifold
-        if any(neighborhood.manifold is not manifold for neighborhood in self.neighborhoods):
-            raise ValueError("All neighborhoods in a cover must share a manifold")
-
-    @property
-    def manifold(self) -> Manifold[PointT]:
-        """Return the common ambient manifold."""
-        return self.neighborhoods[0].manifold
-
-    def refine(self) -> "NeighborhoodCover[PointT]":
-        """Refine every neighborhood in the cover."""
-        refined = tuple(
-            child
-            for neighborhood in self.neighborhoods
-            for child in neighborhood.subdivide()
-        )
-        return NeighborhoodCover(refined)
-
-    def max_diameter(self) -> float:
-        """Return the largest neighborhood diameter in the cover."""
-        return max(neighborhood.diameter() for neighborhood in self.neighborhoods)
-
-    def max_outer_radius(self) -> float:
-        """Return the largest outer radius in the cover."""
-        return max(neighborhood.outer_radius() for neighborhood in self.neighborhoods)
-
-
 def refine_neighborhoods(
     neighborhoods: tuple[Neighborhood[PointT], ...],
     factor: int = 2,
@@ -289,7 +252,6 @@ __all__ = [
     "ManifoldChart",
     "ChartTransition",
     "Atlas",
-    "NeighborhoodCover",
     "refine_neighborhoods",
     "LocalObjectModel",
     "NeighborhoodMarking",

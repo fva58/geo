@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Generic, TypeVar
 
-from .manifold import LocalObjectModel, NeighborhoodCover
+from .manifold import LocalObjectModel
 
 
 PointT = TypeVar("PointT")
@@ -15,7 +15,7 @@ def local_chart_cover_from_points(
     space,
     points,
     radius: float,
-) -> NeighborhoodCover[PointT]:
+):
     """Build a neighborhood cover from explicit points in one space."""
     radius = float(radius)
     if radius <= 0.0:
@@ -26,7 +26,7 @@ def local_chart_cover_from_points(
     )
     if not neighborhoods:
         raise ValueError("Need at least one point to build a cover")
-    return NeighborhoodCover(neighborhoods)
+    return neighborhoods
 
 
 @dataclass(frozen=True)
@@ -56,14 +56,19 @@ class RefinedObjectCover(Generic[PointT]):
         return max(part.neighborhood.outer_radius() for part in self.active_parts)
 
 
+def _max_outer_radius(cover) -> float:
+    """Return the largest outer radius in a cover."""
+    if not cover:
+        return 0.0
+    return max(n.outer_radius() for n in cover)
+
+
 def classify_cover(
     obj,
-    cover: NeighborhoodCover[PointT],
-) -> RefinedObjectCover[PointT]:
+    cover,
+):
     """Classify one object over all neighborhoods in a cover."""
-    marking = obj.classify_neighborhoods(
-        cover.neighborhoods,
-    )
+    marking = obj.classify_neighborhoods(cover)
     return RefinedObjectCover(
         obj,
         marking.cone,
@@ -74,11 +79,11 @@ def classify_cover(
 
 def refine_until(
     obj,
-    cover: NeighborhoodCover[PointT],
+    cover,
     *,
     max_outer_radius: float,
     max_steps: int = 8,
-) -> RefinedObjectCover[PointT]:
+):
     """Refine a cover until non-empty parts are small enough or steps end."""
     if max_outer_radius <= 0.0:
         raise ValueError("max_outer_radius must be positive")
@@ -110,7 +115,7 @@ def refine_until(
         )
         if not refined:
             return current
-        current_cover = NeighborhoodCover(tuple(to_keep) + refined)
+        current_cover = tuple(to_keep) + refined
         current = classify_cover(obj, current_cover)
     return current
 

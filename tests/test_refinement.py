@@ -6,9 +6,9 @@ import unittest
 from geo.euclidean import FloatPoint
 from geo.manifold import (
     LocalObjectModel,
-    NeighborhoodCover,
     NeighborhoodMarking,
     classify_local_object,
+    refine_neighborhoods,
 )
 from geo.operations import classify_cover, local_chart_cover_from_points, refine_until
 from geo import space as space_pkg
@@ -35,13 +35,19 @@ class TestNeighborhoodRefinement(unittest.TestCase):
         """A cover should refine into smaller neighborhoods."""
         space = space_pkg.line.Space()
         neighborhood = space.neighborhood_at(0.5, 0.5)
-        cover = NeighborhoodCover((neighborhood,))
-        refined = cover.refine()
+        cover = (neighborhood,)
+        refined = refine_neighborhoods(cover, factor=2)
 
-        self.assertEqual(len(refined.neighborhoods), 2)
-        self.assertLess(refined.max_diameter(), cover.max_diameter())
-        self.assertLess(refined.max_outer_radius(), cover.max_outer_radius())
-        self.assertAlmostEqual(refined.neighborhoods[0].diameter(), 0.5)
+        self.assertEqual(len(refined), 2)
+        self.assertLess(
+            max(n.diameter() for n in refined),
+            max(n.diameter() for n in cover),
+        )
+        self.assertLess(
+            max(n.outer_radius() for n in refined),
+            max(n.outer_radius() for n in cover),
+        )
+        self.assertAlmostEqual(refined[0].diameter(), 0.5)
 
     def test_local_object_classification_on_real_line(self):
         """Local classification should distinguish empty and cone patches."""
