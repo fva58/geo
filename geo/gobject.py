@@ -14,10 +14,9 @@ from .manifold import (
     Manifold,
     ManifoldChart,
 )
-from .space.base import Neighborhood
 
 if TYPE_CHECKING:
-    from .space.base import Space
+    from .space.base import Neighborhood, Space
 
 
 PointT = TypeVar("PointT")

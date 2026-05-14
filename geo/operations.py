@@ -2,14 +2,34 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Generic, TypeVar
+from typing import NamedTuple
 
 from .cone import LocalConeModel
-from .space.base import Neighborhood
 
 
-PointT = TypeVar("PointT")
+class _CoverResult(NamedTuple):
+    """Result of cover classification or refinement."""
+
+    cone_parts: tuple
+    complex_parts: tuple
+    empty_parts: tuple
+
+    @property
+    def active_parts(self):
+        """Return the non-empty parts."""
+        return self.cone_parts + self.complex_parts
+
+    def max_diameter(self) -> float:
+        """Return the largest diameter among active parts."""
+        if not self.active_parts:
+            return 0.0
+        return max(n.diameter() for n in self.active_parts)
+
+    def max_outer_radius(self) -> float:
+        """Return the largest outer radius among active parts."""
+        if not self.active_parts:
+            return 0.0
+        return max(n.outer_radius() for n in self.active_parts)
 
 
 def local_chart_cover_from_points(
@@ -30,40 +50,6 @@ def local_chart_cover_from_points(
     return neighborhoods
 
 
-@dataclass(frozen=True)
-class RefinedObjectCover(Generic[PointT]):
-    """Refinement state for one object over a neighborhood cover."""
-
-    obj: object
-    cone_parts: tuple[Neighborhood[PointT], ...]
-    complex_parts: tuple[Neighborhood[PointT], ...]
-    empty_parts: tuple[Neighborhood[PointT], ...]
-
-    @property
-    def active_parts(self):
-        """Return the non-empty parts of the current refinement."""
-        return self.cone_parts + self.complex_parts
-
-    def max_diameter(self) -> float:
-        """Return the largest diameter among active parts."""
-        if not self.active_parts:
-            return 0.0
-        return max(n.diameter() for n in self.active_parts)
-
-    def max_outer_radius(self) -> float:
-        """Return the largest outer radius among active parts."""
-        if not self.active_parts:
-            return 0.0
-        return max(n.outer_radius() for n in self.active_parts)
-
-
-def _max_outer_radius(cover) -> float:
-    """Return the largest outer radius in a cover."""
-    if not cover:
-        return 0.0
-    return max(n.outer_radius() for n in cover)
-
-
 def classify_cover(
     obj,
     cover,
@@ -79,12 +65,7 @@ def classify_cover(
             complex_.append(neighborhood)
         else:
             empty.append(neighborhood)
-    return RefinedObjectCover(
-        obj,
-        tuple(cone),
-        tuple(complex_),
-        tuple(empty),
-    )
+    return _CoverResult(tuple(cone), tuple(complex_), tuple(empty))
 
 
 def refine_until(
@@ -130,7 +111,6 @@ def refine_until(
 
 __all__ = [
     "local_chart_cover_from_points",
-    "RefinedObjectCover",
     "classify_cover",
     "refine_until",
 ]
