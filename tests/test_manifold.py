@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 from geo.diffeomorphism import Chart
 from geo.euclidean import EuclideanNeighborhood, Point
-from geo.manifold import Manifold, ManifoldChart
+from geo.manifold import ManifoldChart
 
 
 @dataclass(frozen=True)
@@ -42,9 +42,8 @@ class TestManifoldChart(unittest.TestCase):
     """Test cases for manifold abstractions."""
 
     def test_manifold_protocol(self):
-        """A simple manifold object should satisfy the manifold protocol."""
+        """A simple manifold object should support point containment."""
         manifold = OpenIntervalManifold(-1.0, 1.0)
-        self.assertIsInstance(manifold, Manifold)
         self.assertIn(LinePoint(0.0), manifold)
         self.assertNotIn(LinePoint(2.0), manifold)
 

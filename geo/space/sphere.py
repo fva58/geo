@@ -8,7 +8,7 @@ from collections.abc import Sequence
 from ..cone import EuclideanCone, LocalConeModel
 from ..euclidean import EuclideanNeighborhood, Point, Vector
 from ..gobject import GeometricObject
-from ..manifold import ManifoldChart
+from .base import ManifoldChart
 from .base import BoxNeighborhood, Space as SpaceBase, refine_neighborhoods as _refine_neighborhoods
 
 

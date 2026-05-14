@@ -26,16 +26,24 @@ from ..cone import (
 )
 from ..euclidean import EuclideanNeighborhood, Point, Vector
 from ..gobject import ChartedGeometricObject
-from ..manifold import ManifoldChart
+from .base import ManifoldChart, Space as SpaceBase
 
 
-class EuclideanSpace:
-    """Canonical Euclidean manifold ``R^n``."""
+class EuclideanSpace(SpaceBase):
+    """Canonical Euclidean space ``R^n``."""
 
     def __init__(self, dim: int) -> None:
         if dim <= 0:
             raise ValueError("Euclidean space dimension must be positive")
-        self.dim = dim
+        self._dim = dim
+
+    @property
+    def dim(self) -> int:
+        return self._dim
+
+    @property
+    def point_type(self) -> type:
+        return Point
 
     def contains(self, point: object) -> bool:
         try:
@@ -46,6 +54,15 @@ class EuclideanSpace:
 
     def __contains__(self, point: object) -> bool:
         return self.contains(point)
+
+    def distance(self, left: Point, right: Point) -> float:
+        return Point(left).distance_to(Point(right))
+
+    def full(self, radius: float):
+        raise NotImplementedError("EuclideanSpace does not support full covers")
+
+    def refine(self, neighborhoods, factor: int = 2):
+        raise NotImplementedError("EuclideanSpace does not support refinement")
 
 
 def euclidean_chart(center: Point) -> ManifoldChart[Point]:
@@ -228,7 +245,7 @@ def _scalar_subset_local_model(
 
 def _scalar_threshold_subset(source_object, scalar):
     return ChartedGeometricObject(
-        source_object.manifold,
+        source_object.space,
         contains=lambda point: (
             point in source_object and float(scalar(Point(point))) >= -1e-9
         ),
@@ -240,9 +257,9 @@ def _scalar_threshold_subset(source_object, scalar):
     )
 
 
-def _empty_euclidean_object(manifold: EuclideanSpace):
+def _empty_euclidean_object(space: EuclideanSpace):
     return ChartedGeometricObject(
-        manifold,
+        space,
         contains=lambda point: False,
         local_model=lambda point: (_ for _ in ()).throw(
             ValueError("Empty object has no local model")
@@ -255,9 +272,9 @@ class EuclideanPointObject(ChartedGeometricObject[Point]):
 
     def __init__(self, point: Point) -> None:
         self.point = Point(point)
-        manifold = EuclideanSpace(self.point.dim)
+        object_space = EuclideanSpace(self.point.dim)
         super().__init__(
-            manifold,
+            object_space,
             contains=lambda candidate: Point(candidate) == self.point,
             local_model=lambda candidate: LocalConeModel(
                 euclidean_chart(self.point),
@@ -271,9 +288,9 @@ class WholeSpace(ChartedGeometricObject[Point]):
 
     def __init__(self, dim: int) -> None:
         self.dim = dim
-        manifold = EuclideanSpace(dim)
+        object_space = EuclideanSpace(dim)
         super().__init__(
-            manifold,
+            object_space,
             contains=lambda point: True,
             local_model=lambda point: LocalConeModel(
                 euclidean_chart(Point(point)),
@@ -288,9 +305,9 @@ class Hyperplane(ChartedGeometricObject[Point]):
     def __init__(self, normal: Vector, offset: float = 0.0) -> None:
         self.normal = _coerce_nonzero_normal(normal)
         self.offset = float(offset)
-        manifold = EuclideanSpace(self.normal.dim)
+        object_space = EuclideanSpace(self.normal.dim)
         super().__init__(
-            manifold,
+            object_space,
             contains=self._contains,
             local_model=self._local_model,
         )
@@ -312,9 +329,9 @@ class HalfSpace(ChartedGeometricObject[Point]):
     def __init__(self, normal: Vector, offset: float = 0.0) -> None:
         self.normal = _coerce_nonzero_normal(normal)
         self.offset = float(offset)
-        manifold = EuclideanSpace(self.normal.dim)
+        object_space = EuclideanSpace(self.normal.dim)
         super().__init__(
-            manifold,
+            object_space,
             contains=self._contains,
             local_model=self._local_model,
         )
@@ -342,9 +359,9 @@ class Sphere(ChartedGeometricObject[Point]):
         self.radius = float(radius)
         if self.radius <= 0.0:
             raise ValueError("Sphere radius must be positive")
-        manifold = EuclideanSpace(self.center.dim)
+        object_space = EuclideanSpace(self.center.dim)
         super().__init__(
-            manifold,
+            object_space,
             contains=self._contains,
             local_model=self._local_model,
         )
@@ -369,9 +386,9 @@ class Ball(ChartedGeometricObject[Point]):
         self.radius = float(radius)
         if self.radius <= 0.0:
             raise ValueError("Ball radius must be positive")
-        manifold = EuclideanSpace(self.center.dim)
+        object_space = EuclideanSpace(self.center.dim)
         super().__init__(
-            manifold,
+            object_space,
             contains=self._contains,
             local_model=self._local_model,
         )
@@ -401,9 +418,9 @@ class EllipsoidSurface(ChartedGeometricObject[Point]):
         self.dim = self.center.dim
         self.matrix = _coerce_affine_matrix(semiaxes, self.dim)
         self.inverse_matrix = np.linalg.inv(self.matrix)
-        manifold = EuclideanSpace(self.dim)
+        object_space = EuclideanSpace(self.dim)
         super().__init__(
-            manifold,
+            object_space,
             contains=self._contains,
             local_model=self._local_model,
         )
@@ -432,9 +449,9 @@ class Ellipsoid(ChartedGeometricObject[Point]):
 
     def __init__(self, center: Point, semiaxes: Sequence[Sequence[float]]) -> None:
         self.surface = EllipsoidSurface(center, semiaxes)
-        manifold = EuclideanSpace(self.surface.dim)
+        object_space = EuclideanSpace(self.surface.dim)
         super().__init__(
-            manifold,
+            object_space,
             contains=self._contains,
             local_model=self._local_model,
         )
@@ -463,9 +480,9 @@ class ParallelepipedSurface(ChartedGeometricObject[Point]):
         self.dim = self.center.dim
         self.matrix = _coerce_affine_matrix(spanning_vectors, self.dim)
         self.inverse_matrix = np.linalg.inv(self.matrix)
-        manifold = EuclideanSpace(self.dim)
+        object_space = EuclideanSpace(self.dim)
         super().__init__(
-            manifold,
+            object_space,
             contains=self._contains,
             local_model=self._local_model,
         )
@@ -509,9 +526,9 @@ class Parallelepiped(ChartedGeometricObject[Point]):
 
     def __init__(self, center: Point, spanning_vectors: Sequence[Sequence[float]]) -> None:
         self.surface = ParallelepipedSurface(center, spanning_vectors)
-        manifold = EuclideanSpace(self.surface.dim)
+        object_space = EuclideanSpace(self.surface.dim)
         super().__init__(
-            manifold,
+            object_space,
             contains=self._contains,
             local_model=self._local_model,
         )
@@ -608,9 +625,9 @@ class PlanarAngle(ChartedGeometricObject[Point]):
         if self.interval.is_point():
             raise ValueError("PlanarAngle must have a non-zero opening")
         self.direction_set = CircleSet(self.interval)
-        manifold = EuclideanSpace(2)
+        object_space = EuclideanSpace(2)
         super().__init__(
-            manifold,
+            object_space,
             contains=self._contains,
             local_model=self._local_model,
         )
@@ -695,7 +712,7 @@ def visible_part_from_direction(source_object, direction: Vector):
         if (-source_object.normal).dot(direction) <= 0.0 and not _isclose(
             (-source_object.normal).dot(direction)
         ):
-            return _empty_euclidean_object(source_object.manifold)
+            return _empty_euclidean_object(source_object.space)
         return Hyperplane(source_object.normal, offset=source_object.offset)
     raise NotImplementedError(
         "Visibility is currently implemented for hyperplanes, half-spaces, "
@@ -733,7 +750,7 @@ def visible_part_from_point(source_object, observer: Point):
             source_object.normal.dot(Vector(observer)) - source_object.offset
         )
         if signed_distance >= 0.0 and not _isclose(signed_distance):
-            return _empty_euclidean_object(source_object.manifold)
+            return _empty_euclidean_object(source_object.space)
         return Hyperplane(source_object.normal, offset=source_object.offset)
     raise NotImplementedError(
         "Visibility is currently implemented for hyperplanes, half-spaces, "

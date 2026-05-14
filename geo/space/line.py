@@ -15,10 +15,10 @@ from ..line import (
     Set,
 )
 from ..gobject import GeometricObject
-from ..manifold import ManifoldChart
+from .base import ManifoldChart
 from .base import (
     BoxNeighborhood,
-    ChartedSpace,
+    Space as SpaceBase,
     refine_neighborhoods as _refine_neighborhoods,
 )
 
@@ -27,14 +27,8 @@ class Neighborhood(BoxNeighborhood[float]):
     """Neighborhood in the real line."""
 
 
-class _RealLineManifold:
-    dim = 1
-
-    def contains(self, point: object) -> bool:
-        return isinstance(point, (int, float)) and math.isfinite(float(point))
-
-    def __contains__(self, point: object) -> bool:
-        return self.contains(point)
+def _real_line_contains(point: object) -> bool:
+    return isinstance(point, (int, float)) and math.isfinite(float(point))
 
 
 def _real_chart(center: float) -> ManifoldChart[float]:
@@ -42,24 +36,30 @@ def _real_chart(center: float) -> ManifoldChart[float]:
         lambda point: Point(float(point) - center),
         lambda coordinates: center + coordinates[0],
         dim=1,
-        domain_contains=_RealLineManifold().contains,
+        domain_contains=_real_line_contains,
         image=EuclideanNeighborhood.whole(1),
     )
 
 
-class Space(ChartedSpace[float]):
+class Space(SpaceBase[float]):
     """The real line with its standard metric."""
 
     def __init__(self) -> None:
-        super().__init__(
-            _RealLineManifold(),
-            distance=lambda left, right: abs(float(left) - float(right)),
-        )
+        self._distance = lambda left, right: abs(float(left) - float(right))
+
+    @property
+    def dim(self) -> int:
+        return 1
 
     @property
     def point_type(self) -> type:
-        """Return the type of points in this space."""
         return float
+
+    def contains(self, point: object) -> bool:
+        return _real_line_contains(point)
+
+    def __contains__(self, point: object) -> bool:
+        return self.contains(point)
 
     def point(
         self,

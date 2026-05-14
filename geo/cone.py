@@ -5,13 +5,15 @@ from __future__ import annotations
 import math
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Callable, Generic, Protocol, TypeVar, runtime_checkable
+from typing import TYPE_CHECKING, Callable, Generic, Protocol, TypeVar, runtime_checkable
+
+if TYPE_CHECKING:
+    from .space.base import ManifoldChart
 
 import numpy as np
 
 from .circle import Point as CirclePoint, Set as CircleSet
 from .euclidean import EuclideanNeighborhood, Point, Vector
-from .manifold import ManifoldChart
 
 
 PointT = TypeVar("PointT")

@@ -10,13 +10,9 @@ import numpy as np
 
 from .cone import EuclideanCone, LocalConeModel
 from .euclidean import Point, Vector
-from .manifold import (
-    Manifold,
-    ManifoldChart,
-)
 
 if TYPE_CHECKING:
-    from .space.base import Neighborhood, Space
+    from .space.base import ManifoldChart, Neighborhood, Space
 
 
 PointT = TypeVar("PointT")
@@ -35,8 +31,8 @@ class GeometricObjectProtocol(Protocol[PointT]):
     """Protocol for a geometric object with local cone models."""
 
     @property
-    def manifold(self) -> Manifold[PointT]:
-        """Return the ambient manifold."""
+    def space(self) -> "Space[PointT]":
+        """Return the ambient space."""
 
     def contains(self, point: PointT) -> bool:
         """Check whether a point belongs to the object."""
@@ -73,10 +69,12 @@ def _numeric_local_jacobian(
 
 
 def _centered_chart_at(
-    chart: ManifoldChart[PointT],
+    chart: "ManifoldChart[PointT]",
     point: PointT,
-) -> ManifoldChart[PointT]:
+) -> "ManifoldChart[PointT]":
     """Return a chart recentered so that ``point`` maps to the origin."""
+    from .space.base import ManifoldChart
+
     origin = Point(chart(point))
     return ManifoldChart(
         lambda candidate: Point(chart(candidate)) - Vector(origin),
@@ -128,23 +126,23 @@ def _classification_points(neighborhood: Neighborhood[PointT]) -> tuple[PointT, 
 
 
 class ChartedGeometricObject(Generic[PointT]):
-    """Geometric object with local cone models on an ambient manifold."""
+    """Geometric object with local cone models on an ambient space."""
 
     def __init__(
         self,
-        manifold: Manifold[PointT],
+        space: "Space[PointT]",
         contains: Callable[[PointT], bool],
         local_model: Callable[[PointT], LocalConeModel[PointT]],
     ) -> None:
-        self.manifold = manifold
+        self.space = space
         self._contains = contains
         self._local_model = local_model
 
     def __repr__(self) -> str:
-        return f"ChartedGeometricObject(dim={self.manifold.dim})"
+        return f"ChartedGeometricObject(dim={self.space.dim})"
 
     def contains(self, point: PointT) -> bool:
-        return point in self.manifold and self._contains(point)
+        return point in self.space and self._contains(point)
 
     def __contains__(self, point: PointT) -> bool:
         return self.contains(point)
@@ -153,9 +151,9 @@ class ChartedGeometricObject(Generic[PointT]):
         if point not in self:
             raise ValueError("Point is outside the geometric object")
         model = self._local_model(point)
-        if model.chart.dim != self.manifold.dim:
+        if model.chart.dim != self.space.dim:
             raise ValueError(
-                "Local model chart dimension does not match manifold dimension"
+                "Local model chart dimension does not match space dimension"
             )
         return model
 
@@ -212,7 +210,7 @@ class ChartedGeometricObject(Generic[PointT]):
         self,
         forward: Callable[[PointT], TargetT],
         preimage_on_image: Callable[[TargetT], PointT],
-        target_manifold: Manifold[TargetT],
+        target_space: "Space[TargetT]",
         target_chart: Callable[[TargetT], ManifoldChart[TargetT]],
         contains_image_point: Callable[[TargetT], bool] | None = None,
     ) -> "SmoothImageObject[PointT, TargetT]":
@@ -220,7 +218,7 @@ class ChartedGeometricObject(Generic[PointT]):
             self,
             forward,
             preimage_on_image,
-            target_manifold,
+            target_space,
             target_chart,
             contains_image_point=contains_image_point,
         )
@@ -264,7 +262,7 @@ class ChartedGeometricObject(Generic[PointT]):
             )
 
         return ChartedGeometricObject(
-            self.manifold,
+            self.space,
             contains=contains,
             local_model=local_model,
         )
@@ -308,7 +306,7 @@ class ChartedGeometricObject(Generic[PointT]):
             )
 
         return ChartedGeometricObject(
-            self.manifold,
+            self.space,
             contains=contains,
             local_model=local_model,
         )
@@ -322,7 +320,7 @@ class SmoothImageObject(ChartedGeometricObject[TargetT], Generic[PointT, TargetT
         source_object: ChartedGeometricObject[PointT],
         forward: Callable[[PointT], TargetT],
         preimage_on_image: Callable[[TargetT], PointT],
-        target_manifold: Manifold[TargetT],
+        target_space: "Space[TargetT]",
         target_chart: Callable[[TargetT], ManifoldChart[TargetT]],
         contains_image_point: Callable[[TargetT], bool] | None = None,
     ) -> None:
@@ -341,9 +339,9 @@ class SmoothImageObject(ChartedGeometricObject[TargetT], Generic[PointT, TargetT
             image_contains = contains_image_point
 
         super().__init__(
-            target_manifold,
+            target_space,
             contains=lambda point: (
-                point in target_manifold
+                point in target_space
                 and image_contains(point)
                 and self.preimage_on_image(point) in self.source_object
             ),

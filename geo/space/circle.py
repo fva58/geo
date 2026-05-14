@@ -8,10 +8,10 @@ from ..cone import EuclideanCone, LocalConeModel, negative_half_line_cone, point
 from ..circle import Angle, FULL_INTERVAL, FULL_SET, Interval, Point, Set
 from ..euclidean import EuclideanNeighborhood, Point as EuclideanPoint
 from ..gobject import GeometricObject
-from ..manifold import ManifoldChart
+from .base import ManifoldChart
 from .base import (
     BoxNeighborhood,
-    ChartedSpace,
+    Space as SpaceBase,
     refine_neighborhoods as _refine_neighborhoods,
 )
 
@@ -20,18 +20,12 @@ class Neighborhood(BoxNeighborhood[Point]):
     """Neighborhood in the unit circle."""
 
 
-class _CircleManifold:
-    dim = 1
-
-    def contains(self, point: object) -> bool:
-        try:
-            Point(point)
-        except (TypeError, ValueError):
-            return False
-        return True
-
-    def __contains__(self, point: object) -> bool:
-        return self.contains(point)
+def _circle_contains(point: object) -> bool:
+    try:
+        Point(point)
+    except (TypeError, ValueError):
+        return False
+    return True
 
 
 def _circle_chart(center: Point) -> ManifoldChart[Point]:
@@ -46,26 +40,32 @@ def _circle_chart(center: Point) -> ManifoldChart[Point]:
         inverse,
         dim=1,
         domain_contains=lambda point: (
-            _CircleManifold().contains(point)
+            _circle_contains(point)
             and abs(_signed_circle_offset(center, Point(point))) < math.pi
         ),
         image=EuclideanNeighborhood.box((-math.pi, math.pi)),
     )
 
 
-class Space(ChartedSpace[Point]):
+class Space(SpaceBase[Point]):
     """The unit circle with its standard arc-length metric."""
 
     def __init__(self) -> None:
-        super().__init__(
-            _CircleManifold(),
-            distance=lambda left, right: float(Point(left).distance_to(Point(right))),
-        )
+        self._distance = lambda left, right: float(Point(left).distance_to(Point(right)))
+
+    @property
+    def dim(self) -> int:
+        return 1
 
     @property
     def point_type(self) -> type:
-        """Return the type of points in this space."""
         return Point
+
+    def contains(self, point: object) -> bool:
+        return _circle_contains(point)
+
+    def __contains__(self, point: object) -> bool:
+        return self.contains(point)
 
     def point(
         self,

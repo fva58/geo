@@ -10,14 +10,76 @@ from typing import Callable, Generic, TypeVar
 from collections.abc import Sequence
 
 from ..euclidean import EuclideanNeighborhood, Point
-from ..manifold import Manifold, ManifoldChart
 
 
 PointT = TypeVar("PointT")
+LocalPointT = TypeVar("LocalPointT")
 
 
-class Space(Manifold[PointT], abc.ABC, Generic[PointT]):
+class ManifoldChart(Generic[PointT]):
+    """Local chart from manifold points to Euclidean coordinates."""
+
+    def __init__(
+        self,
+        forward: Callable[[PointT], Point],
+        inverse: Callable[[Point], PointT],
+        dim: int,
+        domain_contains: Callable[[PointT], bool] | None = None,
+        image: EuclideanNeighborhood | None = None,
+    ) -> None:
+        """Initialize a local manifold chart."""
+        self._forward = forward
+        self._inverse = inverse
+        self.dim = dim
+        self.domain_contains = domain_contains
+        self.image = image
+
+    def __repr__(self) -> str:
+        """Return a debug representation."""
+        image = f", image_dim={self.image.dim}" if self.image else ""
+        return f"ManifoldChart(dim={self.dim}{image})"
+
+    def __call__(self, point: PointT) -> Point:
+        """Apply the chart map to a manifold point."""
+        if self.domain_contains is not None and not self.domain_contains(point):
+            raise ValueError("Point is outside the chart domain")
+        coordinates = Point(self._forward(point))
+        if coordinates.dim != self.dim:
+            raise ValueError(
+                f"Coordinate dimension mismatch: {coordinates.dim} != {self.dim}"
+            )
+        if self.image is not None and coordinates not in self.image:
+            raise ValueError("Coordinates are outside the chart image")
+        return coordinates
+
+    def inverse(self, coordinates: Point) -> PointT:
+        """Apply the inverse chart map."""
+        coordinates = Point(coordinates)
+        if coordinates.dim != self.dim:
+            raise ValueError(
+                f"Coordinate dimension mismatch: {coordinates.dim} != {self.dim}"
+            )
+        if self.image is not None and coordinates not in self.image:
+            raise ValueError("Coordinates are outside the chart image")
+        point = self._inverse(coordinates)
+        if self.domain_contains is not None and not self.domain_contains(point):
+            raise ValueError("Inverse image point is outside the chart domain")
+        return point
+
+
+class Space(abc.ABC, Generic[PointT]):
     """Abstract base class for spaces with distance and neighborhood covers."""
+
+    def __init__(
+        self,
+        space: "Space[PointT] | None" = None,
+        distance: Callable[[PointT, PointT], float] | None = None,
+    ) -> None:
+        """Initialize the space with an optional underlying space and distance."""
+        if space is not None:
+            self.space = space
+        if distance is not None:
+            self._distance = distance
 
     @property
     @abc.abstractmethod
@@ -29,9 +91,25 @@ class Space(Manifold[PointT], abc.ABC, Generic[PointT]):
     def point_type(self) -> type:
         """Return the type of points in this space."""
 
-    @abc.abstractmethod
+    def __repr__(self) -> str:
+        return f"Space(dim={self.dim})"
+
+    def contains(self, point: PointT) -> bool:
+        """Check whether a point belongs to the underlying manifold."""
+        return point in self.space
+
+    def __contains__(self, point: PointT) -> bool:
+        """Check whether a point belongs to the underlying manifold."""
+        return self.contains(point)
+
     def distance(self, left: PointT, right: PointT) -> float:
         """Return the distance between two points."""
+        if left not in self or right not in self:
+            raise ValueError("Points must belong to the space")
+        value = float(self._distance(left, right))
+        if value < 0.0:
+            raise ValueError("Distance must be non-negative")
+        return value
 
     @abc.abstractmethod
     def full(self, radius: float):
@@ -40,6 +118,12 @@ class Space(Manifold[PointT], abc.ABC, Generic[PointT]):
     @abc.abstractmethod
     def refine(self, neighborhoods, factor: int = 2):
         """Return a covering refinement with smaller diameters."""
+
+    def wrap(self, obj):
+        """Wrap a charted object into this ambient space."""
+        from ..gobject import GeometricObject
+
+        return GeometricObject.from_charted(self, obj)
 
 
 class Neighborhood(abc.ABC, Generic[PointT]):
@@ -50,7 +134,7 @@ class Neighborhood(abc.ABC, Generic[PointT]):
         """Structural subtyping: accept any class with the expected methods."""
         if cls is Neighborhood:
             for attr in (
-                "manifold", "chart", "center", "image",
+                "space", "chart", "center", "image",
                 "inner_radius", "outer_radius", "diameter",
                 "contains", "center_point", "subdivide",
             ):
@@ -81,14 +165,14 @@ def _single_interval_bounds(
 class BoxNeighborhood(Neighborhood[PointT]):
     """Neighborhood represented by one chart patch and a box image."""
 
-    manifold: Manifold[PointT]
+    space: "Space[PointT]"
     chart: ManifoldChart[PointT]
     center: PointT
     image: EuclideanNeighborhood
 
     def __post_init__(self) -> None:
         """Validate center and image dimensions."""
-        if self.chart.dim != self.manifold.dim:
+        if self.chart.dim != self.space.dim:
             raise ValueError("Chart dimension must match manifold dimension")
         if self.image.dim != self.chart.dim:
             raise ValueError("Image dimension must match chart dimension")
@@ -98,7 +182,7 @@ class BoxNeighborhood(Neighborhood[PointT]):
 
     def contains(self, point: PointT) -> bool:
         """Check whether a point belongs to the neighborhood patch."""
-        if point not in self.manifold:
+        if point not in self.space:
             return False
         try:
             return self.chart(point) in self.image
@@ -157,58 +241,13 @@ class BoxNeighborhood(Neighborhood[PointT]):
             )
             neighborhoods.append(
                 type(self)(
-                    self.manifold,
+                    self.space,
                     self.chart,
                     self.chart.inverse(center_coordinates),
                     image,
                 )
             )
         return tuple(neighborhoods)
-
-
-class ChartedSpace(Space[PointT]):
-    """Concrete space given by a manifold and a distance function."""
-
-    def __init__(
-        self,
-        manifold: Manifold[PointT],
-        distance: Callable[[PointT, PointT], float],
-    ) -> None:
-        """Initialize the space."""
-        self.manifold = manifold
-        self._distance = distance
-
-    @property
-    def dim(self) -> int:
-        """Return the space dimension."""
-        return self.manifold.dim
-
-    def __repr__(self) -> str:
-        """Return a debug representation."""
-        return f"ChartedSpace(dim={self.dim})"
-
-    def contains(self, point: PointT) -> bool:
-        """Check whether a point belongs to the underlying manifold."""
-        return point in self.manifold
-
-    def __contains__(self, point: PointT) -> bool:
-        """Check whether a point belongs to the underlying manifold."""
-        return self.contains(point)
-
-    def distance(self, left: PointT, right: PointT) -> float:
-        """Return the distance between two points."""
-        if left not in self or right not in self:
-            raise ValueError("Points must belong to the space")
-        value = float(self._distance(left, right))
-        if value < 0.0:
-            raise ValueError("Distance must be non-negative")
-        return value
-
-    def wrap(self, obj):
-        """Wrap a charted object into this ambient space."""
-        from ..gobject import GeometricObject
-
-        return GeometricObject.from_charted(self, obj)
 
 
 def refine_neighborhoods(
@@ -238,7 +277,6 @@ def refine_neighborhoods(
 def centered_real_chart(center: float, domain_contains) -> "ManifoldChart[float]":
     """Return the canonical centered chart on the real line."""
     from ..euclidean import EuclideanNeighborhood
-    from ..manifold import ManifoldChart
 
     return ManifoldChart(
         lambda point: Point(float(point) - center),
@@ -250,10 +288,10 @@ def centered_real_chart(center: float, domain_contains) -> "ManifoldChart[float]
 
 
 __all__ = [
+    "ManifoldChart",
     "Space",
     "Neighborhood",
     "BoxNeighborhood",
-    "ChartedSpace",
     "refine_neighborhoods",
     "centered_real_chart",
 ]

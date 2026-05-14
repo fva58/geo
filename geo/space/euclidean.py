@@ -27,7 +27,7 @@ from ._euclidean_impl import (
 )
 from .base import (
     BoxNeighborhood,
-    ChartedSpace,
+    Space as SpaceBase,
     refine_neighborhoods as _refine_neighborhoods,
 )
 
@@ -36,7 +36,7 @@ class Neighborhood(BoxNeighborhood[Point]):
     """Neighborhood in Euclidean space."""
 
 
-class Space(ChartedSpace[Point]):
+class Space(SpaceBase[Point]):
     """Euclidean space with its standard metric."""
 
     def __init__(
@@ -58,8 +58,11 @@ class Space(ChartedSpace[Point]):
         )
 
     @property
+    def dim(self) -> int:
+        return self._dim
+
+    @property
     def point_type(self) -> type:
-        """Return the type of points in this space."""
         return Point
 
     def _coerce_point(self, point: object) -> Point:

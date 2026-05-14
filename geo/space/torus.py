@@ -10,7 +10,7 @@ from ..cone import EuclideanCone, LocalConeModel
 from ..euclidean import EuclideanNeighborhood, Point as EuclideanPoint
 from ..gobject import GeometricObject
 from ..circle import Angle, Point, Set
-from ..manifold import ManifoldChart
+from .base import ManifoldChart
 from .base import BoxNeighborhood, Space as SpaceBase, refine_neighborhoods as _refine_neighborhoods
 
 

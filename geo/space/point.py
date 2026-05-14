@@ -8,26 +8,18 @@ from dataclasses import dataclass, field
 from ..cone import EuclideanCone, LocalConeModel
 from ..euclidean import EuclideanNeighborhood, Point
 from ..gobject import GeometricObject
-from ..manifold import ManifoldChart
+from .base import ManifoldChart
 from .base import Neighborhood as NeighborhoodBase, Space as SpaceBase
 
 
 _POINT = Point.origin(0)
 
 
-class _PointManifold:
-    """Underlying one-point manifold."""
-
-    dim = 0
-
-    def contains(self, point: object) -> bool:
-        try:
-            return Point(point) == _POINT
-        except (TypeError, ValueError):
-            return False
-
-    def __contains__(self, point: object) -> bool:
-        return self.contains(point)
+def _point_contains(point: object) -> bool:
+    try:
+        return Point(point) == _POINT
+    except (TypeError, ValueError):
+        return False
 
 
 def _point_chart() -> ManifoldChart[Point]:
@@ -36,7 +28,7 @@ def _point_chart() -> ManifoldChart[Point]:
         lambda point: _POINT,
         lambda coordinates: _POINT,
         dim=0,
-        domain_contains=lambda point: Point(point) == _POINT,
+        domain_contains=_point_contains,
         image=EuclideanNeighborhood.box(),
     )
 
@@ -45,7 +37,7 @@ def _point_chart() -> ManifoldChart[Point]:
 class Neighborhood(NeighborhoodBase[Point]):
     """The unique neighborhood in the one-point space."""
 
-    manifold: SpaceBase[Point]
+    space: SpaceBase[Point]
     chart: ManifoldChart[Point]
     center: Point = field(default_factory=lambda: _POINT)
 
@@ -87,33 +79,26 @@ class Space(SpaceBase):
     """Zero-dimensional metric space with one point."""
 
     def __init__(self) -> None:
-        self.manifold = _PointManifold()
         self._chart = _point_chart()
 
     @property
     def dim(self) -> int:
-        """Return the space dimension."""
         return 0
 
     @property
     def point_type(self) -> type:
-        """Return the type of points in this space."""
         return Point
 
     def __repr__(self) -> str:
-        """Return a debug representation."""
         return "Space()"
 
     def contains(self, point: object) -> bool:
-        """Check whether a point belongs to the space."""
-        return point in self.manifold
+        return _point_contains(point)
 
     def __contains__(self, point: object) -> bool:
-        """Check whether a point belongs to the space."""
         return self.contains(point)
 
     def distance(self, left: object, right: object) -> float:
-        """Return the unique distance."""
         if left not in self or right not in self:
             raise ValueError("Points must belong to the point space")
         return 0.0
