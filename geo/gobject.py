@@ -159,7 +159,15 @@ class ChartedGeometricObject(Generic[PointT]):
             )
         return model
 
-    def classify_neighborhood(
+    def classify(
+        self,
+        neighborhoods: object,
+    ):
+        if hasattr(neighborhoods, "center_point"):
+            return self._classify_one(neighborhoods)
+        return tuple(self._classify_one(n) for n in neighborhoods)
+
+    def _classify_one(
         self,
         neighborhood: Neighborhood[PointT],
     ):
@@ -180,15 +188,6 @@ class ChartedGeometricObject(Generic[PointT]):
             if point in self:
                 return Ellipsis
         return None
-
-    def classify_neighborhoods(
-        self,
-        neighborhoods: Sequence[Neighborhood[PointT]],
-    ):
-        return tuple(
-            self.classify_neighborhood(neighborhood)
-            for neighborhood in neighborhoods
-        )
 
     def visible_from_direction(
         self,
@@ -794,7 +793,7 @@ def classify_cover(
     cone = []
     complex_ = []
     empty = []
-    for neighborhood, result in zip(cover, obj.classify_neighborhoods(cover)):
+    for neighborhood, result in zip(cover, obj.classify(cover)):
         if isinstance(result, LocalConeModel):
             cone.append(neighborhood)
         elif result is Ellipsis:

@@ -50,10 +50,10 @@ class TestNeighborhoodRefinement(unittest.TestCase):
         space = space_pkg.line.Space()
         segment = space.subset((0.0, 1.0))
 
-        conic = segment.classify_neighborhood(
+        conic = segment.classify(
             space.neighborhood_at(0.5, 0.25),
         )
-        empty = segment.classify_neighborhood(
+        empty = segment.classify(
             space.neighborhood_at(2.0, 0.4),
         )
 
@@ -70,7 +70,7 @@ class TestNeighborhoodRefinement(unittest.TestCase):
             space.neighborhood_at(1.2, 0.4),
         )
 
-        marking = segment.classify_neighborhoods(neighborhoods)
+        marking = segment.classify(neighborhoods)
 
         self.assertIsInstance(marking, tuple)
         self.assertEqual(len(marking), 3)
@@ -84,7 +84,7 @@ class TestNeighborhoodRefinement(unittest.TestCase):
         upper = space.half_plane((0.0, 1.0), offset=0.0)
         neighborhood = space.neighborhood_at(Point(0.0, -0.5), 1.0)
 
-        local = upper.classify_neighborhood(neighborhood)
+        local = upper.classify(neighborhood)
 
         self.assertIs(local, Ellipsis)
 
@@ -94,7 +94,7 @@ class TestNeighborhoodRefinement(unittest.TestCase):
         cube = space.cube(Point(1.0, 1.0), 1.0)
         neighborhood = space.neighborhood_at(Point(0.0, 0.0), 10.0)
 
-        local = cube.classify_neighborhood(neighborhood)
+        local = cube.classify(neighborhood)
 
         self.assertIs(local, Ellipsis)
 
