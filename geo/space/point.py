@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from ..cone import EuclideanCone, LocalConeModel
 from ..euclidean import EuclideanNeighborhood, Point
@@ -47,7 +47,7 @@ class Neighborhood(NeighborhoodBase[Point]):
 
     manifold: SpaceBase[Point]
     chart: ManifoldChart[Point]
-    center: Point = _POINT
+    center: Point = field(default_factory=lambda: _POINT)
 
     @property
     def image(self) -> EuclideanNeighborhood:

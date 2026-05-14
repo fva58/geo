@@ -11,23 +11,24 @@ import numpy as np
 from .line import Interval, Set
 
 
-def _coerce_coordinate_array(value: object) -> np.ndarray:
-    """Normalize a coordinate container into a 1-D float array."""
-    array = np.asarray(value, dtype=float)
-    if array.ndim != 1:
-        raise TypeError("Coordinates must form a one-dimensional sequence")
-    return array
-
-
-def _coerce_coordinates(args: tuple[object, ...]) -> Tuple[float, ...]:
-    """Normalize constructor arguments into a tuple of float coordinates."""
+def _coerce_coordinates(args: tuple[object, ...]) -> np.ndarray:
+    """Normalize constructor arguments into a 1-D float array."""
     if len(args) == 1 and isinstance(args[0], Sequence) and not isinstance(
         args[0], (str, bytes)
     ):
-        return tuple(_coerce_coordinate_array(args[0]).tolist())
+        array = np.asarray(args[0], dtype=float)
+        if array.ndim == 0:
+            array = array.reshape(1)
+        return array
     if len(args) == 1 and hasattr(args[0], "__array__"):
-        return tuple(_coerce_coordinate_array(args[0]).tolist())
-    return tuple(_coerce_coordinate_array(args).tolist())
+        array = np.asarray(args[0], dtype=float)
+        if array.ndim == 0:
+            array = array.reshape(1)
+        return array
+    array = np.asarray(args, dtype=float)
+    if array.ndim != 1:
+        raise TypeError("Coordinates must form a one-dimensional sequence")
+    return array
 
 
 def _check_same_dimension(
@@ -89,14 +90,15 @@ def _invert_square_matrix(
     )
 
 
-class Vector(tuple):
+class Vector(np.ndarray):
     """Euclidean vector with float coordinates."""
 
-    __slots__ = ()
+    __array_ufunc__ = None
 
     def __new__(cls, *coordinates: object) -> "Vector":
         """Create a vector from coordinates or a coordinate sequence."""
-        return super().__new__(cls, _coerce_coordinates(coordinates))
+        array = _coerce_coordinates(coordinates)
+        return array.view(cls)
 
     @property
     def dim(self) -> int:
@@ -105,27 +107,40 @@ class Vector(tuple):
 
     def __repr__(self) -> str:
         """Return a debug representation."""
-        return f"Vector{tuple(self)}"
+        return f"Vector({', '.join(str(float(x)) for x in self)})"
+
+    def __eq__(self, other: object) -> bool:
+        """Compare two vectors for equality."""
+        if not isinstance(other, Vector):
+            return NotImplemented
+        if self.dim != other.dim:
+            return False
+        return bool(np.all(np.asarray(self) == np.asarray(other)))
 
     def __add__(self, other: "Vector") -> "Vector":
         """Add another vector."""
         _check_same_dimension(self, other)
-        result = np.asarray(self, dtype=float) + np.asarray(other, dtype=float)
-        return Vector(result)
+        return Vector(np.asarray(self) + np.asarray(other))
 
     def __sub__(self, other: "Vector") -> "Vector":
         """Subtract another vector."""
         _check_same_dimension(self, other)
-        result = np.asarray(self, dtype=float) - np.asarray(other, dtype=float)
-        return Vector(result)
+        return Vector(np.asarray(self) - np.asarray(other))
+
+    def __ne__(self, other: object) -> bool:
+        """Compare two vectors for inequality."""
+        result = self.__eq__(other)
+        if result is NotImplemented:
+            return result
+        return not result
 
     def __neg__(self) -> "Vector":
         """Return the additive inverse."""
-        return Vector(-np.asarray(self, dtype=float))
+        return Vector(-np.asarray(self))
 
     def __mul__(self, scalar: float) -> "Vector":
         """Multiply by a scalar."""
-        return Vector(np.asarray(self, dtype=float) * float(scalar))
+        return Vector(np.asarray(self) * float(scalar))
 
     def __rmul__(self, scalar: float) -> "Vector":
         """Multiply by a scalar from the left."""
@@ -133,36 +148,36 @@ class Vector(tuple):
 
     def __truediv__(self, scalar: float) -> "Vector":
         """Divide by a scalar."""
-        return Vector(np.asarray(self, dtype=float) / float(scalar))
+        return Vector(np.asarray(self) / float(scalar))
 
     def dot(self, other: "Vector") -> float:
         """Return the Euclidean dot product."""
         _check_same_dimension(self, other)
-        return float(np.dot(np.asarray(self, dtype=float),
-                            np.asarray(other, dtype=float)))
+        return float(np.dot(self, other))
 
     def norm(self) -> float:
         """Return the Euclidean norm."""
-        return float(np.linalg.norm(np.asarray(self, dtype=float)))
+        return float(np.linalg.norm(self))
 
     def to_tuple(self) -> Tuple[float, ...]:
-        """Return coordinates as a plain tuple."""
-        return tuple(self)
+        """Return coordinates as a plain tuple of floats."""
+        return tuple(float(x) for x in self)
 
     @classmethod
     def zero(cls, dim: int) -> "Vector":
         """Return the zero vector in the given dimension."""
-        return cls((0.0,) * dim)
+        return cls(np.zeros(dim))
 
 
-class Point(tuple):
+class Point(np.ndarray):
     """Euclidean point with float coordinates."""
 
-    __slots__ = ()
+    __array_ufunc__ = None
 
     def __new__(cls, *coordinates: object) -> "Point":
         """Create a point from coordinates or a coordinate sequence."""
-        return super().__new__(cls, _coerce_coordinates(coordinates))
+        array = _coerce_coordinates(coordinates)
+        return array.view(cls)
 
     @property
     def dim(self) -> int:
@@ -171,13 +186,27 @@ class Point(tuple):
 
     def __repr__(self) -> str:
         """Return a debug representation."""
-        return f"Point{tuple(self)}"
+        return f"Point({', '.join(str(float(x)) for x in self)})"
+
+    def __eq__(self, other: object) -> bool:
+        """Compare two points for equality."""
+        if not isinstance(other, Point):
+            return NotImplemented
+        if self.dim != other.dim:
+            return False
+        return bool(np.all(np.asarray(self) == np.asarray(other)))
+
+    def __ne__(self, other: object) -> bool:
+        """Compare two points for inequality."""
+        result = self.__eq__(other)
+        if result is NotImplemented:
+            return result
+        return not result
 
     def __add__(self, vector: Vector) -> "Point":
         """Translate the point by a vector."""
         _check_same_dimension(self, vector)
-        result = np.asarray(self, dtype=float) + np.asarray(vector, dtype=float)
-        return Point(result)
+        return Point(np.asarray(self) + np.asarray(vector))
 
     def __sub__(self, other: object) -> object:
         """Subtract a point or vector.
@@ -187,18 +216,10 @@ class Point(tuple):
         """
         if isinstance(other, Point):
             _check_same_dimension(self, other)
-            result = (
-                np.asarray(self, dtype=float) -
-                np.asarray(other, dtype=float)
-            )
-            return Vector(result)
+            return Vector(np.asarray(self) - np.asarray(other))
         if isinstance(other, Vector):
             _check_same_dimension(self, other)
-            result = (
-                np.asarray(self, dtype=float) -
-                np.asarray(other, dtype=float)
-            )
-            return Point(result)
+            return Point(np.asarray(self) - np.asarray(other))
         return NotImplemented
 
     def distance_to(self, other: "Point") -> float:
@@ -206,13 +227,13 @@ class Point(tuple):
         return (self - other).norm()
 
     def to_tuple(self) -> Tuple[float, ...]:
-        """Return coordinates as a plain tuple."""
-        return tuple(self)
+        """Return coordinates as a plain tuple of floats."""
+        return tuple(float(x) for x in self)
 
     @classmethod
     def origin(cls, dim: int) -> "Point":
         """Return the origin in the given dimension."""
-        return cls((0.0,) * dim)
+        return cls(np.zeros(dim))
 
 
 class EuclideanNeighborhood(tuple):
