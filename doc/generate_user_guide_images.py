@@ -25,8 +25,8 @@ from geo import (
     EuclideanNeighborhood,
     EuclideanPlaneSpace,
     FloatCircleSet,
-    FloatPoint,
-    FloatVector,
+    Point,
+    Vector,
     HalfPlane,
     Hyperplane,
     ManifoldChart,
@@ -55,7 +55,7 @@ def membership_grid(
     for y_index, y_value in enumerate(ys):
         for x_index, x_value in enumerate(xs):
             grid[y_index, x_index] = (
-                1.0 if FloatPoint(x_value, y_value) in obj else 0.0
+                1.0 if Point(x_value, y_value) in obj else 0.0
             )
     return xs, ys, grid
 
@@ -294,16 +294,16 @@ def save_line_and_circle_sets() -> None:
 def save_planar_object_zoo() -> None:
     """Save a figure for ready-made planar Euclidean objects."""
     objects = [
-        (Ball(FloatPoint(0.0, 0.0), 1.5), "Ball", False),
+        (Ball(Point(0.0, 0.0), 1.5), "Ball", False),
         (HalfPlane((0.0, 1.0), offset=0.0), "HalfPlane", False),
         (
-            PlanarAngle(FloatPoint(0.0, 0.0), 0.0, math.pi / 3.0),
+            PlanarAngle(Point(0.0, 0.0), 0.0, math.pi / 3.0),
             "PlanarAngle",
             False,
         ),
         (
             EllipsoidSurface(
-                FloatPoint(0.0, 0.0),
+                Point(0.0, 0.0),
                 ((1.8, 0.0), (0.0, 1.0)),
             ),
             "EllipsoidSurface",
@@ -355,25 +355,25 @@ def save_metric_workflows() -> None:
     interval = source_space.subset((0.0, 2.0))
 
     def target_chart(point):
-        center = FloatPoint(point)
+        center = Point(point)
         return ManifoldChart(
-            lambda candidate: FloatPoint(candidate) - center,
-            lambda coordinates: center + FloatVector(coordinates),
+            lambda candidate: Point(candidate) - center,
+            lambda coordinates: center + Vector(coordinates),
             dim=2,
             domain_contains=plane.contains,
             image=EuclideanNeighborhood.whole(2),
         )
 
     parabola = interval.image_under_smooth_map(
-        lambda point: FloatPoint(point, point * point),
-        lambda point: float(FloatPoint(point)[0]),
+        lambda point: Point(point, point * point),
+        lambda point: float(Point(point)[0]),
         plane,
         target_chart,
         contains_image_point=lambda point: (
-            0.0 <= FloatPoint(point)[0] <= 2.0 and
+            0.0 <= Point(point)[0] <= 2.0 and
             math.isclose(
-                FloatPoint(point)[1],
-                FloatPoint(point)[0] * FloatPoint(point)[0],
+                Point(point)[1],
+                Point(point)[0] * Point(point)[0],
             )
         ),
     )
@@ -406,7 +406,7 @@ def save_metric_workflows() -> None:
     xs = np.linspace(0.0, 2.0, 200)
     ys = xs * xs
     axes[2].plot(xs, ys, color="#2ca02c", linewidth=3.0)
-    sample_points = [FloatPoint(0.0, 0.0), FloatPoint(1.0, 1.0), FloatPoint(2.0, 4.0)]
+    sample_points = [Point(0.0, 0.0), Point(1.0, 1.0), Point(2.0, 4.0)]
     axes[2].scatter(
         [point[0] for point in sample_points],
         [point[1] for point in sample_points],
@@ -420,8 +420,8 @@ def save_metric_workflows() -> None:
     axes[2].set_aspect(0.5)
     axes[2].grid(True, alpha=0.2)
 
-    assert FloatPoint(1.0, 0.0) in projected
-    assert FloatPoint(1.0, 1.0) in parabola
+    assert Point(1.0, 0.0) in projected
+    assert Point(1.0, 1.0) in parabola
 
     figure.tight_layout()
     figure.savefig(
@@ -524,7 +524,7 @@ def save_space_meshes() -> None:
     circle = EuclideanPlaneSpace()
     disk = MetricGeometricObject.from_charted(
         circle,
-        Ball(FloatPoint(0.0, 0.0), 1.0),
+        Ball(Point(0.0, 0.0), 1.0),
         name="disk",
     )
     disk_mesh = disk.mesh(resolution=14)
@@ -580,7 +580,7 @@ def save_space_meshes() -> None:
 
 def save_mesh_exports() -> None:
     """Save a figure for mesh export and plotting workflows."""
-    mesh = Ball(FloatPoint(0.0, 0.0), 1.0).mesh(resolution=18)
+    mesh = Ball(Point(0.0, 0.0), 1.0).mesh(resolution=18)
     projected = mesh.projected((0, 1))
     wireframe = projected.wireframe_data()
     plotly_data = projected.plotly_data(name="disk")
@@ -649,18 +649,18 @@ def save_visibility_workflows() -> None:
     plane = EuclideanPlaneSpace()
     disk = MetricGeometricObject.from_charted(
         plane,
-        Ball(FloatPoint(0.0, 0.0), 1.0),
+        Ball(Point(0.0, 0.0), 1.0),
     )
     top_half = disk.visible_from_direction((0.0, 1.0))
 
     ellipse = MetricGeometricObject.from_charted(
         plane,
         EllipsoidSurface(
-            FloatPoint(0.0, 0.0),
+            Point(0.0, 0.0),
             ((2.0, 0.0), (0.0, 1.0)),
         ),
     )
-    observer = FloatPoint(0.0, 3.0)
+    observer = Point(0.0, 3.0)
     visible_arc = ellipse.visible_from_point(observer)
 
     figure, axes = plt.subplots(1, 2, figsize=(11, 4.5))
@@ -705,9 +705,9 @@ def save_visibility_workflows() -> None:
     )
     axes[1].scatter([observer[0]], [observer[1]], color="#2ca02c", s=55.0, zorder=3)
     for target in [
-        FloatPoint(-1.2, 0.8),
-        FloatPoint(0.0, 1.0),
-        FloatPoint(1.2, 0.8),
+        Point(-1.2, 0.8),
+        Point(0.0, 1.0),
+        Point(1.2, 0.8),
     ]:
         axes[1].plot(
             [observer[0], target[0]],
@@ -717,10 +717,10 @@ def save_visibility_workflows() -> None:
             alpha=0.8,
         )
 
-    assert FloatPoint(0.0, 1.0) in top_half
-    assert FloatPoint(0.0, -1.0) not in top_half
-    assert FloatPoint(1.2, 0.8) in visible_arc
-    assert FloatPoint(0.0, -1.0) not in visible_arc
+    assert Point(0.0, 1.0) in top_half
+    assert Point(0.0, -1.0) not in top_half
+    assert Point(1.2, 0.8) in visible_arc
+    assert Point(0.0, -1.0) not in visible_arc
 
     figure.tight_layout()
     figure.savefig(

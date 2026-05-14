@@ -463,15 +463,9 @@ class AffineDiffeomorphism(EuclideanChart):
         )
 
 
-# Backward compatibility aliases
-FloatVector = Vector
-FloatPoint = Point
-
 __all__ = [
     "Vector",
     "Point",
-    "FloatVector",
-    "FloatPoint",
     "EuclideanNeighborhood",
     "EuclideanChart",
     "AffineDiffeomorphism",
