@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Callable, Generic, Protocol, TypeVar, runtime_checkable
 
 if TYPE_CHECKING:
-    from .space.base import ManifoldChart
+    from .space.base import SpaceChart
 
 import numpy as np
 
@@ -347,7 +347,7 @@ class SphericalCone(RadialCone):
 class LocalConeModel(Generic[PointT]):
     """Local model of a geometric object by a cone in chart coordinates."""
 
-    chart: ManifoldChart[PointT]
+    chart: SpaceChart[PointT]
     cone: Cone
 
     def __post_init__(self) -> None:

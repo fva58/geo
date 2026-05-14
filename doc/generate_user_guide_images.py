@@ -29,7 +29,7 @@ from geo import (
     Vector,
     HalfPlane,
     Hyperplane,
-    ManifoldChart,
+    SpaceChart,
     MetricGeometricObject,
     PlanarAngle,
     RealLineSpace,
@@ -356,7 +356,7 @@ def save_metric_workflows() -> None:
 
     def target_chart(point):
         center = Point(point)
-        return ManifoldChart(
+        return SpaceChart(
             lambda candidate: Point(candidate) - center,
             lambda coordinates: center + Vector(coordinates),
             dim=2,

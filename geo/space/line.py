@@ -15,7 +15,7 @@ from ..line import (
     Set,
 )
 from ..gobject import GeometricObject
-from .base import ManifoldChart
+from .base import SpaceChart
 from .base import (
     BoxNeighborhood,
     Space as SpaceBase,
@@ -31,8 +31,8 @@ def _real_line_contains(point: object) -> bool:
     return isinstance(point, (int, float)) and math.isfinite(float(point))
 
 
-def _real_chart(center: float) -> ManifoldChart[float]:
-    return ManifoldChart(
+def _real_chart(center: float) -> SpaceChart[float]:
+    return SpaceChart(
         lambda point: Point(float(point) - center),
         lambda coordinates: center + coordinates[0],
         dim=1,

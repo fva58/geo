@@ -16,7 +16,7 @@ PointT = TypeVar("PointT")
 LocalPointT = TypeVar("LocalPointT")
 
 
-class ManifoldChart(Generic[PointT]):
+class SpaceChart(Generic[PointT]):
     """Local chart from manifold points to Euclidean coordinates."""
 
     def __init__(
@@ -37,7 +37,7 @@ class ManifoldChart(Generic[PointT]):
     def __repr__(self) -> str:
         """Return a debug representation."""
         image = f", image_dim={self.image.dim}" if self.image else ""
-        return f"ManifoldChart(dim={self.dim}{image})"
+        return f"SpaceChart(dim={self.dim}{image})"
 
     def __call__(self, point: PointT) -> Point:
         """Apply the chart map to a manifold point."""
@@ -166,7 +166,7 @@ class BoxNeighborhood(Neighborhood[PointT]):
     """Neighborhood represented by one chart patch and a box image."""
 
     space: "Space[PointT]"
-    chart: ManifoldChart[PointT]
+    chart: SpaceChart[PointT]
     center: PointT
     image: EuclideanNeighborhood
 
@@ -274,11 +274,11 @@ def refine_neighborhoods(
     return refined
 
 
-def centered_real_chart(center: float, domain_contains) -> "ManifoldChart[float]":
+def centered_real_chart(center: float, domain_contains) -> "SpaceChart[float]":
     """Return the canonical centered chart on the real line."""
     from ..euclidean import EuclideanNeighborhood
 
-    return ManifoldChart(
+    return SpaceChart(
         lambda point: Point(float(point) - center),
         lambda coordinates: center + coordinates[0],
         dim=1,
@@ -288,7 +288,7 @@ def centered_real_chart(center: float, domain_contains) -> "ManifoldChart[float]
 
 
 __all__ = [
-    "ManifoldChart",
+    "SpaceChart",
     "Space",
     "Neighborhood",
     "BoxNeighborhood",

@@ -7,7 +7,7 @@ from geo import GeometricObject
 from geo.cone import EuclideanCone, LocalConeModel
 from geo.euclidean import EuclideanNeighborhood, Point, Vector
 from geo.gobject import LazyExpressionObject, LazyMappedObject, LazyObject
-from geo.manifold import ManifoldChart
+from geo.space.base import SpaceChart as ManifoldChart
 from geo import space as space_pkg
 from geo.space.base import Space
 from geo.space.euclidean import Space as EuclideanSpace

@@ -10,7 +10,7 @@ from ..cone import EuclideanCone, LocalConeModel
 from ..euclidean import EuclideanNeighborhood, Point as EuclideanPoint
 from ..gobject import GeometricObject
 from ..circle import Angle, Point, Set
-from .base import ManifoldChart
+from .base import SpaceChart
 from .base import BoxNeighborhood, Space as SpaceBase, refine_neighborhoods as _refine_neighborhoods
 
 
@@ -125,7 +125,7 @@ class TorusPoint(tuple):
         return f"TorusPoint{self.to_tuple()}"
 
 
-def _torus_chart(base_point: TorusPoint) -> ManifoldChart[TorusPoint]:
+def _torus_chart(base_point: TorusPoint) -> SpaceChart[TorusPoint]:
     base_point = TorusPoint(base_point)
     dim = base_point.dim
 
@@ -147,7 +147,7 @@ def _torus_chart(base_point: TorusPoint) -> ManifoldChart[TorusPoint]:
             )
         )
 
-    return ManifoldChart(
+    return SpaceChart(
         forward,
         inverse,
         dim=dim,

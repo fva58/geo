@@ -15,7 +15,7 @@ from geo.cone import (
 )
 from geo.euclidean import EuclideanNeighborhood, Point, Vector
 from geo.gobject import ChartedGeometricObject, GeometricObjectProtocol
-from geo.manifold import ManifoldChart
+from geo.space.base import SpaceChart as ManifoldChart
 from geo.space.circle import Set as CircleSet
 
 

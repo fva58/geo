@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 from geo.diffeomorphism import Chart
 from geo.euclidean import EuclideanNeighborhood, Point
-from geo.manifold import ManifoldChart
+from geo.space.base import SpaceChart
 
 
 @dataclass(frozen=True)
@@ -38,7 +38,7 @@ class OpenIntervalManifold:
         return self.contains(point)
 
 
-class TestManifoldChart(unittest.TestCase):
+class TestSpaceChart(unittest.TestCase):
     """Test cases for manifold abstractions."""
 
     def test_manifold_protocol(self):
@@ -51,7 +51,7 @@ class TestManifoldChart(unittest.TestCase):
         """A manifold chart should work with non-Euclidean source points."""
         manifold = OpenIntervalManifold(-1.0, 1.0)
         image = EuclideanNeighborhood.box((-1.0, 1.0))
-        chart = ManifoldChart(
+        chart = SpaceChart(
             lambda point: Point(point.x),
             lambda coordinates: LinePoint(coordinates[0]),
             dim=1,
@@ -68,7 +68,7 @@ class TestManifoldChart(unittest.TestCase):
         """The chart should reject points and coordinates outside its patch."""
         manifold = OpenIntervalManifold(-1.0, 1.0)
         image = EuclideanNeighborhood.box((-1.0, 1.0))
-        chart = ManifoldChart(
+        chart = SpaceChart(
             lambda point: Point(point.x),
             lambda coordinates: LinePoint(coordinates[0]),
             dim=1,

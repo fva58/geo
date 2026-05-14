@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from ..cone import EuclideanCone, LocalConeModel
 from ..euclidean import EuclideanNeighborhood, Point
 from ..gobject import GeometricObject
-from .base import ManifoldChart
+from .base import SpaceChart
 from .base import Neighborhood as NeighborhoodBase, Space as SpaceBase
 
 
@@ -22,9 +22,9 @@ def _point_contains(point: object) -> bool:
         return False
 
 
-def _point_chart() -> ManifoldChart[Point]:
+def _point_chart() -> SpaceChart[Point]:
     """Return the unique zero-dimensional chart."""
-    return ManifoldChart(
+    return SpaceChart(
         lambda point: _POINT,
         lambda coordinates: _POINT,
         dim=0,
@@ -38,7 +38,7 @@ class Neighborhood(NeighborhoodBase[Point]):
     """The unique neighborhood in the one-point space."""
 
     space: SpaceBase[Point]
-    chart: ManifoldChart[Point]
+    chart: SpaceChart[Point]
     center: Point = field(default_factory=lambda: _POINT)
 
     @property

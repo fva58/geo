@@ -26,7 +26,7 @@ from ..cone import (
 )
 from ..euclidean import EuclideanNeighborhood, Point, Vector
 from ..gobject import ChartedGeometricObject
-from .base import ManifoldChart, Space as SpaceBase
+from .base import SpaceChart, Space as SpaceBase
 
 
 class EuclideanSpace(SpaceBase):
@@ -65,11 +65,11 @@ class EuclideanSpace(SpaceBase):
         raise NotImplementedError("EuclideanSpace does not support refinement")
 
 
-def euclidean_chart(center: Point) -> ManifoldChart[Point]:
+def euclidean_chart(center: Point) -> SpaceChart[Point]:
     """Return the canonical translated chart in Euclidean space."""
     dim = center.dim
     space = EuclideanSpace(dim)
-    return ManifoldChart(
+    return SpaceChart(
         lambda point: Point(point) - center,
         lambda coordinates: center + Vector(coordinates),
         dim=dim,

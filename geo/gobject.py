@@ -12,7 +12,7 @@ from .cone import EuclideanCone, LocalConeModel
 from .euclidean import Point, Vector
 
 if TYPE_CHECKING:
-    from .space.base import ManifoldChart, Neighborhood, Space
+    from .space.base import SpaceChart, Neighborhood, Space
 
 
 PointT = TypeVar("PointT")
@@ -69,14 +69,14 @@ def _numeric_local_jacobian(
 
 
 def _centered_chart_at(
-    chart: "ManifoldChart[PointT]",
+    chart: "SpaceChart[PointT]",
     point: PointT,
-) -> "ManifoldChart[PointT]":
+) -> "SpaceChart[PointT]":
     """Return a chart recentered so that ``point`` maps to the origin."""
-    from .space.base import ManifoldChart
+    from .space.base import SpaceChart
 
     origin = Point(chart(point))
-    return ManifoldChart(
+    return SpaceChart(
         lambda candidate: Point(chart(candidate)) - Vector(origin),
         lambda coordinates: chart.inverse(
             Point(coordinates) + Vector(origin)
@@ -211,7 +211,7 @@ class ChartedGeometricObject(Generic[PointT]):
         forward: Callable[[PointT], TargetT],
         preimage_on_image: Callable[[TargetT], PointT],
         target_space: "Space[TargetT]",
-        target_chart: Callable[[TargetT], ManifoldChart[TargetT]],
+        target_chart: Callable[[TargetT], SpaceChart[TargetT]],
         contains_image_point: Callable[[TargetT], bool] | None = None,
     ) -> "SmoothImageObject[PointT, TargetT]":
         return SmoothImageObject(
@@ -321,7 +321,7 @@ class SmoothImageObject(ChartedGeometricObject[TargetT], Generic[PointT, TargetT
         forward: Callable[[PointT], TargetT],
         preimage_on_image: Callable[[TargetT], PointT],
         target_space: "Space[TargetT]",
-        target_chart: Callable[[TargetT], ManifoldChart[TargetT]],
+        target_chart: Callable[[TargetT], SpaceChart[TargetT]],
         contains_image_point: Callable[[TargetT], bool] | None = None,
     ) -> None:
         self.source_object = source_object

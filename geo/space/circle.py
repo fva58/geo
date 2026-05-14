@@ -8,7 +8,7 @@ from ..cone import EuclideanCone, LocalConeModel, negative_half_line_cone, point
 from ..circle import Angle, FULL_INTERVAL, FULL_SET, Interval, Point, Set
 from ..euclidean import EuclideanNeighborhood, Point as EuclideanPoint
 from ..gobject import GeometricObject
-from .base import ManifoldChart
+from .base import SpaceChart
 from .base import (
     BoxNeighborhood,
     Space as SpaceBase,
@@ -28,14 +28,14 @@ def _circle_contains(point: object) -> bool:
     return True
 
 
-def _circle_chart(center: Point) -> ManifoldChart[Point]:
+def _circle_chart(center: Point) -> SpaceChart[Point]:
     def forward(point: Point):
         return EuclideanPoint(_signed_circle_offset(center, Point(point)))
 
     def inverse(coordinates):
         return Point(float(center) + coordinates[0])
 
-    return ManifoldChart(
+    return SpaceChart(
         forward,
         inverse,
         dim=1,

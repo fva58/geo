@@ -8,7 +8,7 @@ from collections.abc import Sequence
 from ..cone import EuclideanCone, LocalConeModel
 from ..euclidean import EuclideanNeighborhood, Point, Vector
 from ..gobject import GeometricObject
-from .base import ManifoldChart
+from .base import SpaceChart
 from .base import BoxNeighborhood, Space as SpaceBase, refine_neighborhoods as _refine_neighborhoods
 
 
@@ -80,7 +80,7 @@ def _sphere_tangent_basis(point: Point) -> tuple[Vector, ...]:
     return basis
 
 
-def _sphere_chart(base_point: Point) -> ManifoldChart[Point]:
+def _sphere_chart(base_point: Point) -> SpaceChart[Point]:
     base_point = Point(base_point)
     if base_point.dim < 2:
         raise ValueError("Sphere ambient dimension must be at least two")
@@ -111,7 +111,7 @@ def _sphere_chart(base_point: Point) -> ManifoldChart[Point]:
         normalized = _normalize_vector(candidate)
         return Point([radius * coordinate for coordinate in normalized])
 
-    return ManifoldChart(
+    return SpaceChart(
         forward,
         inverse,
         dim=dim,
