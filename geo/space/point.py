@@ -6,13 +6,13 @@ import math
 from dataclasses import dataclass
 
 from ..cone import EuclideanCone, LocalConeModel
-from ..euclidean import EuclideanNeighborhood, FloatPoint
+from ..euclidean import EuclideanNeighborhood, Point
 from ..gobject import GeometricObject
 from ..manifold import ManifoldChart
 from .base import Neighborhood as NeighborhoodBase, Space as SpaceBase
 
 
-_POINT = FloatPoint.origin(0)
+_POINT = Point.origin(0)
 
 
 class _PointManifold:
@@ -22,7 +22,7 @@ class _PointManifold:
 
     def contains(self, point: object) -> bool:
         try:
-            return FloatPoint(point) == _POINT
+            return Point(point) == _POINT
         except (TypeError, ValueError):
             return False
 
@@ -30,39 +30,39 @@ class _PointManifold:
         return self.contains(point)
 
 
-def _point_chart() -> ManifoldChart[FloatPoint]:
+def _point_chart() -> ManifoldChart[Point]:
     """Return the unique zero-dimensional chart."""
     return ManifoldChart(
         lambda point: _POINT,
         lambda coordinates: _POINT,
         dim=0,
-        domain_contains=lambda point: FloatPoint(point) == _POINT,
+        domain_contains=lambda point: Point(point) == _POINT,
         image=EuclideanNeighborhood.box(),
     )
 
 
 @dataclass(frozen=True)
-class Neighborhood(NeighborhoodBase[FloatPoint]):
+class Neighborhood(NeighborhoodBase[Point]):
     """The unique neighborhood in the one-point space."""
 
-    manifold: SpaceBase[FloatPoint]
-    chart: ManifoldChart[FloatPoint]
-    center: FloatPoint = _POINT
+    manifold: SpaceBase[Point]
+    chart: ManifoldChart[Point]
+    center: Point = _POINT
 
     @property
     def image(self) -> EuclideanNeighborhood:
         """Return the zero-dimensional chart image."""
         return EuclideanNeighborhood.box()
 
-    def contains(self, point: FloatPoint) -> bool:
+    def contains(self, point: Point) -> bool:
         """Check whether the unique point belongs."""
-        return FloatPoint(point) == _POINT
+        return Point(point) == _POINT
 
-    def __contains__(self, point: FloatPoint) -> bool:
+    def __contains__(self, point: Point) -> bool:
         """Check whether the unique point belongs."""
         return self.contains(point)
 
-    def center_point(self) -> FloatPoint:
+    def center_point(self) -> Point:
         """Return the unique point."""
         return _POINT
 
@@ -98,7 +98,7 @@ class Space(SpaceBase):
     @property
     def point_type(self) -> type:
         """Return the type of points in this space."""
-        return FloatPoint
+        return Point
 
     def __repr__(self) -> str:
         """Return a debug representation."""
@@ -118,7 +118,7 @@ class Space(SpaceBase):
             raise ValueError("Points must belong to the point space")
         return 0.0
 
-    def point(self, point: object = ()) -> FloatPoint:
+    def point(self, point: object = ()) -> Point:
         """Return the unique point."""
         if point not in self:
             raise ValueError("Point is outside the point space")
@@ -127,7 +127,7 @@ class Space(SpaceBase):
     def point_object(
         self,
         point: object = (),
-    ) -> GeometricObject[FloatPoint]:
+    ) -> GeometricObject[Point]:
         """Return the singleton object in the point space."""
         self.point(point)
         return GeometricObject(

@@ -5,7 +5,7 @@ from __future__ import annotations
 import itertools
 import math
 
-from ..euclidean import EuclideanNeighborhood, FloatPoint, FloatVector
+from ..euclidean import EuclideanNeighborhood, Point, Vector
 from ..gobject import GeometricObject
 from ._euclidean_impl import (
     Ball,
@@ -32,11 +32,11 @@ from .base import (
 )
 
 
-class Neighborhood(BoxNeighborhood[FloatPoint]):
+class Neighborhood(BoxNeighborhood[Point]):
     """Neighborhood in Euclidean space."""
 
 
-class Space(ChartedSpace[FloatPoint]):
+class Space(ChartedSpace[Point]):
     """Euclidean space with its standard metric."""
 
     def __init__(
@@ -52,32 +52,32 @@ class Space(ChartedSpace[FloatPoint]):
             raise ValueError("max_size must be a positive finite number")
         super().__init__(
             EuclideanSpace(self._dim),
-            distance=lambda left, right: FloatPoint(left).distance_to(
-                FloatPoint(right)
+            distance=lambda left, right: Point(left).distance_to(
+                Point(right)
             ),
         )
 
     @property
     def point_type(self) -> type:
         """Return the type of points in this space."""
-        return FloatPoint
+        return Point
 
-    def _coerce_point(self, point: object) -> FloatPoint:
-        point = FloatPoint(point)
+    def _coerce_point(self, point: object) -> Point:
+        point = Point(point)
         if point.dim != self.dim:
             raise ValueError(f"Expected a point in R^{self.dim}")
         return point
 
-    def _coerce_vector(self, vector: object) -> FloatVector:
-        vector = FloatVector(vector)
+    def _coerce_vector(self, vector: object) -> Vector:
+        vector = Vector(vector)
         if vector.dim != self.dim:
             raise ValueError(f"Expected a vector in R^{self.dim}")
         return vector
 
     def point(
         self,
-        point: FloatPoint,
-    ) -> GeometricObject[FloatPoint]:
+        point: Point,
+    ) -> GeometricObject[Point]:
         point = self._coerce_point(point)
         return GeometricObject.from_charted(
             self,
@@ -86,10 +86,10 @@ class Space(ChartedSpace[FloatPoint]):
 
     def neighborhood_at(
         self,
-        point: FloatPoint,
+        point: Point,
         radius: float,
     ) -> Neighborhood:
-        center = FloatPoint(point)
+        center = Point(point)
         if center not in self:
             raise ValueError("Point is outside the Euclidean space")
         radius = float(radius)
@@ -128,7 +128,7 @@ class Space(ChartedSpace[FloatPoint]):
                 while True:
                     for index in shell_indices(shell):
                         yield self.neighborhood_at(
-                            FloatPoint([step * value for value in index]),
+                            Point([step * value for value in index]),
                             radius,
                         )
                     shell += 1
@@ -138,7 +138,7 @@ class Space(ChartedSpace[FloatPoint]):
         shell = int(math.ceil(self.max_size / step))
         return tuple(
             self.neighborhood_at(
-                FloatPoint([step * value for value in index]),
+                Point([step * value for value in index]),
                 radius,
             )
             for index in itertools.product(
@@ -154,88 +154,88 @@ class Space(ChartedSpace[FloatPoint]):
     ) -> tuple[Neighborhood, ...]:
         return _refine_neighborhoods(tuple(neighborhoods), factor=factor)
 
-    def whole(self) -> GeometricObject[FloatPoint]:
+    def whole(self) -> GeometricObject[Point]:
         return self.wrap(WholeSpace(self.dim))
 
-    def whole_space(self) -> GeometricObject[FloatPoint]:
+    def whole_space(self) -> GeometricObject[Point]:
         return self.whole()
 
     def hyperplane(
         self,
-        normal: FloatVector,
+        normal: Vector,
         offset: float = 0.0,
-    ) -> GeometricObject[FloatPoint]:
+    ) -> GeometricObject[Point]:
         normal = self._coerce_vector(normal)
         return self.wrap(Hyperplane(normal, offset=offset))
 
     def half_space(
         self,
-        normal: FloatVector,
+        normal: Vector,
         offset: float = 0.0,
-    ) -> GeometricObject[FloatPoint]:
+    ) -> GeometricObject[Point]:
         normal = self._coerce_vector(normal)
         return self.wrap(HalfSpace(normal, offset=offset))
 
     def whole_plane(
         self,
-    ) -> GeometricObject[FloatPoint]:
+    ) -> GeometricObject[Point]:
         if self.dim != 2:
             raise ValueError("whole_plane() is only defined for euclidean.Space(2)")
         return self.wrap(WholePlane())
 
     def sphere(
         self,
-        center: FloatPoint,
+        center: Point,
         radius: float,
-    ) -> GeometricObject[FloatPoint]:
+    ) -> GeometricObject[Point]:
         center = self._coerce_point(center)
         return self.wrap(EuclideanSphereObject(center, radius))
 
     def ball(
         self,
-        center: FloatPoint,
+        center: Point,
         radius: float,
-    ) -> GeometricObject[FloatPoint]:
+    ) -> GeometricObject[Point]:
         center = self._coerce_point(center)
         return self.wrap(Ball(center, radius))
 
     def disk(
         self,
-        center: FloatPoint,
+        center: Point,
         radius: float,
-    ) -> GeometricObject[FloatPoint]:
+    ) -> GeometricObject[Point]:
         return self.ball(center, radius)
 
     def circle(
         self,
-        center: FloatPoint,
+        center: Point,
         radius: float,
-    ) -> GeometricObject[FloatPoint]:
+    ) -> GeometricObject[Point]:
         if self.dim != 2:
             raise ValueError("circle() is only defined for euclidean.Space(2)")
         return self.sphere(center, radius)
 
     def ellipsoid_surface(
         self,
-        center: FloatPoint,
+        center: Point,
         semiaxes,
-    ) -> GeometricObject[FloatPoint]:
+    ) -> GeometricObject[Point]:
         center = self._coerce_point(center)
         return self.wrap(EllipsoidSurface(center, semiaxes))
 
     def ellipsoid(
         self,
-        center: FloatPoint,
+        center: Point,
         semiaxes,
-    ) -> GeometricObject[FloatPoint]:
+    ) -> GeometricObject[Point]:
         center = self._coerce_point(center)
         return self.wrap(Ellipsoid(center, semiaxes))
 
     def parallelepiped_surface(
         self,
-        center: FloatPoint,
+        center: Point,
         spanning_vectors,
-    ) -> GeometricObject[FloatPoint]:
+    ) -> GeometricObject[Point]:
         center = self._coerce_point(center)
         return self.wrap(
             ParallelepipedSurface(center, spanning_vectors),
@@ -243,9 +243,9 @@ class Space(ChartedSpace[FloatPoint]):
 
     def parallelepiped(
         self,
-        center: FloatPoint,
+        center: Point,
         spanning_vectors,
-    ) -> GeometricObject[FloatPoint]:
+    ) -> GeometricObject[Point]:
         center = self._coerce_point(center)
         return self.wrap(
             Parallelepiped(center, spanning_vectors),
@@ -253,25 +253,25 @@ class Space(ChartedSpace[FloatPoint]):
 
     def cube_surface(
         self,
-        center: FloatPoint,
+        center: Point,
         half_extent: float,
-    ) -> GeometricObject[FloatPoint]:
+    ) -> GeometricObject[Point]:
         center = self._coerce_point(center)
         return self.wrap(CubeSurface(center, half_extent))
 
     def cube(
         self,
-        center: FloatPoint,
+        center: Point,
         half_extent: float,
-    ) -> GeometricObject[FloatPoint]:
+    ) -> GeometricObject[Point]:
         center = self._coerce_point(center)
         return self.wrap(Cube(center, half_extent))
 
     def half_plane(
         self,
-        normal: FloatVector,
+        normal: Vector,
         offset: float = 0.0,
-    ) -> GeometricObject[FloatPoint]:
+    ) -> GeometricObject[Point]:
         if self.dim != 2:
             raise ValueError("half_plane() is only defined for euclidean.Space(2)")
         normal = self._coerce_vector(normal)
@@ -279,10 +279,10 @@ class Space(ChartedSpace[FloatPoint]):
 
     def angle(
         self,
-        apex: FloatPoint,
+        apex: Point,
         start,
         end,
-    ) -> GeometricObject[FloatPoint]:
+    ) -> GeometricObject[Point]:
         if self.dim != 2:
             raise ValueError("angle() is only defined for euclidean.Space(2)")
         apex = self._coerce_point(apex)

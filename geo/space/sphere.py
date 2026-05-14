@@ -6,7 +6,7 @@ import math
 from collections.abc import Sequence
 
 from ..cone import EuclideanCone, LocalConeModel
-from ..euclidean import EuclideanNeighborhood, FloatPoint, FloatVector
+from ..euclidean import EuclideanNeighborhood, Point, Vector
 from ..gobject import GeometricObject
 from ..manifold import ManifoldChart
 from .base import BoxNeighborhood, Space as SpaceBase, refine_neighborhoods as _refine_neighborhoods
@@ -16,16 +16,16 @@ class Neighborhood(BoxNeighborhood["SpherePoint"]):
     """Neighborhood on a sphere."""
 
 
-def _coerce_point_dim(value: object, dim: int) -> FloatPoint:
-    point = FloatPoint(value)
+def _coerce_point_dim(value: object, dim: int) -> Point:
+    point = Point(value)
     if point.dim != dim:
         raise ValueError(f"Expected a {dim}-dimensional point")
     return point
 
 
-def _coerce_nonzero_point_dim(value: object, dim: int) -> FloatPoint:
+def _coerce_nonzero_point_dim(value: object, dim: int) -> Point:
     point = _coerce_point_dim(value, dim)
-    if math.isclose(FloatVector(point).norm(), 0.0, abs_tol=1e-15):
+    if math.isclose(Vector(point).norm(), 0.0, abs_tol=1e-15):
         raise ValueError("Expected a nonzero vector")
     return point
 
@@ -37,23 +37,23 @@ def _clamp_unit(value: float) -> float:
 def _point_cone(dim: int) -> EuclideanCone:
     return EuclideanCone(
         dim,
-        contains=lambda point: FloatPoint(point) == FloatPoint.origin(dim),
+        contains=lambda point: Point(point) == Point.origin(dim),
         neighborhood=EuclideanNeighborhood.whole(dim),
     )
 
 
-def _normalize_vector(vector: FloatPoint | FloatVector) -> FloatVector:
-    array = FloatVector(vector)
+def _normalize_vector(vector: Point | Vector) -> Vector:
+    array = Vector(vector)
     norm = array.norm()
     if math.isclose(norm, 0.0, abs_tol=1e-15):
         raise ValueError("Zero vector cannot be normalized")
     return array / norm
 
 
-def _orthonormal_basis(vectors: Sequence[FloatVector]) -> tuple[FloatVector, ...]:
-    basis: list[FloatVector] = []
+def _orthonormal_basis(vectors: Sequence[Vector]) -> tuple[Vector, ...]:
+    basis: list[Vector] = []
     for vector in vectors:
-        candidate = FloatVector(vector)
+        candidate = Vector(vector)
         for basis_vector in basis:
             candidate = candidate - candidate.dot(basis_vector) * basis_vector
         if candidate.norm() > 1e-12:
@@ -61,13 +61,13 @@ def _orthonormal_basis(vectors: Sequence[FloatVector]) -> tuple[FloatVector, ...
     return tuple(basis)
 
 
-def _sphere_tangent_basis(point: FloatPoint) -> tuple[FloatVector, ...]:
-    point = FloatPoint(point)
+def _sphere_tangent_basis(point: Point) -> tuple[Vector, ...]:
+    point = Point(point)
     ambient_dim = point.dim
     normal = _normalize_vector(point)
     candidates = []
     for axis in range(ambient_dim):
-        basis_vector = FloatVector([
+        basis_vector = Vector([
             1.0 if index == axis else 0.0
             for index in range(ambient_dim)
         ])
@@ -80,8 +80,8 @@ def _sphere_tangent_basis(point: FloatPoint) -> tuple[FloatVector, ...]:
     return basis
 
 
-def _sphere_chart(base_point: FloatPoint) -> ManifoldChart[FloatPoint]:
-    base_point = FloatPoint(base_point)
+def _sphere_chart(base_point: Point) -> ManifoldChart[Point]:
+    base_point = Point(base_point)
     if base_point.dim < 2:
         raise ValueError("Sphere ambient dimension must be at least two")
     radius = math.sqrt(sum(coordinate * coordinate for coordinate in base_point))
@@ -89,27 +89,27 @@ def _sphere_chart(base_point: FloatPoint) -> ManifoldChart[FloatPoint]:
     basis = _sphere_tangent_basis(base_point)
     dim = base_point.dim - 1
 
-    def forward(point: FloatPoint) -> FloatPoint:
+    def forward(point: Point) -> Point:
         point = _coerce_point_dim(point, base_point.dim)
-        denominator = normal.dot(FloatVector(point))
+        denominator = normal.dot(Vector(point))
         if math.isclose(denominator, 0.0, abs_tol=1e-12):
             raise ValueError("Point is outside the local sphere chart")
-        return FloatPoint([
-            radius * FloatVector(point).dot(basis_vector) / denominator
+        return Point([
+            radius * Vector(point).dot(basis_vector) / denominator
             for basis_vector in basis
         ])
 
-    def inverse(coordinates: FloatPoint) -> FloatPoint:
-        coordinates = FloatPoint(coordinates)
+    def inverse(coordinates: Point) -> Point:
+        coordinates = Point(coordinates)
         if coordinates.dim != dim:
             raise ValueError(
                 f"Sphere chart coordinates must be {dim}-dimensional"
             )
-        candidate = FloatVector(base_point)
+        candidate = Vector(base_point)
         for coordinate, basis_vector in zip(coordinates, basis):
             candidate = candidate + coordinate * basis_vector
         normalized = _normalize_vector(candidate)
-        return FloatPoint([radius * coordinate for coordinate in normalized])
+        return Point([radius * coordinate for coordinate in normalized])
 
     return ManifoldChart(
         forward,
@@ -118,7 +118,7 @@ def _sphere_chart(base_point: FloatPoint) -> ManifoldChart[FloatPoint]:
     )
 
 
-class SpherePoint(FloatPoint):
+class SpherePoint(Point):
     """Point on a sphere represented by a nonzero ambient vector."""
 
     __slots__ = ()
@@ -132,7 +132,7 @@ class SpherePoint(FloatPoint):
         if len(coordinates) == 1:
             vector = _coerce_nonzero_point_dim(
                 coordinates[0],
-                dim + 1 if dim is not None else FloatPoint(coordinates[0]).dim,
+                dim + 1 if dim is not None else Point(coordinates[0]).dim,
             )
         else:
             if dim is None:
@@ -141,7 +141,7 @@ class SpherePoint(FloatPoint):
         radius = float(radius)
         if radius <= 0.0:
             raise ValueError("Sphere radius must be positive")
-        normalized = (radius / FloatVector(vector).norm()) * FloatVector(vector)
+        normalized = (radius / Vector(vector).norm()) * Vector(vector)
         return super().__new__(cls, normalized)
 
     @property
@@ -154,10 +154,10 @@ class SpherePoint(FloatPoint):
 
     @property
     def radius(self) -> float:
-        return FloatVector(self).norm()
+        return Vector(self).norm()
 
-    def as_float_point(self) -> FloatPoint:
-        return FloatPoint(self)
+    def as_float_point(self) -> Point:
+        return Point(self)
 
     def __repr__(self) -> str:
         return (
@@ -316,7 +316,7 @@ class Space(SpaceBase):
             )
         directions = _orthonormal_basis(
             tuple(
-                FloatVector([
+                Vector([
                     1.0 if index == axis else 0.0
                     for index in range(self.dim + 1)
                 ])
@@ -369,14 +369,14 @@ class Space(SpaceBase):
                 ),
             )
 
-        def contains(point: FloatPoint) -> bool:
+        def contains(point: Point) -> bool:
             sphere_point = self.point(point)
             return (
                 sum(a * b for a, b in zip(center_point, sphere_point)) >=
                 threshold - 1e-12
             )
 
-        def local_model(point: FloatPoint) -> LocalConeModel[FloatPoint]:
+        def local_model(point: Point) -> LocalConeModel[Point]:
             sphere_point = self.point(point)
             chart = _sphere_chart(sphere_point)
             score = sum(a * b for a, b in zip(center_point, sphere_point))
@@ -384,8 +384,8 @@ class Space(SpaceBase):
                 cone = EuclideanCone.whole(2)
             else:
                 tangent_basis = _sphere_tangent_basis(sphere_point)
-                gradient = FloatVector([
-                    FloatVector(center_point).dot(basis_vector)
+                gradient = Vector([
+                    Vector(center_point).dot(basis_vector)
                     for basis_vector in tangent_basis
                 ])
                 if gradient.norm() < 1e-12:
@@ -394,7 +394,7 @@ class Space(SpaceBase):
                     cone = EuclideanCone(
                         self.dim,
                         contains=lambda coordinates: (
-                            gradient.dot(FloatVector(coordinates)) >= -1e-12
+                            gradient.dot(Vector(coordinates)) >= -1e-12
                         ),
                         neighborhood=EuclideanNeighborhood.whole(self.dim),
                     )

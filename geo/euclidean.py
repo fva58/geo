@@ -89,12 +89,12 @@ def _invert_square_matrix(
     )
 
 
-class FloatVector(tuple):
+class Vector(tuple):
     """Euclidean vector with float coordinates."""
 
     __slots__ = ()
 
-    def __new__(cls, *coordinates: object) -> "FloatVector":
+    def __new__(cls, *coordinates: object) -> "Vector":
         """Create a vector from coordinates or a coordinate sequence."""
         return super().__new__(cls, _coerce_coordinates(coordinates))
 
@@ -105,37 +105,37 @@ class FloatVector(tuple):
 
     def __repr__(self) -> str:
         """Return a debug representation."""
-        return f"FloatVector{tuple(self)}"
+        return f"Vector{tuple(self)}"
 
-    def __add__(self, other: "FloatVector") -> "FloatVector":
+    def __add__(self, other: "Vector") -> "Vector":
         """Add another vector."""
         _check_same_dimension(self, other)
         result = np.asarray(self, dtype=float) + np.asarray(other, dtype=float)
-        return FloatVector(result)
+        return Vector(result)
 
-    def __sub__(self, other: "FloatVector") -> "FloatVector":
+    def __sub__(self, other: "Vector") -> "Vector":
         """Subtract another vector."""
         _check_same_dimension(self, other)
         result = np.asarray(self, dtype=float) - np.asarray(other, dtype=float)
-        return FloatVector(result)
+        return Vector(result)
 
-    def __neg__(self) -> "FloatVector":
+    def __neg__(self) -> "Vector":
         """Return the additive inverse."""
-        return FloatVector(-np.asarray(self, dtype=float))
+        return Vector(-np.asarray(self, dtype=float))
 
-    def __mul__(self, scalar: float) -> "FloatVector":
+    def __mul__(self, scalar: float) -> "Vector":
         """Multiply by a scalar."""
-        return FloatVector(np.asarray(self, dtype=float) * float(scalar))
+        return Vector(np.asarray(self, dtype=float) * float(scalar))
 
-    def __rmul__(self, scalar: float) -> "FloatVector":
+    def __rmul__(self, scalar: float) -> "Vector":
         """Multiply by a scalar from the left."""
         return self * scalar
 
-    def __truediv__(self, scalar: float) -> "FloatVector":
+    def __truediv__(self, scalar: float) -> "Vector":
         """Divide by a scalar."""
-        return FloatVector(np.asarray(self, dtype=float) / float(scalar))
+        return Vector(np.asarray(self, dtype=float) / float(scalar))
 
-    def dot(self, other: "FloatVector") -> float:
+    def dot(self, other: "Vector") -> float:
         """Return the Euclidean dot product."""
         _check_same_dimension(self, other)
         return float(np.dot(np.asarray(self, dtype=float),
@@ -150,17 +150,17 @@ class FloatVector(tuple):
         return tuple(self)
 
     @classmethod
-    def zero(cls, dim: int) -> "FloatVector":
+    def zero(cls, dim: int) -> "Vector":
         """Return the zero vector in the given dimension."""
         return cls((0.0,) * dim)
 
 
-class FloatPoint(tuple):
+class Point(tuple):
     """Euclidean point with float coordinates."""
 
     __slots__ = ()
 
-    def __new__(cls, *coordinates: object) -> "FloatPoint":
+    def __new__(cls, *coordinates: object) -> "Point":
         """Create a point from coordinates or a coordinate sequence."""
         return super().__new__(cls, _coerce_coordinates(coordinates))
 
@@ -171,13 +171,13 @@ class FloatPoint(tuple):
 
     def __repr__(self) -> str:
         """Return a debug representation."""
-        return f"FloatPoint{tuple(self)}"
+        return f"Point{tuple(self)}"
 
-    def __add__(self, vector: FloatVector) -> "FloatPoint":
+    def __add__(self, vector: Vector) -> "Point":
         """Translate the point by a vector."""
         _check_same_dimension(self, vector)
         result = np.asarray(self, dtype=float) + np.asarray(vector, dtype=float)
-        return FloatPoint(result)
+        return Point(result)
 
     def __sub__(self, other: object) -> object:
         """Subtract a point or vector.
@@ -185,23 +185,23 @@ class FloatPoint(tuple):
         - point - point -> vector
         - point - vector -> point
         """
-        if isinstance(other, FloatPoint):
+        if isinstance(other, Point):
             _check_same_dimension(self, other)
             result = (
                 np.asarray(self, dtype=float) -
                 np.asarray(other, dtype=float)
             )
-            return FloatVector(result)
-        if isinstance(other, FloatVector):
+            return Vector(result)
+        if isinstance(other, Vector):
             _check_same_dimension(self, other)
             result = (
                 np.asarray(self, dtype=float) -
                 np.asarray(other, dtype=float)
             )
-            return FloatPoint(result)
+            return Point(result)
         return NotImplemented
 
-    def distance_to(self, other: "FloatPoint") -> float:
+    def distance_to(self, other: "Point") -> float:
         """Return the Euclidean distance to another point."""
         return (self - other).norm()
 
@@ -210,7 +210,7 @@ class FloatPoint(tuple):
         return tuple(self)
 
     @classmethod
-    def origin(cls, dim: int) -> "FloatPoint":
+    def origin(cls, dim: int) -> "Point":
         """Return the origin in the given dimension."""
         return cls((0.0,) * dim)
 
@@ -243,15 +243,15 @@ class EuclideanNeighborhood(tuple):
         """Return a debug representation."""
         return f"EuclideanNeighborhood{tuple(self)}"
 
-    def contains(self, point: FloatPoint) -> bool:
+    def contains(self, point: Point) -> bool:
         """Check whether a point belongs to the neighborhood."""
-        point = FloatPoint(point)
+        point = Point(point)
         if point.dim != self.dim:
             return False
         return all(coordinate in coordinate_set
                    for coordinate, coordinate_set in zip(point, self))
 
-    def __contains__(self, point: FloatPoint) -> bool:
+    def __contains__(self, point: Point) -> bool:
         """Check whether a point belongs to the neighborhood."""
         return self.contains(point)
 
@@ -297,8 +297,8 @@ class EuclideanChart:
 
     def __init__(
         self,
-        forward: Callable[[FloatPoint], FloatPoint],
-        inverse: Callable[[FloatPoint], FloatPoint],
+        forward: Callable[[Point], Point],
+        inverse: Callable[[Point], Point],
         source_dim: int,
         target_dim: int,
         domain: EuclideanNeighborhood | None = None,
@@ -322,16 +322,16 @@ class EuclideanChart:
             f"{domain}{image})"
         )
 
-    def __call__(self, point: FloatPoint) -> FloatPoint:
+    def __call__(self, point: Point) -> Point:
         """Apply the forward chart map."""
-        point = FloatPoint(point)
+        point = Point(point)
         if point.dim != self.source_dim:
             raise ValueError(
                 f"Source dimension mismatch: {point.dim} != {self.source_dim}"
             )
         if self.domain is not None and point not in self.domain:
             raise ValueError("Point is outside the chart domain")
-        image = FloatPoint(self._forward(point))
+        image = Point(self._forward(point))
         if image.dim != self.target_dim:
             raise ValueError(
                 f"Target dimension mismatch: {image.dim} != {self.target_dim}"
@@ -340,16 +340,16 @@ class EuclideanChart:
             raise ValueError("Image point is outside the chart image")
         return image
 
-    def inverse(self, point: FloatPoint) -> FloatPoint:
+    def inverse(self, point: Point) -> Point:
         """Apply the inverse chart map."""
-        point = FloatPoint(point)
+        point = Point(point)
         if point.dim != self.target_dim:
             raise ValueError(
                 f"Target dimension mismatch: {point.dim} != {self.target_dim}"
             )
         if self.image is not None and point not in self.image:
             raise ValueError("Point is outside the chart image")
-        preimage = FloatPoint(self._inverse(point))
+        preimage = Point(self._inverse(point))
         if preimage.dim != self.source_dim:
             raise ValueError(
                 f"Source dimension mismatch: {preimage.dim} != {self.source_dim}"
@@ -377,10 +377,10 @@ class EuclideanChart:
                 f"{other.target_dim} != {self.source_dim}"
             )
 
-        def forward(point: FloatPoint) -> FloatPoint:
+        def forward(point: Point) -> Point:
             return self(other(point))
 
-        def inverse(point: FloatPoint) -> FloatPoint:
+        def inverse(point: Point) -> Point:
             return other.inverse(self.inverse(point))
 
         return EuclideanChart(
@@ -411,11 +411,11 @@ class AffineDiffeomorphism(EuclideanChart):
     def __init__(
         self,
         matrix: Sequence[Sequence[object]],
-        offset: Sequence[object] | FloatVector,
+        offset: Sequence[object] | Vector,
     ) -> None:
         """Initialize an affine diffeomorphism from a matrix and offset."""
         self.matrix = _coerce_matrix(matrix)
-        self.offset = FloatVector(offset)
+        self.offset = Vector(offset)
         self.target_dim = len(self.matrix)
         self.source_dim = len(self.matrix[0])
 
@@ -427,7 +427,7 @@ class AffineDiffeomorphism(EuclideanChart):
             raise ValueError("Affine diffeomorphism matrix must be square")
 
         self.inverse_matrix = _invert_square_matrix(self.matrix)
-        self.inverse_offset = FloatVector(
+        self.inverse_offset = Vector(
             tuple(-value for value in _matvec(self.inverse_matrix, self.offset))
         )
 
@@ -440,13 +440,13 @@ class AffineDiffeomorphism(EuclideanChart):
             image=EuclideanNeighborhood.whole(self.target_dim),
         )
 
-    def _forward_map(self, point: FloatPoint) -> FloatPoint:
+    def _forward_map(self, point: Point) -> Point:
         """Apply the affine forward map."""
-        return FloatPoint(_matvec(self.matrix, point)) + self.offset
+        return Point(_matvec(self.matrix, point)) + self.offset
 
-    def _inverse_map(self, point: FloatPoint) -> FloatPoint:
+    def _inverse_map(self, point: Point) -> Point:
         """Apply the affine inverse map."""
-        return FloatPoint(_matvec(self.inverse_matrix, point)) + self.inverse_offset
+        return Point(_matvec(self.inverse_matrix, point)) + self.inverse_offset
 
     def __repr__(self) -> str:
         """Return a debug representation."""
@@ -463,7 +463,13 @@ class AffineDiffeomorphism(EuclideanChart):
         )
 
 
+# Backward compatibility aliases
+FloatVector = Vector
+FloatPoint = Point
+
 __all__ = [
+    "Vector",
+    "Point",
     "FloatVector",
     "FloatPoint",
     "EuclideanNeighborhood",

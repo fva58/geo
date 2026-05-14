@@ -10,7 +10,7 @@ from typing import Callable, Generic, Protocol, TypeVar, runtime_checkable
 import numpy as np
 
 from .circle import Point as CirclePoint, Set as CircleSet
-from .euclidean import EuclideanNeighborhood, FloatPoint, FloatVector
+from .euclidean import EuclideanNeighborhood, Point, Vector
 from .manifold import ManifoldChart
 
 
@@ -27,7 +27,7 @@ def _signed_circle_offset(center: CirclePoint, point: CirclePoint) -> float:
     return offset
 
 
-def _cross_2d(left: FloatVector, right: FloatVector) -> float:
+def _cross_2d(left: Vector, right: Vector) -> float:
     """Return the scalar two-dimensional cross product."""
     return left[0] * right[1] - left[1] * right[0]
 
@@ -37,19 +37,19 @@ def _isclose(value: float, target: float = 0.0) -> bool:
     return math.isclose(value, target, rel_tol=1e-12, abs_tol=1e-12)
 
 
-def _point_array(point: FloatPoint) -> np.ndarray:
+def _point_array(point: Point) -> np.ndarray:
     """Return a point as a NumPy float array."""
-    return np.asarray(FloatPoint(point), dtype=float)
+    return np.asarray(Point(point), dtype=float)
 
 
-def _vector_array(vector: FloatVector) -> np.ndarray:
+def _vector_array(vector: Vector) -> np.ndarray:
     """Return a vector as a NumPy float array."""
-    return np.asarray(FloatVector(vector), dtype=float)
+    return np.asarray(Vector(vector), dtype=float)
 
 
-def _coerce_nonzero_normal(normal: FloatVector) -> FloatVector:
+def _coerce_nonzero_normal(normal: Vector) -> Vector:
     """Normalize a hyperplane normal input."""
-    normal = FloatVector(normal)
+    normal = Vector(normal)
     if normal.norm() == 0.0:
         raise ValueError("Normal must be non-zero")
     return normal
@@ -60,7 +60,7 @@ def _coerce_affine_matrix(
     dim: int,
 ) -> np.ndarray:
     """Return an invertible matrix whose columns are the given vectors."""
-    columns = [_vector_array(FloatVector(vector)) for vector in vectors]
+    columns = [_vector_array(Vector(vector)) for vector in vectors]
     if len(columns) != dim:
         raise ValueError(f"Need {dim} spanning vectors, got {len(columns)}")
     matrix = np.column_stack(columns)
@@ -92,13 +92,13 @@ class Cone(Protocol):
         """Return the cone dimension."""
 
     @property
-    def apex(self) -> FloatPoint:
+    def apex(self) -> Point:
         """Return the cone apex."""
 
-    def contains(self, point: FloatPoint) -> bool:
+    def contains(self, point: Point) -> bool:
         """Check whether a coordinate point belongs to the cone."""
 
-    def __contains__(self, point: FloatPoint) -> bool:
+    def __contains__(self, point: Point) -> bool:
         """Check whether a coordinate point belongs to the cone."""
 
 
@@ -110,19 +110,19 @@ class SphereObject(Protocol):
     def dim(self) -> int:
         """Return the ambient dimension."""
 
-    def contains(self, direction: FloatVector) -> bool:
+    def contains(self, direction: Vector) -> bool:
         """Check whether a unit direction belongs to the sphere object."""
 
-    def __contains__(self, direction: FloatVector) -> bool:
+    def __contains__(self, direction: Vector) -> bool:
         """Check whether a unit direction belongs to the sphere object."""
 
 
 def point_cone(dim: int) -> "EuclideanCone":
     """Return the zero-dimensional cone supported at the apex only."""
-    origin = FloatPoint.origin(dim)
+    origin = Point.origin(dim)
     return EuclideanCone(
         dim,
-        contains=lambda point: FloatPoint(point) == origin,
+        contains=lambda point: Point(point) == origin,
         apex=origin,
         neighborhood=EuclideanNeighborhood.whole(dim),
     )
@@ -133,7 +133,7 @@ def positive_half_line_cone() -> "EuclideanCone":
     return EuclideanCone(
         1,
         contains=lambda point: point[0] >= 0.0,
-        apex=FloatPoint.origin(1),
+        apex=Point.origin(1),
         neighborhood=EuclideanNeighborhood.whole(1),
     )
 
@@ -143,13 +143,13 @@ def negative_half_line_cone() -> "EuclideanCone":
     return EuclideanCone(
         1,
         contains=lambda point: point[0] <= 0.0,
-        apex=FloatPoint.origin(1),
+        apex=Point.origin(1),
         neighborhood=EuclideanNeighborhood.whole(1),
     )
 
 
 def half_space_cone(
-    normal: FloatVector,
+    normal: Vector,
     *,
     reverse: bool = False,
 ) -> "EuclideanCone":
@@ -159,22 +159,22 @@ def half_space_cone(
     return EuclideanCone(
         dim,
         contains=lambda coordinates: (
-            orientation * FloatVector(coordinates).dot(normal) >= 0.0
+            orientation * Vector(coordinates).dot(normal) >= 0.0
         ),
-        apex=FloatPoint.origin(dim),
+        apex=Point.origin(dim),
         neighborhood=EuclideanNeighborhood.whole(dim),
     )
 
 
-def hyperplane_cone(normal: FloatVector) -> "EuclideanCone":
+def hyperplane_cone(normal: Vector) -> "EuclideanCone":
     """Return a cone given by one linear equality."""
     dim = normal.dim
     return EuclideanCone(
         dim,
         contains=lambda coordinates: _isclose(
-            FloatVector(coordinates).dot(normal)
+            Vector(coordinates).dot(normal)
         ),
-        apex=FloatPoint.origin(dim),
+        apex=Point.origin(dim),
         neighborhood=EuclideanNeighborhood.whole(dim),
     )
 
@@ -185,13 +185,13 @@ class EuclideanCone:
     def __init__(
         self,
         dim: int,
-        contains: Callable[[FloatPoint], bool],
-        apex: FloatPoint | None = None,
+        contains: Callable[[Point], bool],
+        apex: Point | None = None,
         neighborhood: EuclideanNeighborhood | None = None,
     ) -> None:
         self._dim = dim
         self._contains = contains
-        self._apex = FloatPoint.origin(dim) if apex is None else FloatPoint(apex)
+        self._apex = Point.origin(dim) if apex is None else Point(apex)
         if self._apex.dim != dim:
             raise ValueError(f"Apex dimension mismatch: {self._apex.dim} != {dim}")
         if neighborhood is not None and neighborhood.dim != dim:
@@ -205,21 +205,21 @@ class EuclideanCone:
         return self._dim
 
     @property
-    def apex(self) -> FloatPoint:
+    def apex(self) -> Point:
         return self._apex
 
     def __repr__(self) -> str:
         return f"EuclideanCone(dim={self.dim}, apex={self.apex.to_tuple()})"
 
-    def contains(self, point: FloatPoint) -> bool:
-        point = FloatPoint(point)
+    def contains(self, point: Point) -> bool:
+        point = Point(point)
         if point.dim != self.dim:
             return False
         if self.neighborhood is not None and point not in self.neighborhood:
             return False
         return self._contains(point)
 
-    def __contains__(self, point: FloatPoint) -> bool:
+    def __contains__(self, point: Point) -> bool:
         return self.contains(point)
 
     @classmethod
@@ -227,7 +227,7 @@ class EuclideanCone:
         return cls(
             dim,
             contains=lambda point: True,
-            apex=FloatPoint.origin(dim),
+            apex=Point.origin(dim),
             neighborhood=EuclideanNeighborhood.whole(dim),
         )
 
@@ -238,15 +238,15 @@ class RadialCone(EuclideanCone):
     def __init__(
         self,
         dim: int,
-        contains_direction: Callable[[FloatVector], bool],
-        apex: FloatPoint | None = None,
+        contains_direction: Callable[[Vector], bool],
+        apex: Point | None = None,
         neighborhood: EuclideanNeighborhood | None = None,
     ) -> None:
         self._contains_direction = contains_direction
-        chosen_apex = FloatPoint.origin(dim) if apex is None else FloatPoint(apex)
+        chosen_apex = Point.origin(dim) if apex is None else Point(apex)
 
-        def contains(point: FloatPoint) -> bool:
-            point = FloatPoint(point)
+        def contains(point: Point) -> bool:
+            point = Point(point)
             displacement = point - chosen_apex
             if displacement.norm() == 0.0:
                 return True
@@ -265,7 +265,7 @@ class RadialCone(EuclideanCone):
         return cls(
             dim,
             contains_direction=lambda direction: True,
-            apex=FloatPoint.origin(dim),
+            apex=Point.origin(dim),
             neighborhood=EuclideanNeighborhood.whole(dim),
         )
 
@@ -276,7 +276,7 @@ class DirectionSetSphereObject:
     def __init__(
         self,
         dim: int,
-        contains: Callable[[FloatVector], bool],
+        contains: Callable[[Vector], bool],
     ) -> None:
         self._dim = dim
         self._contains = contains
@@ -288,14 +288,14 @@ class DirectionSetSphereObject:
     def __repr__(self) -> str:
         return f"DirectionSetSphereObject(dim={self.dim})"
 
-    def contains(self, direction: FloatVector) -> bool:
-        direction = FloatVector(direction)
+    def contains(self, direction: Vector) -> bool:
+        direction = Vector(direction)
         if direction.dim != self.dim or direction.norm() == 0.0:
             return False
         normalized = direction / direction.norm()
         return self._contains(normalized)
 
-    def __contains__(self, direction: FloatVector) -> bool:
+    def __contains__(self, direction: Vector) -> bool:
         return self.contains(direction)
 
 
@@ -312,14 +312,14 @@ class CircleSphereObject:
     def __repr__(self) -> str:
         return f"CircleSphereObject({self.circle_set!r})"
 
-    def contains(self, direction: FloatVector) -> bool:
-        direction = FloatVector(direction)
+    def contains(self, direction: Vector) -> bool:
+        direction = Vector(direction)
         if direction.dim != 2 or direction.norm() == 0.0:
             return False
         point = CirclePoint.from_cartesian(direction[0], direction[1])
         return point in self.circle_set
 
-    def __contains__(self, direction: FloatVector) -> bool:
+    def __contains__(self, direction: Vector) -> bool:
         return self.contains(direction)
 
 
@@ -329,7 +329,7 @@ class SphericalCone(RadialCone):
     def __init__(
         self,
         sphere_object: SphereObject,
-        apex: FloatPoint | None = None,
+        apex: Point | None = None,
         neighborhood: EuclideanNeighborhood | None = None,
     ) -> None:
         self.sphere_object = sphere_object

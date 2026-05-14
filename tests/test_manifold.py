@@ -4,7 +4,7 @@ import unittest
 from dataclasses import dataclass
 
 from geo.diffeomorphism import Chart
-from geo.euclidean import EuclideanNeighborhood, FloatPoint
+from geo.euclidean import EuclideanNeighborhood, Point
 from geo.manifold import Manifold, ManifoldChart
 
 
@@ -53,7 +53,7 @@ class TestManifoldChart(unittest.TestCase):
         manifold = OpenIntervalManifold(-1.0, 1.0)
         image = EuclideanNeighborhood.box((-1.0, 1.0))
         chart = ManifoldChart(
-            lambda point: FloatPoint(point.x),
+            lambda point: Point(point.x),
             lambda coordinates: LinePoint(coordinates[0]),
             dim=1,
             domain_contains=manifold.contains,
@@ -70,7 +70,7 @@ class TestManifoldChart(unittest.TestCase):
         manifold = OpenIntervalManifold(-1.0, 1.0)
         image = EuclideanNeighborhood.box((-1.0, 1.0))
         chart = ManifoldChart(
-            lambda point: FloatPoint(point.x),
+            lambda point: Point(point.x),
             lambda coordinates: LinePoint(coordinates[0]),
             dim=1,
             domain_contains=manifold.contains,
@@ -79,7 +79,7 @@ class TestManifoldChart(unittest.TestCase):
         with self.assertRaises(ValueError):
             chart(LinePoint(2.0))
         with self.assertRaises(ValueError):
-            chart.inverse(FloatPoint(2.0))
+            chart.inverse(Point(2.0))
 
 
 

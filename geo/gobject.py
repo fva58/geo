@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Callable, Generic, Protocol, TypeVar, runtime_
 import numpy as np
 
 from .cone import EuclideanCone, LocalConeModel
-from .euclidean import FloatPoint, FloatVector
+from .euclidean import Point, Vector
 from .manifold import (
     Manifold,
     ManifoldChart,
@@ -48,26 +48,26 @@ class GeometricObjectProtocol(Protocol[PointT]):
         """Return a local cone model at a point of the object."""
 
 
-def _point_array(point: FloatPoint) -> np.ndarray:
+def _point_array(point: Point) -> np.ndarray:
     """Return local coordinates as a NumPy float array."""
-    return np.asarray(FloatPoint(point), dtype=float)
+    return np.asarray(Point(point), dtype=float)
 
 
 def _numeric_local_jacobian(
-    mapping: Callable[[FloatPoint], FloatPoint],
-    point: FloatPoint,
+    mapping: Callable[[Point], Point],
+    point: Point,
     step: float = 1e-6,
 ) -> np.ndarray:
     """Approximate the Jacobian of a local coordinate transition."""
-    point = FloatPoint(point)
+    point = Point(point)
     base = _point_array(point)
-    image_dim = FloatPoint(mapping(point)).dim
+    image_dim = Point(mapping(point)).dim
     jacobian = np.zeros((image_dim, point.dim), dtype=float)
     for index in range(point.dim):
         delta = np.zeros(point.dim, dtype=float)
         delta[index] = step
-        image_plus = _point_array(mapping(FloatPoint(base + delta)))
-        image_minus = _point_array(mapping(FloatPoint(base - delta)))
+        image_plus = _point_array(mapping(Point(base + delta)))
+        image_minus = _point_array(mapping(Point(base - delta)))
         jacobian[:, index] = (image_plus - image_minus) / (2.0 * step)
     return jacobian
 
@@ -77,11 +77,11 @@ def _centered_chart_at(
     point: PointT,
 ) -> ManifoldChart[PointT]:
     """Return a chart recentered so that ``point`` maps to the origin."""
-    origin = FloatPoint(chart(point))
+    origin = Point(chart(point))
     return ManifoldChart(
-        lambda candidate: FloatPoint(chart(candidate)) - FloatVector(origin),
+        lambda candidate: Point(chart(candidate)) - Vector(origin),
         lambda coordinates: chart.inverse(
-            FloatPoint(coordinates) + FloatVector(origin)
+            Point(coordinates) + Vector(origin)
         ),
         dim=chart.dim,
         domain_contains=chart.domain_contains,
@@ -92,14 +92,14 @@ def _centered_chart_at(
 def _contains_linear_image(
     matrix: np.ndarray,
     source_cone,
-    target_coordinates: FloatPoint,
+    target_coordinates: Point,
 ) -> bool:
     """Check whether a vector belongs to the image of a source cone."""
     target_array = _point_array(target_coordinates)
     source_array, _, _, _ = np.linalg.lstsq(matrix, target_array, rcond=None)
     if not np.allclose(matrix @ source_array, target_array, atol=1e-7, rtol=1e-7):
         return False
-    return source_cone.contains(FloatPoint(source_array))
+    return source_cone.contains(Point(source_array))
 
 
 def _classification_points(neighborhood: Neighborhood[PointT]) -> tuple[PointT, ...]:
@@ -110,11 +110,11 @@ def _classification_points(neighborhood: Neighborhood[PointT]) -> tuple[PointT, 
             raise ValueError("Classification requires box neighborhoods")
         interval = coordinate_set[0]
         bounds.append((float(interval[0]), float(interval[1])))
-    coordinate_points = [FloatPoint(
+    coordinate_points = [Point(
         [(left + right) / 2.0 for left, right in bounds]
     )]
     coordinate_points.extend(
-        FloatPoint(vertex)
+        Point(vertex)
         for vertex in itertools.product(
             *((left, right) for left, right in bounds)
         )
@@ -192,22 +192,22 @@ class ChartedGeometricObject(Generic[PointT]):
 
     def visible_from_direction(
         self,
-        direction: FloatVector,
-    ) -> "ChartedGeometricObject[FloatPoint]":
+        direction: Vector,
+    ) -> "ChartedGeometricObject[Point]":
         from .space._euclidean_impl import visible_part_from_direction
 
-        direction = FloatVector(direction)
+        direction = Vector(direction)
         if direction.norm() == 0.0:
             raise ValueError("Visibility direction must be non-zero")
         return visible_part_from_direction(self, direction)
 
     def visible_from_point(
         self,
-        point: FloatPoint,
-    ) -> "ChartedGeometricObject[FloatPoint]":
+        point: Point,
+    ) -> "ChartedGeometricObject[Point]":
         from .space._euclidean_impl import visible_part_from_point
 
-        return visible_part_from_point(self, FloatPoint(point))
+        return visible_part_from_point(self, Point(point))
 
     def image_under_smooth_map(
         self,
@@ -230,8 +230,8 @@ class ChartedGeometricObject(Generic[PointT]):
         self,
         source_hyperplane,
         target_hyperplane,
-        direction: FloatVector,
-    ) -> "ChartedGeometricObject[FloatPoint]":
+        direction: Vector,
+    ) -> "ChartedGeometricObject[Point]":
         from .space._euclidean_impl import (
             parallel_projection_inverse,
             projected_local_model,
@@ -243,8 +243,8 @@ class ChartedGeometricObject(Generic[PointT]):
             direction,
         )
 
-        def contains(point: FloatPoint) -> bool:
-            point = FloatPoint(point)
+        def contains(point: Point) -> bool:
+            point = Point(point)
             if point not in target_hyperplane:
                 return False
             try:
@@ -253,8 +253,8 @@ class ChartedGeometricObject(Generic[PointT]):
                 return False
             return source_point in self
 
-        def local_model(point: FloatPoint) -> LocalConeModel[FloatPoint]:
-            target_point = FloatPoint(point)
+        def local_model(point: Point) -> LocalConeModel[Point]:
+            target_point = Point(point)
             source_point = inverse_map(target_point)
             return projected_local_model(
                 self,
@@ -274,8 +274,8 @@ class ChartedGeometricObject(Generic[PointT]):
         self,
         source_hyperplane,
         target_hyperplane,
-        center: FloatPoint,
-    ) -> "ChartedGeometricObject[FloatPoint]":
+        center: Point,
+    ) -> "ChartedGeometricObject[Point]":
         from .space._euclidean_impl import (
             central_projection_inverse,
             projected_local_model,
@@ -287,8 +287,8 @@ class ChartedGeometricObject(Generic[PointT]):
             center,
         )
 
-        def contains(point: FloatPoint) -> bool:
-            point = FloatPoint(point)
+        def contains(point: Point) -> bool:
+            point = Point(point)
             if point not in target_hyperplane:
                 return False
             try:
@@ -297,8 +297,8 @@ class ChartedGeometricObject(Generic[PointT]):
                 return False
             return source_point in self
 
-        def local_model(point: FloatPoint) -> LocalConeModel[FloatPoint]:
-            target_point = FloatPoint(point)
+        def local_model(point: Point) -> LocalConeModel[Point]:
+            target_point = Point(point)
             source_point = inverse_map(target_point)
             return projected_local_model(
                 self,
@@ -358,13 +358,13 @@ class SmoothImageObject(ChartedGeometricObject[TargetT], Generic[PointT, TargetT
         base_target_chart = self.target_chart(point)
         centered_target_chart = _centered_chart_at(base_target_chart, point)
 
-        def local_forward(source_coordinates: FloatPoint) -> FloatPoint:
+        def local_forward(source_coordinates: Point) -> Point:
             source_local_point = centered_source_chart.inverse(source_coordinates)
             return centered_target_chart(self.forward(source_local_point))
 
         jacobian = _numeric_local_jacobian(
             local_forward,
-            FloatPoint.origin(centered_source_chart.dim),
+            Point.origin(centered_source_chart.dim),
         )
         if np.linalg.matrix_rank(jacobian) < centered_source_chart.dim:
             raise ValueError(
@@ -375,9 +375,9 @@ class SmoothImageObject(ChartedGeometricObject[TargetT], Generic[PointT, TargetT
             contains=lambda coordinates: _contains_linear_image(
                 jacobian,
                 source_model.cone,
-                FloatPoint(coordinates),
+                Point(coordinates),
             ),
-            apex=FloatPoint.origin(centered_target_chart.dim),
+            apex=Point.origin(centered_target_chart.dim),
             neighborhood=_whole_neighborhood(centered_target_chart.dim),
         )
         return LocalConeModel(centered_target_chart, cone)
@@ -421,13 +421,13 @@ class GeometricObject(ChartedGeometricObject[PointT]):
         if left_model.chart.dim != right_model.chart.dim:
             raise ValueError("Local model dimensions do not match")
         dim = left_model.chart.dim
-        origin = FloatPoint.origin(dim)
+        origin = Point.origin(dim)
 
-        def transition(point: FloatPoint) -> FloatPoint:
+        def transition(point: Point) -> Point:
             manifold_point = left_model.chart.inverse(point)
-            return FloatPoint(right_model.chart(manifold_point))
+            return Point(right_model.chart(manifold_point))
 
-        transition_origin = FloatPoint(transition(origin))
+        transition_origin = Point(transition(origin))
         if not np.allclose(
             _point_array(transition_origin),
             np.zeros(dim, dtype=float),
@@ -447,7 +447,7 @@ class GeometricObject(ChartedGeometricObject[PointT]):
             contains=lambda point: operation(
                 left_model.cone.contains(point),
                 right_model.cone.contains(
-                    FloatPoint(transition_jacobian @ _point_array(point))
+                    Point(transition_jacobian @ _point_array(point))
                 ),
             ),
             neighborhood=_whole_neighborhood(dim),
@@ -494,7 +494,7 @@ class GeometricObject(ChartedGeometricObject[PointT]):
         self,
         source_hyperplane,
         target_hyperplane,
-        direction: FloatVector,
+        direction: Vector,
     ) -> "GeometricObject[PointT]":
         return LazyMappedObject(
             self.space,
@@ -502,14 +502,14 @@ class GeometricObject(ChartedGeometricObject[PointT]):
             self,
             source_hyperplane=source_hyperplane,
             target_hyperplane=target_hyperplane,
-            direction=FloatVector(direction),
+            direction=Vector(direction),
         )
 
     def project_from_point_onto(
         self,
         source_hyperplane,
         target_hyperplane,
-        center: FloatPoint,
+        center: Point,
     ) -> "GeometricObject[PointT]":
         return LazyMappedObject(
             self.space,
@@ -517,29 +517,29 @@ class GeometricObject(ChartedGeometricObject[PointT]):
             self,
             source_hyperplane=source_hyperplane,
             target_hyperplane=target_hyperplane,
-            center=FloatPoint(center),
+            center=Point(center),
         )
 
     def visible_from_direction(
         self,
-        direction: FloatVector,
+        direction: Vector,
     ) -> "GeometricObject[PointT]":
         return LazyMappedObject(
             self.space,
             "visible-from-direction",
             self,
-            direction=FloatVector(direction),
+            direction=Vector(direction),
         )
 
     def visible_from_point(
         self,
-        point: FloatPoint,
+        point: Point,
     ) -> "GeometricObject[PointT]":
         return LazyMappedObject(
             self.space,
             "visible-from-point",
             self,
-            point=FloatPoint(point),
+            point=Point(point),
         )
 
     def image_under_smooth_map(

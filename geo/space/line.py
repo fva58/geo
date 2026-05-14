@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 
 from ..cone import EuclideanCone, LocalConeModel, negative_half_line_cone, point_cone, positive_half_line_cone
-from ..euclidean import EuclideanNeighborhood, FloatPoint
+from ..euclidean import EuclideanNeighborhood, Point
 from ..line import (
     ALL_REALS_INTERVAL,
     EMPTY_INTERVAL,
@@ -39,7 +39,7 @@ class _RealLineManifold:
 
 def _real_chart(center: float) -> ManifoldChart[float]:
     return ManifoldChart(
-        lambda point: FloatPoint(float(point) - center),
+        lambda point: Point(float(point) - center),
         lambda coordinates: center + coordinates[0],
         dim=1,
         domain_contains=_RealLineManifold().contains,

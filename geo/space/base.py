@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from typing import Callable, Generic, TypeVar
 from collections.abc import Sequence
 
-from ..euclidean import EuclideanNeighborhood, FloatPoint
+from ..euclidean import EuclideanNeighborhood, Point
 from ..manifold import Manifold, ManifoldChart
 
 
@@ -152,7 +152,7 @@ class BoxNeighborhood(Neighborhood[PointT]):
         neighborhoods = []
         for subbox in itertools.product(*split_bounds):
             image = EuclideanNeighborhood.box(*subbox)
-            center_coordinates = FloatPoint(
+            center_coordinates = Point(
                 [(left + right) / 2.0 for left, right in subbox]
             )
             neighborhoods.append(
@@ -241,7 +241,7 @@ def centered_real_chart(center: float, domain_contains) -> "ManifoldChart[float]
     from ..manifold import ManifoldChart
 
     return ManifoldChart(
-        lambda point: FloatPoint(float(point) - center),
+        lambda point: Point(float(point) - center),
         lambda coordinates: center + coordinates[0],
         dim=1,
         domain_contains=domain_contains,

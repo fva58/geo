@@ -4,7 +4,7 @@ import itertools
 import unittest
 
 from geo.cone import LocalConeModel
-from geo.euclidean import FloatPoint
+from geo.euclidean import Point
 from geo.space.base import refine_neighborhoods
 from geo.operations import classify_cover, local_chart_cover_from_points, refine_until
 from geo import space as space_pkg
@@ -82,7 +82,7 @@ class TestNeighborhoodRefinement(unittest.TestCase):
         """Mixed neighborhoods should be marked complex for refinement."""
         space = space_pkg.euclidean.Space(2)
         upper = space.half_plane((0.0, 1.0), offset=0.0)
-        neighborhood = space.neighborhood_at(FloatPoint(0.0, -0.5), 1.0)
+        neighborhood = space.neighborhood_at(Point(0.0, -0.5), 1.0)
 
         local = upper.classify_neighborhood(neighborhood)
 
@@ -91,8 +91,8 @@ class TestNeighborhoodRefinement(unittest.TestCase):
     def test_large_neighborhood_is_not_forced_to_be_cone(self):
         """A large neighborhood can contain more than one local cone patch."""
         space = space_pkg.euclidean.Space(2)
-        cube = space.cube(FloatPoint(1.0, 1.0), 1.0)
-        neighborhood = space.neighborhood_at(FloatPoint(0.0, 0.0), 10.0)
+        cube = space.cube(Point(1.0, 1.0), 1.0)
+        neighborhood = space.neighborhood_at(Point(0.0, 0.0), 10.0)
 
         local = cube.classify_neighborhood(neighborhood)
 
@@ -108,7 +108,7 @@ class TestNeighborhoodRefinement(unittest.TestCase):
 
         self.assertIn(1.0, line.neighborhood_at(1.0, 0.5))
         self.assertIn(0.0, circle.neighborhood_at(0.0, 0.5))
-        self.assertIn(FloatPoint(0.0, 0.0), plane.neighborhood_at((0.0, 0.0), 0.5))
+        self.assertIn(Point(0.0, 0.0), plane.neighborhood_at((0.0, 0.0), 0.5))
         north = sphere.point_from_angles(0.0, 0.0)
         self.assertIn(north, sphere.neighborhood_at(north, 0.5))
         self.assertIn((0.0, 0.0), torus.neighborhood_at((0.0, 0.0), 0.5))
@@ -128,7 +128,7 @@ class TestNeighborhoodRefinement(unittest.TestCase):
         torus_cover = torus.full(1.0)
 
         self.assertTrue(any(0.0 in neighborhood for neighborhood in line_cover))
-        self.assertTrue(any(FloatPoint(0.0, 0.0) in neighborhood for neighborhood in plane_cover))
+        self.assertTrue(any(Point(0.0, 0.0) in neighborhood for neighborhood in plane_cover))
         self.assertTrue(any(0.0 in neighborhood for neighborhood in circle_cover))
         north = sphere.point_from_angles(0.0, 0.0)
         self.assertTrue(any(north in neighborhood for neighborhood in sphere_cover))
@@ -148,7 +148,7 @@ class TestNeighborhoodRefinement(unittest.TestCase):
         cover = plane.full(0.5)
 
         self.assertEqual(len(cover), 9)
-        self.assertTrue(any(FloatPoint(0.0, 0.0) in neighborhood for neighborhood in cover))
+        self.assertTrue(any(Point(0.0, 0.0) in neighborhood for neighborhood in cover))
         centers = {neighborhood.center_point().to_tuple() for neighborhood in cover}
         self.assertEqual(
             centers,

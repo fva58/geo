@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Callable, Generic, Protocol, TypeVar, runtime_checkable
 
-from .euclidean import EuclideanNeighborhood, FloatPoint
+from .euclidean import EuclideanNeighborhood, Point
 
 
 PointT = TypeVar("PointT")
@@ -34,8 +34,8 @@ class ManifoldChart(Generic[PointT]):
 
     def __init__(
         self,
-        forward: Callable[[PointT], FloatPoint],
-        inverse: Callable[[FloatPoint], PointT],
+        forward: Callable[[PointT], Point],
+        inverse: Callable[[Point], PointT],
         dim: int,
         domain_contains: Callable[[PointT], bool] | None = None,
         image: EuclideanNeighborhood | None = None,
@@ -52,11 +52,11 @@ class ManifoldChart(Generic[PointT]):
         image = f", image_dim={self.image.dim}" if self.image else ""
         return f"ManifoldChart(dim={self.dim}{image})"
 
-    def __call__(self, point: PointT) -> FloatPoint:
+    def __call__(self, point: PointT) -> Point:
         """Apply the chart map to a manifold point."""
         if self.domain_contains is not None and not self.domain_contains(point):
             raise ValueError("Point is outside the chart domain")
-        coordinates = FloatPoint(self._forward(point))
+        coordinates = Point(self._forward(point))
         if coordinates.dim != self.dim:
             raise ValueError(
                 f"Coordinate dimension mismatch: {coordinates.dim} != {self.dim}"
@@ -65,9 +65,9 @@ class ManifoldChart(Generic[PointT]):
             raise ValueError("Coordinates are outside the chart image")
         return coordinates
 
-    def inverse(self, coordinates: FloatPoint) -> PointT:
+    def inverse(self, coordinates: Point) -> PointT:
         """Apply the inverse chart map."""
-        coordinates = FloatPoint(coordinates)
+        coordinates = Point(coordinates)
         if coordinates.dim != self.dim:
             raise ValueError(
                 f"Coordinate dimension mismatch: {coordinates.dim} != {self.dim}"

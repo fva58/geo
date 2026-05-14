@@ -6,7 +6,7 @@ import math
 
 from ..cone import EuclideanCone, LocalConeModel, negative_half_line_cone, point_cone, positive_half_line_cone, _signed_circle_offset
 from ..circle import Angle, FULL_INTERVAL, FULL_SET, Interval, Point, Set
-from ..euclidean import EuclideanNeighborhood, FloatPoint
+from ..euclidean import EuclideanNeighborhood, Point as EuclideanPoint
 from ..gobject import GeometricObject
 from ..manifold import ManifoldChart
 from .base import (
@@ -36,7 +36,7 @@ class _CircleManifold:
 
 def _circle_chart(center: Point) -> ManifoldChart[Point]:
     def forward(point: Point):
-        return FloatPoint(_signed_circle_offset(center, Point(point)))
+        return EuclideanPoint(_signed_circle_offset(center, Point(point)))
 
     def inverse(coordinates):
         return Point(float(center) + coordinates[0])

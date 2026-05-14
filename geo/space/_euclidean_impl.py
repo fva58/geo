@@ -24,7 +24,7 @@ from ..cone import (
     hyperplane_cone,
     point_cone,
 )
-from ..euclidean import EuclideanNeighborhood, FloatPoint, FloatVector
+from ..euclidean import EuclideanNeighborhood, Point, Vector
 from ..gobject import ChartedGeometricObject
 from ..manifold import ManifoldChart
 
@@ -39,7 +39,7 @@ class EuclideanSpace:
 
     def contains(self, point: object) -> bool:
         try:
-            coordinates = FloatPoint(point)
+            coordinates = Point(point)
         except (TypeError, ValueError):
             return False
         return coordinates.dim == self.dim
@@ -48,13 +48,13 @@ class EuclideanSpace:
         return self.contains(point)
 
 
-def euclidean_chart(center: FloatPoint) -> ManifoldChart[FloatPoint]:
+def euclidean_chart(center: Point) -> ManifoldChart[Point]:
     """Return the canonical translated chart in Euclidean space."""
     dim = center.dim
     space = EuclideanSpace(dim)
     return ManifoldChart(
-        lambda point: FloatPoint(point) - center,
-        lambda coordinates: center + FloatVector(coordinates),
+        lambda point: Point(point) - center,
+        lambda coordinates: center + Vector(coordinates),
         dim=dim,
         domain_contains=space.contains,
         image=EuclideanNeighborhood.whole(dim),
@@ -76,19 +76,19 @@ def _validate_projection_hyperplanes(source_hyperplane, target_hyperplane) -> No
 
 
 def _numeric_jacobian(
-    mapping: Callable[[FloatPoint], FloatPoint],
-    point: FloatPoint,
+    mapping: Callable[[Point], Point],
+    point: Point,
     step: float = 1e-6,
 ) -> np.ndarray:
-    point = FloatPoint(point)
+    point = Point(point)
     base = _point_array(point)
-    image_dim = FloatPoint(mapping(point)).dim
+    image_dim = Point(mapping(point)).dim
     jacobian = np.zeros((image_dim, point.dim), dtype=float)
     for index in range(point.dim):
         delta = np.zeros(point.dim, dtype=float)
         delta[index] = step
-        image_plus = _point_array(mapping(FloatPoint(base + delta)))
-        image_minus = _point_array(mapping(FloatPoint(base - delta)))
+        image_plus = _point_array(mapping(Point(base + delta)))
+        image_minus = _point_array(mapping(Point(base - delta)))
         jacobian[:, index] = (image_plus - image_minus) / (2.0 * step)
     return jacobian
 
@@ -96,11 +96,11 @@ def _numeric_jacobian(
 def parallel_projection_inverse(
     source_hyperplane,
     target_hyperplane,
-    direction: FloatVector,
-) -> Callable[[FloatPoint], FloatPoint]:
+    direction: Vector,
+) -> Callable[[Point], Point]:
     source_hyperplane = _projection_hyperplane_data(source_hyperplane)
     target_hyperplane = _projection_hyperplane_data(target_hyperplane)
-    direction = FloatVector(direction)
+    direction = Vector(direction)
     _validate_projection_hyperplanes(source_hyperplane, target_hyperplane)
     if direction.dim != source_hyperplane.normal.dim:
         raise ValueError("Projection direction dimension mismatch")
@@ -110,11 +110,11 @@ def parallel_projection_inverse(
             "Projection direction must not be parallel to the source hyperplane"
         )
 
-    def inverse_map(point: FloatPoint) -> FloatPoint:
-        point = FloatPoint(point)
+    def inverse_map(point: Point) -> Point:
+        point = Point(point)
         scalar = (
             source_hyperplane.offset
-            - source_hyperplane.normal.dot(FloatVector(point))
+            - source_hyperplane.normal.dot(Vector(point))
         ) / denominator
         return point + scalar * direction
 
@@ -124,21 +124,21 @@ def parallel_projection_inverse(
 def central_projection_inverse(
     source_hyperplane,
     target_hyperplane,
-    center: FloatPoint,
-) -> Callable[[FloatPoint], FloatPoint]:
+    center: Point,
+) -> Callable[[Point], Point]:
     source_hyperplane = _projection_hyperplane_data(source_hyperplane)
     target_hyperplane = _projection_hyperplane_data(target_hyperplane)
-    center = FloatPoint(center)
+    center = Point(center)
     _validate_projection_hyperplanes(source_hyperplane, target_hyperplane)
     if center.dim != source_hyperplane.normal.dim:
         raise ValueError("Projection center dimension mismatch")
     source_offset = source_hyperplane.offset
-    source_center_value = source_hyperplane.normal.dot(FloatVector(center))
+    source_center_value = source_hyperplane.normal.dot(Vector(center))
     if _isclose(source_offset, source_center_value):
         raise ValueError("Projection center must not lie in the source hyperplane")
 
-    def inverse_map(point: FloatPoint) -> FloatPoint:
-        point = FloatPoint(point)
+    def inverse_map(point: Point) -> Point:
+        point = Point(point)
         direction = point - center
         denominator = source_hyperplane.normal.dot(direction)
         if _isclose(denominator):
@@ -151,11 +151,11 @@ def central_projection_inverse(
 
 def projected_local_model(
     source_object,
-    source_point: FloatPoint,
+    source_point: Point,
     target_hyperplane,
-    target_point: FloatPoint,
-    inverse_map: Callable[[FloatPoint], FloatPoint],
-) -> LocalConeModel[FloatPoint]:
+    target_point: Point,
+    inverse_map: Callable[[Point], Point],
+) -> LocalConeModel[Point]:
     source_model = source_object.local_model_at(source_point)
     target_model = target_hyperplane.local_model_at(target_point)
     jacobian = _numeric_jacobian(inverse_map, target_point)
@@ -165,28 +165,28 @@ def projected_local_model(
         contains=lambda coordinates: (
             target_model.cone.contains(coordinates)
             and source_model.cone.contains(
-                FloatPoint(jacobian @ _point_array(coordinates))
+                Point(jacobian @ _point_array(coordinates))
             )
         ),
-        apex=FloatPoint.origin(dim),
+        apex=Point.origin(dim),
         neighborhood=EuclideanNeighborhood.whole(dim),
     )
     return LocalConeModel(target_model.chart, cone)
 
 
-def _centered_cone_model(source_model, point: FloatPoint) -> LocalConeModel[FloatPoint]:
+def _centered_cone_model(source_model, point: Point) -> LocalConeModel[Point]:
     from ..gobject import _centered_chart_at
 
     centered_chart = _centered_chart_at(source_model.chart, point)
-    chart_origin = FloatPoint(source_model.chart(point))
-    translation = FloatVector(chart_origin)
+    chart_origin = Point(source_model.chart(point))
+    translation = Vector(chart_origin)
     dim = centered_chart.dim
     centered_cone = EuclideanCone(
         dim,
         contains=lambda coordinates: source_model.cone.contains(
-            FloatPoint(coordinates) + translation
+            Point(coordinates) + translation
         ),
-        apex=FloatPoint.origin(dim),
+        apex=Point.origin(dim),
         neighborhood=EuclideanNeighborhood.whole(dim),
     )
     return LocalConeModel(centered_chart, centered_cone)
@@ -194,22 +194,22 @@ def _centered_cone_model(source_model, point: FloatPoint) -> LocalConeModel[Floa
 
 def _scalar_subset_local_model(
     source_object,
-    point: FloatPoint,
-    scalar: Callable[[FloatPoint], float],
-) -> LocalConeModel[FloatPoint]:
-    point = FloatPoint(point)
+    point: Point,
+    scalar: Callable[[Point], float],
+) -> LocalConeModel[Point]:
+    point = Point(point)
     source_model = _centered_cone_model(source_object.local_model_at(point), point)
     value = float(scalar(point))
     if value > 1e-9:
         return source_model
 
-    def local_scalar(coordinates: FloatPoint) -> FloatPoint:
+    def local_scalar(coordinates: Point) -> Point:
         local_point = source_model.chart.inverse(coordinates)
-        return FloatPoint(float(scalar(local_point)))
+        return Point(float(scalar(local_point)))
 
     gradient = _numeric_jacobian(
         local_scalar,
-        FloatPoint.origin(source_model.chart.dim),
+        Point.origin(source_model.chart.dim),
     )[0]
     if np.linalg.norm(gradient) <= 1e-9:
         return source_model
@@ -218,9 +218,9 @@ def _scalar_subset_local_model(
         source_model.chart.dim,
         contains=lambda coordinates: (
             source_model.cone.contains(coordinates)
-            and float(gradient @ _point_array(FloatPoint(coordinates))) >= -1e-9
+            and float(gradient @ _point_array(Point(coordinates))) >= -1e-9
         ),
-        apex=FloatPoint.origin(source_model.chart.dim),
+        apex=Point.origin(source_model.chart.dim),
         neighborhood=EuclideanNeighborhood.whole(source_model.chart.dim),
     )
     return LocalConeModel(source_model.chart, cone)
@@ -230,11 +230,11 @@ def _scalar_threshold_subset(source_object, scalar):
     return ChartedGeometricObject(
         source_object.manifold,
         contains=lambda point: (
-            point in source_object and float(scalar(FloatPoint(point))) >= -1e-9
+            point in source_object and float(scalar(Point(point))) >= -1e-9
         ),
         local_model=lambda point: _scalar_subset_local_model(
             source_object,
-            FloatPoint(point),
+            Point(point),
             scalar,
         ),
     )
@@ -250,15 +250,15 @@ def _empty_euclidean_object(manifold: EuclideanSpace):
     )
 
 
-class EuclideanPointObject(ChartedGeometricObject[FloatPoint]):
+class EuclideanPointObject(ChartedGeometricObject[Point]):
     """Zero-dimensional object supported at one Euclidean point."""
 
-    def __init__(self, point: FloatPoint) -> None:
-        self.point = FloatPoint(point)
+    def __init__(self, point: Point) -> None:
+        self.point = Point(point)
         manifold = EuclideanSpace(self.point.dim)
         super().__init__(
             manifold,
-            contains=lambda candidate: FloatPoint(candidate) == self.point,
+            contains=lambda candidate: Point(candidate) == self.point,
             local_model=lambda candidate: LocalConeModel(
                 euclidean_chart(self.point),
                 point_cone(self.point.dim),
@@ -266,7 +266,7 @@ class EuclideanPointObject(ChartedGeometricObject[FloatPoint]):
         )
 
 
-class WholeSpace(ChartedGeometricObject[FloatPoint]):
+class WholeSpace(ChartedGeometricObject[Point]):
     """The whole Euclidean space ``R^n``."""
 
     def __init__(self, dim: int) -> None:
@@ -276,16 +276,16 @@ class WholeSpace(ChartedGeometricObject[FloatPoint]):
             manifold,
             contains=lambda point: True,
             local_model=lambda point: LocalConeModel(
-                euclidean_chart(FloatPoint(point)),
+                euclidean_chart(Point(point)),
                 EuclideanCone.whole(dim),
             ),
         )
 
 
-class Hyperplane(ChartedGeometricObject[FloatPoint]):
+class Hyperplane(ChartedGeometricObject[Point]):
     """Affine hyperplane ``{x : <normal, x> = offset}``."""
 
-    def __init__(self, normal: FloatVector, offset: float = 0.0) -> None:
+    def __init__(self, normal: Vector, offset: float = 0.0) -> None:
         self.normal = _coerce_nonzero_normal(normal)
         self.offset = float(offset)
         manifold = EuclideanSpace(self.normal.dim)
@@ -295,21 +295,21 @@ class Hyperplane(ChartedGeometricObject[FloatPoint]):
             local_model=self._local_model,
         )
 
-    def _contains(self, point: FloatPoint) -> bool:
-        point = FloatPoint(point)
-        value = FloatVector(point).dot(self.normal)
+    def _contains(self, point: Point) -> bool:
+        point = Point(point)
+        value = Vector(point).dot(self.normal)
         return _isclose(value, self.offset)
 
-    def _local_model(self, point: FloatPoint) -> LocalConeModel[FloatPoint]:
-        point = FloatPoint(point)
+    def _local_model(self, point: Point) -> LocalConeModel[Point]:
+        point = Point(point)
         cone = hyperplane_cone(self.normal)
         return LocalConeModel(euclidean_chart(point), cone)
 
 
-class HalfSpace(ChartedGeometricObject[FloatPoint]):
+class HalfSpace(ChartedGeometricObject[Point]):
     """Closed half-space ``{x : <normal, x> >= offset}``."""
 
-    def __init__(self, normal: FloatVector, offset: float = 0.0) -> None:
+    def __init__(self, normal: Vector, offset: float = 0.0) -> None:
         self.normal = _coerce_nonzero_normal(normal)
         self.offset = float(offset)
         manifold = EuclideanSpace(self.normal.dim)
@@ -319,14 +319,14 @@ class HalfSpace(ChartedGeometricObject[FloatPoint]):
             local_model=self._local_model,
         )
 
-    def _contains(self, point: FloatPoint) -> bool:
-        point = FloatPoint(point)
-        value = FloatVector(point).dot(self.normal)
+    def _contains(self, point: Point) -> bool:
+        point = Point(point)
+        value = Vector(point).dot(self.normal)
         return value >= self.offset or _isclose(value, self.offset)
 
-    def _local_model(self, point: FloatPoint) -> LocalConeModel[FloatPoint]:
-        point = FloatPoint(point)
-        value = FloatVector(point).dot(self.normal) - self.offset
+    def _local_model(self, point: Point) -> LocalConeModel[Point]:
+        point = Point(point)
+        value = Vector(point).dot(self.normal) - self.offset
         if value > 0.0 and not _isclose(value):
             cone = EuclideanCone.whole(self.normal.dim)
         else:
@@ -334,11 +334,11 @@ class HalfSpace(ChartedGeometricObject[FloatPoint]):
         return LocalConeModel(euclidean_chart(point), cone)
 
 
-class Sphere(ChartedGeometricObject[FloatPoint]):
+class Sphere(ChartedGeometricObject[Point]):
     """Euclidean sphere surface ``{x : ||x - c|| = r}``."""
 
-    def __init__(self, center: FloatPoint, radius: float) -> None:
-        self.center = FloatPoint(center)
+    def __init__(self, center: Point, radius: float) -> None:
+        self.center = Point(center)
         self.radius = float(radius)
         if self.radius <= 0.0:
             raise ValueError("Sphere radius must be positive")
@@ -349,23 +349,23 @@ class Sphere(ChartedGeometricObject[FloatPoint]):
             local_model=self._local_model,
         )
 
-    def _radial_vector(self, point: FloatPoint) -> FloatVector:
-        return FloatPoint(point) - self.center
+    def _radial_vector(self, point: Point) -> Vector:
+        return Point(point) - self.center
 
-    def _contains(self, point: FloatPoint) -> bool:
+    def _contains(self, point: Point) -> bool:
         return _isclose(self._radial_vector(point).norm(), self.radius)
 
-    def _local_model(self, point: FloatPoint) -> LocalConeModel[FloatPoint]:
+    def _local_model(self, point: Point) -> LocalConeModel[Point]:
         normal = self._radial_vector(point)
         cone = hyperplane_cone(normal)
-        return LocalConeModel(euclidean_chart(FloatPoint(point)), cone)
+        return LocalConeModel(euclidean_chart(Point(point)), cone)
 
 
-class Ball(ChartedGeometricObject[FloatPoint]):
+class Ball(ChartedGeometricObject[Point]):
     """Closed Euclidean ball ``{x : ||x - c|| <= r}``."""
 
-    def __init__(self, center: FloatPoint, radius: float) -> None:
-        self.center = FloatPoint(center)
+    def __init__(self, center: Point, radius: float) -> None:
+        self.center = Point(center)
         self.radius = float(radius)
         if self.radius <= 0.0:
             raise ValueError("Ball radius must be positive")
@@ -376,15 +376,15 @@ class Ball(ChartedGeometricObject[FloatPoint]):
             local_model=self._local_model,
         )
 
-    def _radial_vector(self, point: FloatPoint) -> FloatVector:
-        return FloatPoint(point) - self.center
+    def _radial_vector(self, point: Point) -> Vector:
+        return Point(point) - self.center
 
-    def _contains(self, point: FloatPoint) -> bool:
+    def _contains(self, point: Point) -> bool:
         norm = self._radial_vector(point).norm()
         return norm <= self.radius or _isclose(norm, self.radius)
 
-    def _local_model(self, point: FloatPoint) -> LocalConeModel[FloatPoint]:
-        point = FloatPoint(point)
+    def _local_model(self, point: Point) -> LocalConeModel[Point]:
+        point = Point(point)
         normal = self._radial_vector(point)
         if normal.norm() < self.radius and not _isclose(normal.norm(), self.radius):
             cone = EuclideanCone.whole(self.center.dim)
@@ -393,11 +393,11 @@ class Ball(ChartedGeometricObject[FloatPoint]):
         return LocalConeModel(euclidean_chart(point), cone)
 
 
-class EllipsoidSurface(ChartedGeometricObject[FloatPoint]):
+class EllipsoidSurface(ChartedGeometricObject[Point]):
     """Affine image of the unit sphere."""
 
-    def __init__(self, center: FloatPoint, semiaxes: Sequence[Sequence[float]]) -> None:
-        self.center = FloatPoint(center)
+    def __init__(self, center: Point, semiaxes: Sequence[Sequence[float]]) -> None:
+        self.center = Point(center)
         self.dim = self.center.dim
         self.matrix = _coerce_affine_matrix(semiaxes, self.dim)
         self.inverse_matrix = np.linalg.inv(self.matrix)
@@ -408,29 +408,29 @@ class EllipsoidSurface(ChartedGeometricObject[FloatPoint]):
             local_model=self._local_model,
         )
 
-    def _local_coordinates(self, point: FloatPoint) -> np.ndarray:
-        displacement = _point_array(FloatPoint(point) - self.center)
+    def _local_coordinates(self, point: Point) -> np.ndarray:
+        displacement = _point_array(Point(point) - self.center)
         return self.inverse_matrix @ displacement
 
-    def _normal(self, point: FloatPoint) -> FloatVector:
+    def _normal(self, point: Point) -> Vector:
         local = self._local_coordinates(point)
         normal = self.inverse_matrix.T @ local
-        return FloatVector(normal)
+        return Vector(normal)
 
-    def _contains(self, point: FloatPoint) -> bool:
+    def _contains(self, point: Point) -> bool:
         local = self._local_coordinates(point)
         return _isclose(float(local @ local), 1.0)
 
-    def _local_model(self, point: FloatPoint) -> LocalConeModel[FloatPoint]:
+    def _local_model(self, point: Point) -> LocalConeModel[Point]:
         normal = self._normal(point)
         cone = hyperplane_cone(normal)
-        return LocalConeModel(euclidean_chart(FloatPoint(point)), cone)
+        return LocalConeModel(euclidean_chart(Point(point)), cone)
 
 
-class Ellipsoid(ChartedGeometricObject[FloatPoint]):
+class Ellipsoid(ChartedGeometricObject[Point]):
     """Affine image of the closed unit ball."""
 
-    def __init__(self, center: FloatPoint, semiaxes: Sequence[Sequence[float]]) -> None:
+    def __init__(self, center: Point, semiaxes: Sequence[Sequence[float]]) -> None:
         self.surface = EllipsoidSurface(center, semiaxes)
         manifold = EuclideanSpace(self.surface.dim)
         super().__init__(
@@ -439,13 +439,13 @@ class Ellipsoid(ChartedGeometricObject[FloatPoint]):
             local_model=self._local_model,
         )
 
-    def _contains(self, point: FloatPoint) -> bool:
+    def _contains(self, point: Point) -> bool:
         local = self.surface._local_coordinates(point)
         value = float(local @ local)
         return value <= 1.0 or _isclose(value, 1.0)
 
-    def _local_model(self, point: FloatPoint) -> LocalConeModel[FloatPoint]:
-        point = FloatPoint(point)
+    def _local_model(self, point: Point) -> LocalConeModel[Point]:
+        point = Point(point)
         local = self.surface._local_coordinates(point)
         value = float(local @ local)
         if value < 1.0 and not _isclose(value, 1.0):
@@ -455,11 +455,11 @@ class Ellipsoid(ChartedGeometricObject[FloatPoint]):
         return LocalConeModel(euclidean_chart(point), cone)
 
 
-class ParallelepipedSurface(ChartedGeometricObject[FloatPoint]):
+class ParallelepipedSurface(ChartedGeometricObject[Point]):
     """Affine image of the boundary of the unit cube."""
 
-    def __init__(self, center: FloatPoint, spanning_vectors: Sequence[Sequence[float]]) -> None:
-        self.center = FloatPoint(center)
+    def __init__(self, center: Point, spanning_vectors: Sequence[Sequence[float]]) -> None:
+        self.center = Point(center)
         self.dim = self.center.dim
         self.matrix = _coerce_affine_matrix(spanning_vectors, self.dim)
         self.inverse_matrix = np.linalg.inv(self.matrix)
@@ -470,11 +470,11 @@ class ParallelepipedSurface(ChartedGeometricObject[FloatPoint]):
             local_model=self._local_model,
         )
 
-    def _local_coordinates(self, point: FloatPoint) -> np.ndarray:
-        displacement = _point_array(FloatPoint(point) - self.center)
+    def _local_coordinates(self, point: Point) -> np.ndarray:
+        displacement = _point_array(Point(point) - self.center)
         return self.inverse_matrix @ displacement
 
-    def _contains(self, point: FloatPoint) -> bool:
+    def _contains(self, point: Point) -> bool:
         local = self._local_coordinates(point)
         max_abs = float(np.max(np.abs(local)))
         return (max_abs <= 1.0 or _isclose(max_abs, 1.0)) and _isclose(max_abs, 1.0)
@@ -484,7 +484,7 @@ class ParallelepipedSurface(ChartedGeometricObject[FloatPoint]):
         if not active:
             return EuclideanCone.whole(self.dim)
 
-        def contains(coordinates: FloatPoint) -> bool:
+        def contains(coordinates: Point) -> bool:
             local_disp = self.inverse_matrix @ _point_array(coordinates)
             values = [sign * float(local_disp[index]) for index, sign in active]
             return all(value <= 0.0 or _isclose(value) for value in values) and any(
@@ -494,20 +494,20 @@ class ParallelepipedSurface(ChartedGeometricObject[FloatPoint]):
         return EuclideanCone(
             self.dim,
             contains=contains,
-            apex=FloatPoint.origin(self.dim),
+            apex=Point.origin(self.dim),
             neighborhood=EuclideanNeighborhood.whole(self.dim),
         )
 
-    def _local_model(self, point: FloatPoint) -> LocalConeModel[FloatPoint]:
-        point = FloatPoint(point)
+    def _local_model(self, point: Point) -> LocalConeModel[Point]:
+        point = Point(point)
         local = self._local_coordinates(point)
         return LocalConeModel(euclidean_chart(point), self._surface_cone(local))
 
 
-class Parallelepiped(ChartedGeometricObject[FloatPoint]):
+class Parallelepiped(ChartedGeometricObject[Point]):
     """Affine image of the closed unit cube."""
 
-    def __init__(self, center: FloatPoint, spanning_vectors: Sequence[Sequence[float]]) -> None:
+    def __init__(self, center: Point, spanning_vectors: Sequence[Sequence[float]]) -> None:
         self.surface = ParallelepipedSurface(center, spanning_vectors)
         manifold = EuclideanSpace(self.surface.dim)
         super().__init__(
@@ -516,7 +516,7 @@ class Parallelepiped(ChartedGeometricObject[FloatPoint]):
             local_model=self._local_model,
         )
 
-    def _contains(self, point: FloatPoint) -> bool:
+    def _contains(self, point: Point) -> bool:
         local = self.surface._local_coordinates(point)
         return float(np.max(np.abs(local))) <= 1.0 or _isclose(float(np.max(np.abs(local))), 1.0)
 
@@ -525,7 +525,7 @@ class Parallelepiped(ChartedGeometricObject[FloatPoint]):
         if not active:
             return EuclideanCone.whole(self.surface.dim)
 
-        def contains(coordinates: FloatPoint) -> bool:
+        def contains(coordinates: Point) -> bool:
             local_disp = self.surface.inverse_matrix @ _point_array(coordinates)
             values = [sign * float(local_disp[index]) for index, sign in active]
             return all(value <= 0.0 or _isclose(value) for value in values)
@@ -533,12 +533,12 @@ class Parallelepiped(ChartedGeometricObject[FloatPoint]):
         return EuclideanCone(
             self.surface.dim,
             contains=contains,
-            apex=FloatPoint.origin(self.surface.dim),
+            apex=Point.origin(self.surface.dim),
             neighborhood=EuclideanNeighborhood.whole(self.surface.dim),
         )
 
-    def _local_model(self, point: FloatPoint) -> LocalConeModel[FloatPoint]:
-        point = FloatPoint(point)
+    def _local_model(self, point: Point) -> LocalConeModel[Point]:
+        point = Point(point)
         local = self.surface._local_coordinates(point)
         max_abs = float(np.max(np.abs(local)))
         if max_abs < 1.0 and not _isclose(max_abs, 1.0):
@@ -551,8 +551,8 @@ class Parallelepiped(ChartedGeometricObject[FloatPoint]):
 class CubeSurface(ParallelepipedSurface):
     """Boundary of an axis-aligned cube centered at a point."""
 
-    def __init__(self, center: FloatPoint, half_extent: float) -> None:
-        center = FloatPoint(center)
+    def __init__(self, center: Point, half_extent: float) -> None:
+        center = Point(center)
         half_extent = float(half_extent)
         if half_extent <= 0.0:
             raise ValueError("Cube half-extent must be positive")
@@ -567,8 +567,8 @@ class CubeSurface(ParallelepipedSurface):
 class Cube(Parallelepiped):
     """Closed axis-aligned cube centered at a point."""
 
-    def __init__(self, center: FloatPoint, half_extent: float) -> None:
-        center = FloatPoint(center)
+    def __init__(self, center: Point, half_extent: float) -> None:
+        center = Point(center)
         half_extent = float(half_extent)
         if half_extent <= 0.0:
             raise ValueError("Cube half-extent must be positive")
@@ -590,18 +590,18 @@ class WholePlane(WholeSpace):
 class HalfPlane(HalfSpace):
     """Closed half-plane ``{x : <normal, x> >= offset}``."""
 
-    def __init__(self, normal: FloatVector, offset: float = 0.0) -> None:
-        normal = FloatVector(normal)
+    def __init__(self, normal: Vector, offset: float = 0.0) -> None:
+        normal = Vector(normal)
         if normal.dim != 2:
             raise ValueError("HalfPlane is only defined in dimension 2")
         super().__init__(normal, offset=offset)
 
 
-class PlanarAngle(ChartedGeometricObject[FloatPoint]):
+class PlanarAngle(ChartedGeometricObject[Point]):
     """Closed planar angle with interior and apex in ``R^2``."""
 
-    def __init__(self, apex: FloatPoint, start: CirclePoint, end: CirclePoint) -> None:
-        self.apex = FloatPoint(apex)
+    def __init__(self, apex: Point, start: CirclePoint, end: CirclePoint) -> None:
+        self.apex = Point(apex)
         if self.apex.dim != 2:
             raise ValueError("PlanarAngle apex must be two-dimensional")
         self.interval = CircleInterval(start, end)
@@ -615,16 +615,16 @@ class PlanarAngle(ChartedGeometricObject[FloatPoint]):
             local_model=self._local_model,
         )
 
-    def _contains(self, point: FloatPoint) -> bool:
-        point = FloatPoint(point)
+    def _contains(self, point: Point) -> bool:
+        point = Point(point)
         displacement = point - self.apex
         if displacement.norm() == 0.0:
             return True
         direction = CirclePoint.from_cartesian(displacement[0], displacement[1])
         return direction in self.direction_set
 
-    def _local_model(self, point: FloatPoint) -> LocalConeModel[FloatPoint]:
-        point = FloatPoint(point)
+    def _local_model(self, point: Point) -> LocalConeModel[Point]:
+        point = Point(point)
         chart = euclidean_chart(point)
         if point == self.apex:
             if self.direction_set.is_full():
@@ -640,38 +640,38 @@ class PlanarAngle(ChartedGeometricObject[FloatPoint]):
         displacement = point - self.apex
         direction = CirclePoint.from_cartesian(displacement[0], displacement[1])
         if direction == CirclePoint(self.interval.start):
-            boundary = FloatVector(
+            boundary = Vector(
                 math.cos(self.interval.start),
                 math.sin(self.interval.start),
             )
             cone = EuclideanCone(
                 2,
                 contains=lambda coordinates: (
-                    _cross_2d(boundary, FloatVector(coordinates)) >= 0.0
+                    _cross_2d(boundary, Vector(coordinates)) >= 0.0
                 ),
-                apex=FloatPoint.origin(2),
+                apex=Point.origin(2),
                 neighborhood=EuclideanNeighborhood.whole(2),
             )
             return LocalConeModel(chart, cone)
         if direction == CirclePoint(self.interval.end):
-            boundary = FloatVector(
+            boundary = Vector(
                 math.cos(self.interval.end),
                 math.sin(self.interval.end),
             )
             cone = EuclideanCone(
                 2,
                 contains=lambda coordinates: (
-                    _cross_2d(boundary, FloatVector(coordinates)) <= 0.0
+                    _cross_2d(boundary, Vector(coordinates)) <= 0.0
                 ),
-                apex=FloatPoint.origin(2),
+                apex=Point.origin(2),
                 neighborhood=EuclideanNeighborhood.whole(2),
             )
             return LocalConeModel(chart, cone)
         return LocalConeModel(chart, EuclideanCone.whole(2))
 
 
-def visible_part_from_direction(source_object, direction: FloatVector):
-    direction = FloatVector(direction)
+def visible_part_from_direction(source_object, direction: Vector):
+    direction = Vector(direction)
     if isinstance(source_object, Sphere):
         return _scalar_threshold_subset(
             source_object,
@@ -703,13 +703,13 @@ def visible_part_from_direction(source_object, direction: FloatVector):
     )
 
 
-def visible_part_from_point(source_object, observer: FloatPoint):
-    observer = FloatPoint(observer)
+def visible_part_from_point(source_object, observer: Point):
+    observer = Point(observer)
     if isinstance(source_object, Sphere):
         return _scalar_threshold_subset(
             source_object,
             lambda point: source_object._radial_vector(point).dot(
-                observer - FloatPoint(point)
+                observer - Point(point)
             ),
         )
     if isinstance(source_object, Ball):
@@ -721,7 +721,7 @@ def visible_part_from_point(source_object, observer: FloatPoint):
         return _scalar_threshold_subset(
             source_object,
             lambda point: source_object._normal(point).dot(
-                observer - FloatPoint(point)
+                observer - Point(point)
             ),
         )
     if isinstance(source_object, Ellipsoid):
@@ -730,7 +730,7 @@ def visible_part_from_point(source_object, observer: FloatPoint):
         return source_object
     if isinstance(source_object, HalfSpace):
         signed_distance = (
-            source_object.normal.dot(FloatVector(observer)) - source_object.offset
+            source_object.normal.dot(Vector(observer)) - source_object.offset
         )
         if signed_distance >= 0.0 and not _isclose(signed_distance):
             return _empty_euclidean_object(source_object.manifold)

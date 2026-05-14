@@ -3,7 +3,7 @@
 import math
 import unittest
 
-from geo.euclidean import FloatPoint
+from geo.euclidean import Point
 from geo import space as space_pkg
 from geo.space.base import Space
 from geo.space.sphere import SpherePoint
@@ -27,10 +27,10 @@ class TestSpaceProtocol(unittest.TestCase):
         space = space_pkg.point.Space()
 
         self.assertEqual(space.dim, 0)
-        self.assertIn(FloatPoint.origin(0), space)
+        self.assertIn(Point.origin(0), space)
         self.assertIn((), space)
         self.assertNotIn(0.0, space)
-        self.assertEqual(space.distance((), FloatPoint.origin(0)), 0.0)
+        self.assertEqual(space.distance((), Point.origin(0)), 0.0)
 
         neighborhood = space.neighborhood_at(())
         self.assertEqual(neighborhood.diameter(), 0.0)
@@ -107,8 +107,8 @@ class TestSpaceProtocol(unittest.TestCase):
         self.assertNotIn(south_pole, hemisphere)
 
         boundary = hemisphere.local_model_at(equator)
-        self.assertIn(FloatPoint(0.0, 1.0), boundary.cone)
-        self.assertNotIn(FloatPoint(0.0, -1.0), boundary.cone)
+        self.assertIn(Point(0.0, 1.0), boundary.cone)
+        self.assertNotIn(Point(0.0, -1.0), boundary.cone)
 
     def test_higher_dimensional_sphere_uses_embedded_coordinates(self):
         """Higher-dimensional spheres should accept an explicit dimension."""
@@ -118,7 +118,7 @@ class TestSpaceProtocol(unittest.TestCase):
 
         self.assertIn(first, space)
         self.assertIn((3.0, 0.0, 0.0, 0.0), space)
-        self.assertNotIn(FloatPoint(2.0, 0.0, 0.0), space)
+        self.assertNotIn(Point(2.0, 0.0, 0.0), space)
         self.assertAlmostEqual(space.distance(first, second), math.pi)
 
     def test_torus_distance_and_visualization(self):
@@ -143,9 +143,9 @@ class TestSpaceProtocol(unittest.TestCase):
         self.assertNotIn(TorusPoint(math.pi, math.pi / 4.0), patch)
 
         boundary = patch.local_model_at(TorusPoint(0.0, 0.0))
-        self.assertIn(FloatPoint(1.0, 1.0), boundary.cone)
-        self.assertNotIn(FloatPoint(-1.0, 1.0), boundary.cone)
-        self.assertNotIn(FloatPoint(1.0, -1.0), boundary.cone)
+        self.assertIn(Point(1.0, 1.0), boundary.cone)
+        self.assertNotIn(Point(-1.0, 1.0), boundary.cone)
+        self.assertNotIn(Point(1.0, -1.0), boundary.cone)
 
     def test_higher_dimensional_torus_uses_all_angular_axes(self):
         """Higher-dimensional tori should use one circle factor per axis."""
@@ -165,5 +165,5 @@ class TestSpaceProtocol(unittest.TestCase):
         self.assertNotIn(TorusPoint(math.pi, math.pi / 2.0, math.pi / 4.0), patch)
 
         boundary = patch.local_model_at(TorusPoint(0.0, 0.0, 0.0))
-        self.assertIn(FloatPoint(1.0, 1.0, 1.0), boundary.cone)
-        self.assertNotIn(FloatPoint(-1.0, 1.0, 1.0), boundary.cone)
+        self.assertIn(Point(1.0, 1.0, 1.0), boundary.cone)
+        self.assertNotIn(Point(-1.0, 1.0, 1.0), boundary.cone)

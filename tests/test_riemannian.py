@@ -5,7 +5,7 @@ import unittest
 
 from geo import GeometricObject
 from geo.cone import EuclideanCone, LocalConeModel
-from geo.euclidean import EuclideanNeighborhood, FloatPoint, FloatVector
+from geo.euclidean import EuclideanNeighborhood, Point, Vector
 from geo.gobject import LazyExpressionObject, LazyMappedObject, LazyObject
 from geo.manifold import ManifoldChart
 from geo import space as space_pkg
@@ -41,7 +41,7 @@ class TestSpaces(unittest.TestCase):
         self.assertIsInstance(space, Space)
         self.assertIsInstance(space, EuclideanSpace)
         self.assertEqual(
-            space.distance(FloatPoint(1.0, 2.0), FloatPoint(4.0, 6.0)),
+            space.distance(Point(1.0, 2.0), Point(4.0, 6.0)),
             5.0,
         )
 
@@ -60,8 +60,8 @@ class TestMetricObjects(unittest.TestCase):
         self.assertNotIn(3.0, obj)
 
         boundary = obj.local_model_at(0.0)
-        self.assertIn(FloatPoint(1.0), boundary.cone)
-        self.assertNotIn(FloatPoint(-1.0), boundary.cone)
+        self.assertIn(Point(1.0), boundary.cone)
+        self.assertNotIn(Point(-1.0), boundary.cone)
 
     def test_circle_arc(self):
         """An arc should be a geometric object in the unit circle space."""
@@ -71,28 +71,28 @@ class TestMetricObjects(unittest.TestCase):
         self.assertNotIn(CirclePoint(math.pi), obj)
 
         boundary = obj.local_model_at(CirclePoint(0.0))
-        self.assertIn(FloatPoint(1.0), boundary.cone)
-        self.assertNotIn(FloatPoint(-1.0), boundary.cone)
+        self.assertIn(Point(1.0), boundary.cone)
+        self.assertNotIn(Point(-1.0), boundary.cone)
 
     def test_plane_objects(self):
         """Standard planar objects should live in the Euclidean plane space."""
         space = space_pkg.euclidean.Space(2)
         half_plane = space.half_plane((0.0, 1.0))
-        angle = space.angle(FloatPoint(0.0, 0.0), 0.0, math.pi / 2.0)
+        angle = space.angle(Point(0.0, 0.0), 0.0, math.pi / 2.0)
 
-        self.assertIn(FloatPoint(1.0, 1.0), half_plane)
-        self.assertNotIn(FloatPoint(1.0, -1.0), half_plane)
-        self.assertIn(FloatPoint(1.0, 1.0), angle)
-        self.assertNotIn(FloatPoint(-1.0, 1.0), angle)
+        self.assertIn(Point(1.0, 1.0), half_plane)
+        self.assertNotIn(Point(1.0, -1.0), half_plane)
+        self.assertIn(Point(1.0, 1.0), angle)
+        self.assertNotIn(Point(-1.0, 1.0), angle)
 
-        apex_model = angle.local_model_at(FloatPoint(0.0, 0.0))
-        self.assertIn(FloatPoint(1.0, 1.0), apex_model.cone)
-        self.assertNotIn(FloatPoint(-1.0, 1.0), apex_model.cone)
+        apex_model = angle.local_model_at(Point(0.0, 0.0))
+        self.assertIn(Point(1.0, 1.0), apex_model.cone)
+        self.assertNotIn(Point(-1.0, 1.0), apex_model.cone)
 
-        disk = space.ball(FloatPoint(0.0, 0.0), 1.0)
-        point_object = space.point(FloatPoint(0.0, 0.0))
-        self.assertIn(FloatPoint(0.0, 0.0), disk)
-        self.assertIn(FloatPoint(0.0, 0.0), point_object)
+        disk = space.ball(Point(0.0, 0.0), 1.0)
+        point_object = space.point(Point(0.0, 0.0))
+        self.assertIn(Point(0.0, 0.0), disk)
+        self.assertIn(Point(0.0, 0.0), point_object)
 
     def test_real_line_set_operations(self):
         """Set-theoretic operations should work on real-line objects."""
@@ -116,8 +116,8 @@ class TestMetricObjects(unittest.TestCase):
         self.assertNotIn(1.5, sym_diff)
 
         boundary = difference.local_model_at(0.0)
-        self.assertIn(FloatPoint(1.0), boundary.cone)
-        self.assertNotIn(FloatPoint(-1.0), boundary.cone)
+        self.assertIn(Point(1.0), boundary.cone)
+        self.assertNotIn(Point(-1.0), boundary.cone)
 
     def test_set_operations_build_lazy_expression_nodes(self):
         """Set operations should preserve an explicit lazy expression tree."""
@@ -168,15 +168,15 @@ class TestMetricObjects(unittest.TestCase):
         quadrant = upper & right
         union = upper | right
 
-        self.assertIn(FloatPoint(1.0, 1.0), quadrant)
-        self.assertNotIn(FloatPoint(-1.0, 1.0), quadrant)
-        self.assertIn(FloatPoint(-1.0, 1.0), union)
-        self.assertIn(FloatPoint(1.0, -1.0), union)
-        self.assertNotIn(FloatPoint(-1.0, -1.0), union)
+        self.assertIn(Point(1.0, 1.0), quadrant)
+        self.assertNotIn(Point(-1.0, 1.0), quadrant)
+        self.assertIn(Point(-1.0, 1.0), union)
+        self.assertIn(Point(1.0, -1.0), union)
+        self.assertNotIn(Point(-1.0, -1.0), union)
 
-        apex_model = quadrant.local_model_at(FloatPoint(0.0, 0.0))
-        self.assertIn(FloatPoint(1.0, 1.0), apex_model.cone)
-        self.assertNotIn(FloatPoint(-1.0, 1.0), apex_model.cone)
+        apex_model = quadrant.local_model_at(Point(0.0, 0.0))
+        self.assertIn(Point(1.0, 1.0), apex_model.cone)
+        self.assertNotIn(Point(-1.0, 1.0), apex_model.cone)
 
     def test_set_operations_require_same_space(self):
         """Set-theoretic operations should reject mixed ambient spaces."""
@@ -190,14 +190,14 @@ class TestMetricObjects(unittest.TestCase):
         """Equivalent objects in different charts should keep boundary cones."""
         space = space_pkg.line.Space()
         chart_identity = ManifoldChart(
-            lambda point: FloatPoint(point),
+            lambda point: Point(point),
             lambda coordinates: coordinates[0],
             dim=1,
             domain_contains=space.contains,
             image=EuclideanNeighborhood.whole(1),
         )
         chart_reflected = ManifoldChart(
-            lambda point: FloatPoint(-point),
+            lambda point: Point(-point),
             lambda coordinates: -coordinates[0],
             dim=1,
             domain_contains=space.contains,
@@ -231,8 +231,8 @@ class TestMetricObjects(unittest.TestCase):
         intersection = left.intersection(right)
         boundary = intersection.local_model_at(0.0)
 
-        self.assertIn(FloatPoint(1.0), boundary.cone)
-        self.assertNotIn(FloatPoint(-1.0), boundary.cone)
+        self.assertIn(Point(1.0), boundary.cone)
+        self.assertNotIn(Point(-1.0), boundary.cone)
 
     def test_parallel_projection_onto_hyperplane(self):
         """Parallel projection should return a new geometric object."""
@@ -254,14 +254,14 @@ class TestMetricObjects(unittest.TestCase):
         self.assertEqual(projected.operation, "project-along-direction")
         self.assertEqual(projected.node_kind, "unary")
         self.assertEqual(projected.children, (source_half_line,))
-        self.assertIn(FloatPoint(1.0, 0.0), projected)
-        self.assertNotIn(FloatPoint(-1.0, 0.0), projected)
-        self.assertNotIn(FloatPoint(1.0, 1.0), projected)
+        self.assertIn(Point(1.0, 0.0), projected)
+        self.assertNotIn(Point(-1.0, 0.0), projected)
+        self.assertNotIn(Point(1.0, 1.0), projected)
 
-        boundary = projected.local_model_at(FloatPoint(0.0, 0.0))
-        self.assertIn(FloatPoint(1.0, 0.0), boundary.cone)
-        self.assertNotIn(FloatPoint(-1.0, 0.0), boundary.cone)
-        self.assertNotIn(FloatPoint(0.0, 1.0), boundary.cone)
+        boundary = projected.local_model_at(Point(0.0, 0.0))
+        self.assertIn(Point(1.0, 0.0), boundary.cone)
+        self.assertNotIn(Point(-1.0, 0.0), boundary.cone)
+        self.assertNotIn(Point(0.0, 1.0), boundary.cone)
 
     def test_central_projection_onto_hyperplane(self):
         """Central projection should return a new geometric object."""
@@ -274,19 +274,19 @@ class TestMetricObjects(unittest.TestCase):
         projected = source_half_line.project_from_point_onto(
             source_hyperplane,
             target_line,
-            FloatPoint(0.0, 2.0),
+            Point(0.0, 2.0),
         )
 
         self.assertIsInstance(projected, LazyMappedObject)
         self.assertEqual(projected.operation, "project-from-point")
-        self.assertIn(FloatPoint(2.0, 0.0), projected)
-        self.assertNotIn(FloatPoint(-1.0, 0.0), projected)
-        self.assertNotIn(FloatPoint(0.0, 1.0), projected)
+        self.assertIn(Point(2.0, 0.0), projected)
+        self.assertNotIn(Point(-1.0, 0.0), projected)
+        self.assertNotIn(Point(0.0, 1.0), projected)
 
-        boundary = projected.local_model_at(FloatPoint(0.0, 0.0))
-        self.assertIn(FloatPoint(1.0, 0.0), boundary.cone)
-        self.assertNotIn(FloatPoint(-1.0, 0.0), boundary.cone)
-        self.assertNotIn(FloatPoint(0.0, 1.0), boundary.cone)
+        boundary = projected.local_model_at(Point(0.0, 0.0))
+        self.assertIn(Point(1.0, 0.0), boundary.cone)
+        self.assertNotIn(Point(-1.0, 0.0), boundary.cone)
+        self.assertNotIn(Point(0.0, 1.0), boundary.cone)
 
     def test_smooth_image_object(self):
         """A smooth image should define a new geometric object."""
@@ -294,26 +294,26 @@ class TestMetricObjects(unittest.TestCase):
         target_space = space_pkg.euclidean.Space(2)
         source = source_space.subset((0.0, 2.0))
 
-        def target_chart(point: FloatPoint) -> ManifoldChart[FloatPoint]:
-            center = FloatPoint(point)
+        def target_chart(point: Point) -> ManifoldChart[Point]:
+            center = Point(point)
             return ManifoldChart(
-                lambda candidate: FloatPoint(candidate) - center,
-                lambda coordinates: center + FloatVector(coordinates),
+                lambda candidate: Point(candidate) - center,
+                lambda coordinates: center + Vector(coordinates),
                 dim=2,
                 domain_contains=target_space.contains,
                 image=EuclideanNeighborhood.whole(2),
             )
 
         image = source.image_under_smooth_map(
-            lambda point: FloatPoint(point, point * point),
-            lambda point: float(FloatPoint(point)[0]),
+            lambda point: Point(point, point * point),
+            lambda point: float(Point(point)[0]),
             target_space,
             target_chart,
             contains_image_point=lambda point: (
-                0.0 <= FloatPoint(point)[0] <= 2.0 and
+                0.0 <= Point(point)[0] <= 2.0 and
                 math.isclose(
-                    FloatPoint(point)[1],
-                    FloatPoint(point)[0] * FloatPoint(point)[0],
+                    Point(point)[1],
+                    Point(point)[0] * Point(point)[0],
                     rel_tol=1e-9,
                     abs_tol=1e-9,
                 )
@@ -323,66 +323,66 @@ class TestMetricObjects(unittest.TestCase):
         self.assertIsInstance(image, GeometricObject)
         self.assertIsInstance(image, LazyMappedObject)
         self.assertEqual(image.operation, "image-under-smooth-map")
-        self.assertIn(FloatPoint(1.0, 1.0), image)
-        self.assertNotIn(FloatPoint(1.0, 0.0), image)
-        self.assertNotIn(FloatPoint(3.0, 9.0), image)
+        self.assertIn(Point(1.0, 1.0), image)
+        self.assertNotIn(Point(1.0, 0.0), image)
+        self.assertNotIn(Point(3.0, 9.0), image)
 
-        interior = image.local_model_at(FloatPoint(1.0, 1.0))
-        self.assertIn(FloatPoint(1.0, 2.0), interior.cone)
-        self.assertIn(FloatPoint(-1.0, -2.0), interior.cone)
-        self.assertNotIn(FloatPoint(0.0, 1.0), interior.cone)
+        interior = image.local_model_at(Point(1.0, 1.0))
+        self.assertIn(Point(1.0, 2.0), interior.cone)
+        self.assertIn(Point(-1.0, -2.0), interior.cone)
+        self.assertNotIn(Point(0.0, 1.0), interior.cone)
 
-        boundary = image.local_model_at(FloatPoint(0.0, 0.0))
-        self.assertIn(FloatPoint(1.0, 0.0), boundary.cone)
-        self.assertNotIn(FloatPoint(-1.0, 0.0), boundary.cone)
-        self.assertNotIn(FloatPoint(0.0, 1.0), boundary.cone)
+        boundary = image.local_model_at(Point(0.0, 0.0))
+        self.assertIn(Point(1.0, 0.0), boundary.cone)
+        self.assertNotIn(Point(-1.0, 0.0), boundary.cone)
+        self.assertNotIn(Point(0.0, 1.0), boundary.cone)
 
     def test_visible_ball_from_direction(self):
         """A ball should expose the visible boundary cap from a direction."""
         space = space_pkg.euclidean.Space(2)
-        ball = space.ball(FloatPoint(0.0, 0.0), 1.0)
+        ball = space.ball(Point(0.0, 0.0), 1.0)
 
-        visible = ball.visible_from_direction(FloatVector(0.0, 1.0))
+        visible = ball.visible_from_direction(Vector(0.0, 1.0))
 
         self.assertIsInstance(visible, GeometricObject)
         self.assertIsInstance(visible, LazyMappedObject)
         self.assertEqual(visible.operation, "visible-from-direction")
-        self.assertIn(FloatPoint(0.0, 1.0), visible)
-        self.assertIn(FloatPoint(1.0, 0.0), visible)
-        self.assertNotIn(FloatPoint(0.0, -1.0), visible)
-        self.assertNotIn(FloatPoint(0.0, 0.0), visible)
+        self.assertIn(Point(0.0, 1.0), visible)
+        self.assertIn(Point(1.0, 0.0), visible)
+        self.assertNotIn(Point(0.0, -1.0), visible)
+        self.assertNotIn(Point(0.0, 0.0), visible)
 
-        silhouette = visible.local_model_at(FloatPoint(1.0, 0.0))
-        self.assertIn(FloatPoint(0.0, 1.0), silhouette.cone)
-        self.assertNotIn(FloatPoint(0.0, -1.0), silhouette.cone)
+        silhouette = visible.local_model_at(Point(1.0, 0.0))
+        self.assertIn(Point(0.0, 1.0), silhouette.cone)
+        self.assertNotIn(Point(0.0, -1.0), silhouette.cone)
 
     def test_visible_ellipsoid_surface_from_point(self):
         """An ellipsoid surface should keep only the observer-facing part."""
         space = space_pkg.euclidean.Space(2)
         surface = space.ellipsoid_surface(
-            FloatPoint(0.0, 0.0),
+            Point(0.0, 0.0),
             ((2.0, 0.0), (0.0, 1.0)),
         )
 
-        visible = surface.visible_from_point(FloatPoint(0.0, 3.0))
+        visible = surface.visible_from_point(Point(0.0, 3.0))
 
         self.assertIsInstance(visible, LazyMappedObject)
         self.assertEqual(visible.operation, "visible-from-point")
-        self.assertIn(FloatPoint(0.0, 1.0), visible)
-        self.assertIn(FloatPoint(1.2, 0.8), visible)
-        self.assertNotIn(FloatPoint(0.0, -1.0), visible)
+        self.assertIn(Point(0.0, 1.0), visible)
+        self.assertIn(Point(1.2, 0.8), visible)
+        self.assertNotIn(Point(0.0, -1.0), visible)
 
     def test_visible_half_plane_from_point(self):
         """A half-plane should expose its boundary only from the exterior."""
         space = space_pkg.euclidean.Space(2)
         half_plane = space.half_plane((0.0, 1.0), offset=0.0)
 
-        visible = half_plane.visible_from_point(FloatPoint(0.0, -1.0))
-        hidden = half_plane.visible_from_point(FloatPoint(0.0, 1.0))
+        visible = half_plane.visible_from_point(Point(0.0, -1.0))
+        hidden = half_plane.visible_from_point(Point(0.0, 1.0))
 
-        self.assertIn(FloatPoint(2.0, 0.0), visible)
-        self.assertNotIn(FloatPoint(2.0, 1.0), visible)
-        self.assertNotIn(FloatPoint(2.0, 0.0), hidden)
+        self.assertIn(Point(2.0, 0.0), visible)
+        self.assertNotIn(Point(2.0, 1.0), visible)
+        self.assertNotIn(Point(2.0, 0.0), hidden)
 
 
 if __name__ == "__main__":

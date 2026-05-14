@@ -13,7 +13,7 @@ from geo.cone import (
     SphereObject,
     SphericalCone,
 )
-from geo.euclidean import EuclideanNeighborhood, FloatPoint, FloatVector
+from geo.euclidean import EuclideanNeighborhood, Point, Vector
 from geo.gobject import ChartedGeometricObject, GeometricObjectProtocol
 from geo.manifold import ManifoldChart
 from geo.space.circle import Set as CircleSet
@@ -51,14 +51,14 @@ class TestEuclideanCone(unittest.TestCase):
             neighborhood=EuclideanNeighborhood.box((0.0, 10.0)),
         )
         self.assertIsInstance(cone, Cone)
-        self.assertIn(FloatPoint(0.0), cone)
-        self.assertIn(FloatPoint(3.0), cone)
-        self.assertNotIn(FloatPoint(-1.0), cone)
+        self.assertIn(Point(0.0), cone)
+        self.assertIn(Point(3.0), cone)
+        self.assertNotIn(Point(-1.0), cone)
 
     def test_whole_cone(self):
         """The whole-space cone should contain every point of matching dimension."""
         cone = EuclideanCone.whole(2)
-        self.assertIn(FloatPoint(-1.0, 2.0), cone)
+        self.assertIn(Point(-1.0, 2.0), cone)
 
 
 class TestRadialCone(unittest.TestCase):
@@ -71,9 +71,9 @@ class TestRadialCone(unittest.TestCase):
             contains_direction=lambda direction: direction[0] >= 0.0,
             neighborhood=EuclideanNeighborhood.box((-10.0, 10.0)),
         )
-        self.assertIn(FloatPoint(0.0), cone)
-        self.assertIn(FloatPoint(3.0), cone)
-        self.assertNotIn(FloatPoint(-3.0), cone)
+        self.assertIn(Point(0.0), cone)
+        self.assertIn(Point(3.0), cone)
+        self.assertNotIn(Point(-3.0), cone)
 
     def test_first_quadrant(self):
         """A radial cone can model a sector in higher dimension."""
@@ -84,11 +84,11 @@ class TestRadialCone(unittest.TestCase):
             ),
             neighborhood=EuclideanNeighborhood.box((-10.0, 10.0), (-10.0, 10.0)),
         )
-        self.assertIn(FloatPoint(1.0, 2.0), cone)
-        self.assertIn(FloatPoint(0.0, 0.0), cone)
-        self.assertNotIn(FloatPoint(-1.0, 2.0), cone)
+        self.assertIn(Point(1.0, 2.0), cone)
+        self.assertIn(Point(0.0, 0.0), cone)
+        self.assertNotIn(Point(-1.0, 2.0), cone)
         self.assertTrue(
-            isinstance(FloatPoint(1.0, 0.0) - FloatPoint(0.0, 0.0), FloatVector)
+            isinstance(Point(1.0, 0.0) - Point(0.0, 0.0), Vector)
         )
 
 
@@ -102,10 +102,10 @@ class TestSphereObjectsAndSphericalCones(unittest.TestCase):
             contains=lambda direction: direction[0] >= 0.0 and direction[1] >= 0.0,
         )
         self.assertIsInstance(sphere_object, SphereObject)
-        self.assertIn(FloatVector(1.0, 0.0), sphere_object)
-        self.assertIn(FloatVector(1.0, 1.0), sphere_object)
-        self.assertNotIn(FloatVector(-1.0, 1.0), sphere_object)
-        self.assertNotIn(FloatVector.zero(2), sphere_object)
+        self.assertIn(Vector(1.0, 0.0), sphere_object)
+        self.assertIn(Vector(1.0, 1.0), sphere_object)
+        self.assertNotIn(Vector(-1.0, 1.0), sphere_object)
+        self.assertNotIn(Vector.zero(2), sphere_object)
 
     def test_spherical_cone(self):
         """A spherical cone should derive membership from its sphere object."""
@@ -117,9 +117,9 @@ class TestSphereObjectsAndSphericalCones(unittest.TestCase):
             sphere_object,
             neighborhood=EuclideanNeighborhood.box((-10.0, 10.0), (-10.0, 10.0)),
         )
-        self.assertIn(FloatPoint(2.0, 3.0), cone)
-        self.assertIn(FloatPoint(0.0, 0.0), cone)
-        self.assertNotIn(FloatPoint(-2.0, 3.0), cone)
+        self.assertIn(Point(2.0, 3.0), cone)
+        self.assertIn(Point(0.0, 0.0), cone)
+        self.assertNotIn(Point(-2.0, 3.0), cone)
 
     def test_circle_sphere_object(self):
         """A sphere object in dimension 2 can be defined by a circle set."""
@@ -127,9 +127,9 @@ class TestSphereObjectsAndSphericalCones(unittest.TestCase):
             CircleSet.from_single_interval(0.0, 1.5707963267948966),
         )
         self.assertIsInstance(circle_object, SphereObject)
-        self.assertIn(FloatVector(1.0, 0.0), circle_object)
-        self.assertIn(FloatVector(1.0, 1.0), circle_object)
-        self.assertNotIn(FloatVector(-1.0, 1.0), circle_object)
+        self.assertIn(Vector(1.0, 0.0), circle_object)
+        self.assertIn(Vector(1.0, 1.0), circle_object)
+        self.assertNotIn(Vector(-1.0, 1.0), circle_object)
 
     def test_spherical_cone_from_circle_object(self):
         """A spherical cone can use the existing circle geometry as its base."""
@@ -140,8 +140,8 @@ class TestSphereObjectsAndSphericalCones(unittest.TestCase):
             base,
             neighborhood=EuclideanNeighborhood.box((-10.0, 10.0), (-10.0, 10.0)),
         )
-        self.assertIn(FloatPoint(2.0, 3.0), cone)
-        self.assertNotIn(FloatPoint(-2.0, 3.0), cone)
+        self.assertIn(Point(2.0, 3.0), cone)
+        self.assertNotIn(Point(-2.0, 3.0), cone)
 
 
 class TestChartedGeometricObject(unittest.TestCase):
@@ -151,7 +151,7 @@ class TestChartedGeometricObject(unittest.TestCase):
         """A charted geometric object should satisfy the public protocol."""
         manifold = LineManifold()
         chart = ManifoldChart(
-            lambda point: FloatPoint(point.x),
+            lambda point: Point(point.x),
             lambda coordinates: LinePoint(coordinates[0]),
             dim=1,
             domain_contains=manifold.contains,
@@ -180,17 +180,17 @@ class TestChartedGeometricObject(unittest.TestCase):
         self.assertNotIn(LinePoint(-1.0), obj)
 
         boundary_model = obj.local_model_at(LinePoint(0.0))
-        self.assertIn(FloatPoint(1.0), boundary_model.cone)
-        self.assertNotIn(FloatPoint(-1.0), boundary_model.cone)
+        self.assertIn(Point(1.0), boundary_model.cone)
+        self.assertNotIn(Point(-1.0), boundary_model.cone)
 
         interior_model = obj.local_model_at(LinePoint(2.0))
-        self.assertIn(FloatPoint(-3.0), interior_model.cone)
+        self.assertIn(Point(-3.0), interior_model.cone)
 
     def test_local_model_requires_point_in_object(self):
         """Requesting a local model outside the object should fail."""
         manifold = LineManifold()
         chart = ManifoldChart(
-            lambda point: FloatPoint(point.x),
+            lambda point: Point(point.x),
             lambda coordinates: LinePoint(coordinates[0]),
             dim=1,
             domain_contains=manifold.contains,

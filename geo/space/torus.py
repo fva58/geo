@@ -7,7 +7,7 @@ import math
 from collections.abc import Sequence
 
 from ..cone import EuclideanCone, LocalConeModel
-from ..euclidean import EuclideanNeighborhood, FloatPoint
+from ..euclidean import EuclideanNeighborhood, Point as EuclideanPoint
 from ..gobject import GeometricObject
 from ..circle import Angle, Point, Set
 from ..manifold import ManifoldChart
@@ -21,7 +21,7 @@ class Neighborhood(BoxNeighborhood["TorusPoint"]):
 def _point_cone(dim: int) -> EuclideanCone:
     return EuclideanCone(
         dim,
-        contains=lambda point: FloatPoint(point) == FloatPoint.origin(dim),
+        contains=lambda point: EuclideanPoint(point) == EuclideanPoint.origin(dim),
         neighborhood=EuclideanNeighborhood.whole(dim),
     )
 
@@ -65,7 +65,7 @@ def _product_cone(axis_flags: Sequence[tuple[bool, bool]]) -> EuclideanCone:
     return EuclideanCone(
         dim,
         contains=lambda point: all(
-            axis_ok(FloatPoint(point)[index], left_in, right_in)
+            axis_ok(EuclideanPoint(point)[index], left_in, right_in)
             for index, (left_in, right_in) in enumerate(axis_flags)
         ),
         neighborhood=EuclideanNeighborhood.whole(dim),
@@ -129,15 +129,15 @@ def _torus_chart(base_point: TorusPoint) -> ManifoldChart[TorusPoint]:
     base_point = TorusPoint(base_point)
     dim = base_point.dim
 
-    def forward(point: TorusPoint) -> FloatPoint:
+    def forward(point: TorusPoint) -> EuclideanPoint:
         point = TorusPoint(point)
-        return FloatPoint([
+        return EuclideanPoint([
             _signed_circle_difference(point[index], base_point[index])
             for index in range(dim)
         ])
 
-    def inverse(coordinates: FloatPoint) -> TorusPoint:
-        coordinates = FloatPoint(coordinates)
+    def inverse(coordinates: EuclideanPoint) -> TorusPoint:
+        coordinates = EuclideanPoint(coordinates)
         if coordinates.dim != dim:
             raise ValueError(f"Torus chart coordinates must be {dim}-dimensional")
         return TorusPoint(
