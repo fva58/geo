@@ -1,7 +1,7 @@
 """Minimal public API for geometric spaces and objects."""
 
-from .gobject import GeometricObject
-from .operations import (
+from .gobject import (
+    GeometricObject,
     classify_cover,
     local_chart_cover_from_points,
     refine_until,
